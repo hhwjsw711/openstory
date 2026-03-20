@@ -871,7 +871,7 @@ async function main() {
     );
   } else {
     console.error(
-      'Video tasks: SKIPPED (no --image-url or R2_PUBLIC_ASSETS_DOMAIN)'
+      'Video tasks: SKIPPED (no --image-url or VITE_R2_PUBLIC_ASSETS_DOMAIN)'
     );
   }
 
@@ -1017,7 +1017,7 @@ async function main() {
 }
 
 function resolveDefaultImageUrl(): string | undefined {
-  const r2Domain = process.env.R2_PUBLIC_ASSETS_DOMAIN;
+  const r2Domain = process.env.VITE_R2_PUBLIC_ASSETS_DOMAIN;
   if (r2Domain) {
     return `https://${r2Domain}/style-previews/default.webp`;
   }

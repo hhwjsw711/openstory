@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient } from '@/lib/auth/client';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 type AuthFormProps = {
@@ -194,6 +194,24 @@ export function AuthForm({
             {isLoading ? 'Sending…' : 'Send code'}
           </Button>
         </form>
+
+        <p className="text-center text-xs text-muted-foreground">
+          By signing in, you agree to our{' '}
+          <Link
+            to="/terms"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            Terms of&nbsp;Service
+          </Link>{' '}
+          and{' '}
+          <Link
+            to="/privacy"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            Privacy&nbsp;Policy
+          </Link>
+          .
+        </p>
       </CardContent>
     </Card>
   );

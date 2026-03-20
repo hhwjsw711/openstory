@@ -24,6 +24,8 @@ import { ulidSchema } from '@/lib/schemas/id.schemas';
 import type { Frame, Sequence } from '@/types/database';
 import { createMiddleware } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
+import { emitLog } from '@/lib/observability/structured-log';
+import { OpenStoryError } from '@/lib/errors';
 import { zodValidator } from '@tanstack/zod-adapter';
 import type Stripe from 'stripe';
 import { z } from 'zod';
@@ -83,20 +85,69 @@ export type FrameContext = TeamContext & {
  * All other middleware chains from authMiddleware which chains from this,
  * so every server function gets logging automatically.
  */
+const SIZE_WARNING_BYTES = 6 * 1024 * 1024; // 6 MB
+
 export const loggerMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next, serverFnMeta }) => {
     const fnName = serverFnMeta.name;
     const start = performance.now();
+    const request = getRequest();
+    const contentLength = request.headers.get('content-length');
+    const contentLengthNum = contentLength ? Number(contentLength) : undefined;
+    const path = new URL(request.url).pathname;
+
+    if (contentLengthNum && contentLengthNum > SIZE_WARNING_BYTES) {
+      emitLog({
+        level: 'warn',
+        source: 'serverFn',
+        name: fnName,
+        method: request.method,
+        path,
+        durationMs: 0,
+        contentLength: contentLengthNum,
+        status: 'ok',
+      });
+    }
 
     try {
       const result = await next();
-      const ms = Math.round(performance.now() - start);
-      console.info(`[ServerFn:${fnName}] OK ${ms}ms`);
+      const durationMs = Math.round(performance.now() - start);
+      emitLog({
+        level: 'info',
+        source: 'serverFn',
+        name: fnName,
+        method: request.method,
+        path,
+        durationMs,
+        contentLength: contentLengthNum,
+        status: 'ok',
+      });
       return result;
     } catch (error) {
-      const ms = Math.round(performance.now() - start);
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`[ServerFn:${fnName}] ERROR ${ms}ms "${message}"`);
+      const durationMs = Math.round(performance.now() - start);
+      const errorLog =
+        error instanceof OpenStoryError
+          ? {
+              code: error.code,
+              message: error.message,
+              statusCode: error.statusCode,
+            }
+          : {
+              code: 'UNKNOWN',
+              message: error instanceof Error ? error.message : String(error),
+            };
+
+      emitLog({
+        level: 'error',
+        source: 'serverFn',
+        name: fnName,
+        method: request.method,
+        path,
+        durationMs,
+        contentLength: contentLengthNum,
+        status: 'error',
+        error: errorLog,
+      });
       throw error;
     }
   }

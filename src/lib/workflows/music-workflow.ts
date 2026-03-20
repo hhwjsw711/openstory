@@ -30,19 +30,23 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
 
     const { sequenceId, teamId } = input;
     const model = input.model || DEFAULT_MUSIC_MODEL;
-    const seq = scopedDb.sequence(sequenceId);
 
-    await context.run('set-generating-status', async () => {
-      await seq.updateMusicFields({
-        musicStatus: 'generating',
-        musicModel: model,
-        musicError: null,
-      });
+    if (scopedDb && sequenceId) {
+      await context.run('set-generating-status', async () => {
+        await scopedDb.sequence(sequenceId).updateMusicFields({
+          musicStatus: 'generating',
+          musicModel: model,
+          musicError: null,
+        });
 
-      await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
-        status: 'generating',
+        await getGenerationChannel(sequenceId).emit(
+          'generation.audio:progress',
+          {
+            status: 'generating',
+          }
+        );
       });
-    });
+    }
 
     // Use pre-generated prompt or generate from scenes via LLM
     let effectivePrompt: string;
@@ -124,86 +128,95 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
     if (!audioResult.audioUrl) {
       throw new Error('Audio URL missing from generation result');
     }
-    const audioUrl = audioResult.audioUrl;
-
-    const storageResult = await context.run('upload-to-storage', async () => {
-      const result = await uploadAudioToStorage({
-        audioUrl,
-        teamId,
-        sequenceId,
-        sequenceTitle: 'sequence',
-        sceneTitle: 'music',
-      });
-
-      if (!result.success || !result.path) {
-        throw new Error('Failed to upload audio');
-      }
-
-      return { path: result.path, url: result.url };
-    });
-
-    await context.run('update-sequence-music', async () => {
-      await seq.updateMusicFields({
-        musicUrl: storageResult.url,
-        musicPath: storageResult.path,
-        musicStatus: 'completed',
-        musicGeneratedAt: new Date(),
-        musicError: null,
-      });
-
-      await getGenerationChannel(sequenceId).emit('generation.audio:progress', {
-        status: 'completed',
-        audioUrl: storageResult.url,
-      });
-    });
-
-    // Check if merged video is also ready -- trigger mux if so
-    await context.run('check-mux-trigger', async () => {
-      const videoStatus = await seq.getMergedVideoStatus();
-
-      if (
-        videoStatus?.mergedVideoStatus === 'completed' &&
-        videoStatus.mergedVideoUrl
-      ) {
-        console.log(
-          `[MusicWorkflow] Music + merged video both ready, triggering mux for sequence ${sequenceId}`
-        );
-
-        const muxInput: MergeAudioVideoWorkflowInput = {
-          userId: input.userId,
+    let audioUrl = audioResult.audioUrl;
+    if (sequenceId && scopedDb) {
+      const storageResult = await context.run('upload-to-storage', async () => {
+        const result = await uploadAudioToStorage({
+          audioUrl,
           teamId,
           sequenceId,
-          mergedVideoUrl: videoStatus.mergedVideoUrl,
-          musicUrl: storageResult.url,
-        };
+          sequenceTitle: 'sequence',
+          sceneTitle: 'music',
+        });
 
-        await triggerWorkflow('/merge-audio-video', muxInput);
+        if (!result.success || !result.path) {
+          throw new Error('Failed to upload audio');
+        }
+
+        return { path: result.path, url: result.url };
+      });
+      if (storageResult.url) {
+        audioUrl = storageResult.url;
       }
-    });
+      await context.run('update-sequence-music', async () => {
+        await scopedDb.sequence(sequenceId).updateMusicFields({
+          musicUrl: audioUrl,
+          musicPath: storageResult.path,
+          musicStatus: 'completed',
+          musicGeneratedAt: new Date(),
+          musicError: null,
+        });
+
+        await getGenerationChannel(sequenceId).emit(
+          'generation.audio:progress',
+          {
+            status: 'completed',
+            audioUrl: audioUrl,
+          }
+        );
+      });
+
+      // Check if merged video is also ready -- trigger mux if so
+      await context.run('check-mux-trigger', async () => {
+        const videoStatus = await scopedDb
+          .sequence(sequenceId)
+          .getMergedVideoStatus();
+
+        if (
+          videoStatus?.mergedVideoStatus === 'completed' &&
+          videoStatus.mergedVideoUrl
+        ) {
+          console.log(
+            `[MusicWorkflow] Music + merged video both ready, triggering mux for sequence ${sequenceId}`
+          );
+
+          const muxInput: MergeAudioVideoWorkflowInput = {
+            userId: input.userId,
+            teamId,
+            sequenceId,
+            mergedVideoUrl: videoStatus.mergedVideoUrl,
+            musicUrl: audioUrl,
+          };
+
+          await triggerWorkflow('/merge-audio-video', muxInput);
+        }
+      });
+    }
 
     console.log('[MusicWorkflow]', 'Music generation workflow completed');
-    return { audioUrl: storageResult.url, duration: actualDuration };
+    return { audioUrl: audioUrl, duration: actualDuration };
   },
   {
     failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
-      const failSeq = scopedDb.sequence(input.sequenceId);
+      if (input.sequenceId) {
+        const failSeq = scopedDb.sequence(input.sequenceId);
 
-      await failSeq.updateMusicFields({
-        musicStatus: 'failed',
-        musicError: error,
-      });
+        await failSeq.updateMusicFields({
+          musicStatus: 'failed',
+          musicError: error,
+        });
 
-      try {
-        await getGenerationChannel(input.sequenceId).emit(
-          'generation.audio:progress',
-          { status: 'failed' }
-        );
-      } catch {
-        // Ignore emit errors
+        try {
+          await getGenerationChannel(input.sequenceId).emit(
+            'generation.audio:progress',
+            { status: 'failed' }
+          );
+        } catch {
+          // Ignore emit errors
+        }
       }
-
       console.error(
         '[MusicWorkflow]',
         `Music generation failed for sequence ${input.sequenceId}: ${error}`

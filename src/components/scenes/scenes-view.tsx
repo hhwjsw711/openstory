@@ -16,7 +16,6 @@ import {
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { batchGenerateMotionFn } from '@/functions/motion-functions';
-import { generateMusicFn } from '@/functions/sequences';
 import { smartRetryFn } from '@/functions/smart-retry';
 import { toast } from 'sonner';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
@@ -61,6 +60,14 @@ function removeAllFromSet(prev: Set<string>, ids: string[]): Set<string> {
 
 function isTerminalStatus(status: string | null): boolean {
   return status === 'completed' || status === 'failed';
+}
+
+function isInsufficientCreditsError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message.includes('INSUFFICIENT_CREDITS') ||
+      error.message.includes('Insufficient credits'))
+  );
 }
 
 export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
@@ -187,11 +194,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
       });
       void queryClient.invalidateQueries({ queryKey: ['frames', sequenceId] });
     } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.message.includes('INSUFFICIENT_CREDITS') ||
-          error.message.includes('Insufficient credits'))
-      ) {
+      if (isInsufficientCreditsError(error)) {
         toast.error('Insufficient credits', {
           description: 'Add credits to retry.',
           action: {
@@ -202,7 +205,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           },
         });
         void queryClient.invalidateQueries({
-          queryKey: [...BILLING_BALANCE_KEY],
+          queryKey: BILLING_BALANCE_KEY,
         });
       } else {
         toast.error('Failed to retry', {
@@ -214,23 +217,32 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     }
   }, [sequenceId, queryClient]);
 
-  // Handler for batch motion generation
+  // Handler for batch motion generation (server determines eligible frames)
   const handleBatchMotionGeneration = useCallback(
-    async (frameIds: string[]) => {
-      if (!sequenceId || frameIds.length === 0) return;
+    async (includeMusic: boolean) => {
+      if (!sequenceId) return;
 
-      setRegeneratingMotion((prev) => addAllToSet(prev, frameIds));
+      // Optimistic: compute eligible frames locally (same filter as backend)
+      const eligibleFrameIds = (frames ?? [])
+        .filter(
+          (f) =>
+            f.thumbnailStatus === 'completed' &&
+            (f.videoStatus === 'pending' || f.videoStatus === 'failed')
+        )
+        .map((f) => f.id);
+
+      setRegeneratingMotion((prev) => addAllToSet(prev, eligibleFrameIds));
 
       try {
-        await batchGenerateMotionFn({ data: { sequenceId, frameIds } });
+        await batchGenerateMotionFn({
+          data: { sequenceId, includeMusic },
+        });
       } catch (error) {
-        setRegeneratingMotion((prev) => removeAllFromSet(prev, frameIds));
+        setRegeneratingMotion((prev) =>
+          removeAllFromSet(prev, eligibleFrameIds)
+        );
 
-        if (
-          error instanceof Error &&
-          (error.message.includes('INSUFFICIENT_CREDITS') ||
-            error.message.includes('Insufficient credits'))
-        ) {
+        if (isInsufficientCreditsError(error)) {
           toast.error('Insufficient credits', {
             description: 'Add credits to generate motion for all frames.',
             action: {
@@ -241,47 +253,17 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             },
           });
           void queryClient.invalidateQueries({
-            queryKey: [...BILLING_BALANCE_KEY],
+            queryKey: BILLING_BALANCE_KEY,
           });
         } else {
           throw error;
         }
       }
     },
-    [sequenceId, queryClient]
+    [sequenceId, frames, queryClient]
   );
 
   const musicPromptsReady = !!(sequence?.musicPrompt && sequence?.musicTags);
-
-  const handleGenerateMusic = useCallback(async () => {
-    if (!sequenceId) return;
-    try {
-      await generateMusicFn({ data: { sequenceId } });
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        (error.message.includes('INSUFFICIENT_CREDITS') ||
-          error.message.includes('Insufficient credits'))
-      ) {
-        toast.error('Insufficient credits', {
-          description: 'Add credits to generate music.',
-          action: {
-            label: 'Add Credits',
-            onClick: () => {
-              window.location.href = '/credits';
-            },
-          },
-        });
-        void queryClient.invalidateQueries({
-          queryKey: [...BILLING_BALANCE_KEY],
-        });
-      } else {
-        toast.error('Failed to generate music', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    }
-  }, [sequenceId, queryClient]);
 
   return (
     <div className="flex h-full flex-col">
@@ -307,7 +289,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
             musicPromptsReady={musicPromptsReady}
-            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 
@@ -322,7 +303,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             regeneratingMotion={regeneratingMotion}
             onBatchGenerateMotion={handleBatchMotionGeneration}
             musicPromptsReady={musicPromptsReady}
-            onGenerateMusic={handleGenerateMusic}
           />
         </div>
 

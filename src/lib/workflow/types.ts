@@ -16,8 +16,8 @@ import type {
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
-import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { StyleConfig } from '@/lib/db/schema';
+import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { Json } from '@/types/database';
 
 /**
@@ -30,13 +30,12 @@ export interface UserWorkflowContext {
 }
 
 export interface SequenceWorkflowContext extends UserWorkflowContext {
-  sequenceId: string;
+  sequenceId?: string;
 }
 /**
  * Image generation workflow input
  */
-export interface ImageWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface ImageWorkflowInput extends SequenceWorkflowContext {
   prompt: string;
   style?: Json;
   model?: keyof typeof IMAGE_MODELS;
@@ -53,14 +52,17 @@ export interface ImageWorkflowInput extends UserWorkflowContext {
 /**
  * Variant image generation workflow input
  */
-export interface VariantWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface VariantWorkflowInput extends SequenceWorkflowContext {
   thumbnailUrl: string;
   model?: keyof typeof IMAGE_MODELS;
   imageSize?: ImageSize;
   numImages?: number;
   seed?: number;
   frameId?: string;
+  /** Sequence aspect ratio — drives variant grid layout */
+  aspectRatio?: AspectRatio;
+  /** Scene description from frame.metadata.prompts.visual.fullPrompt */
+  scenePrompt?: string;
   /** Character reference sheets for visual consistency */
   characterReferences?: ReferenceImageDescription[];
   /** Location reference images for environment consistency */
@@ -94,8 +96,7 @@ export interface StoryboardWorkflowInput extends SequenceWorkflowContext {
 /**
  * Analyze scenes workflow input
  */
-export interface AnalyzeScriptWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface AnalyzeScriptWorkflowInput extends SequenceWorkflowContext {
   // Required inputs
   script: string;
   aspectRatio: AspectRatio;
@@ -115,8 +116,7 @@ export interface AnalyzeScriptWorkflowInput extends UserWorkflowContext {
 /**
  * Motion generation workflow input
  */
-export interface MotionWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface MotionWorkflowInput extends SequenceWorkflowContext {
   frameId?: string;
   imageUrl: string;
   prompt: string;
@@ -130,8 +130,7 @@ export interface MotionWorkflowInput extends UserWorkflowContext {
 /**
  * Character sheet generation workflow input
  */
-export interface CharacterSheetWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface CharacterSheetWorkflowInput extends SequenceWorkflowContext {
   /** sequence_characters.id */
   characterDbId: string;
   /** Character name for logging */
@@ -213,10 +212,23 @@ export type TalentMatchResult = {
 };
 
 /**
+ * Talent matching workflow input
+ */
+export interface TalentMatchingWorkflowInput extends SequenceWorkflowContext {
+  scenes: Scene[];
+  analysisModelId: AnalysisModelId;
+  suggestedTalentIds?: string[];
+}
+
+export interface TalentMatchingWorkflowOutput {
+  characterBible: CharacterBibleEntry[];
+  matches: TalentCharacterMatch[];
+}
+
+/**
  * Character sheet generation workflow input
  */
-export interface CharacterBibleWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface CharacterBibleWorkflowInput extends SequenceWorkflowContext {
   // Character bible from script analysis
   characterBible: CharacterBibleEntry[];
 
@@ -227,8 +239,7 @@ export interface CharacterBibleWorkflowInput extends UserWorkflowContext {
   talentMatches?: TalentCharacterMatch[];
 }
 
-export interface VisualPromptWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface VisualPromptWorkflowInput extends SequenceWorkflowContext {
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
@@ -242,8 +253,7 @@ export interface VisualPromptSceneWorkflowInput extends VisualPromptWorkflowInpu
   sceneIndex: number;
 }
 
-export interface MotionPromptWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface MotionPromptWorkflowInput extends SequenceWorkflowContext {
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
@@ -285,6 +295,12 @@ export interface UpscaleVariantWorkflowInput extends SequenceWorkflowContext {
   croppedTileUrl: string;
   /** R2 path of the cropped tile (for replacement) */
   croppedTilePath: string;
+  /** Sequence aspect ratio — determines output image size for upscale */
+  aspectRatio?: AspectRatio;
+  /** Character reference sheets for visual consistency during upscale */
+  characterReferences?: ReferenceImageDescription[];
+  /** Location reference images for environment consistency during upscale */
+  locationReferences?: ReferenceImageDescription[];
 }
 
 export interface UpscaleVariantWorkflowResult {
@@ -340,8 +356,7 @@ export interface MergeVideoWorkflowResult {
 /**
  * Location sheet generation workflow input
  */
-export interface LocationSheetWorkflowInput extends UserWorkflowContext {
-  sequenceId?: string;
+export interface LocationSheetWorkflowInput extends SequenceWorkflowContext {
   /** locations.id */
   locationDbId: string;
   /** Location name for logging */
@@ -421,6 +436,19 @@ export type LibraryLocationMatch = {
 };
 
 /**
+ * Location matching workflow input
+ */
+export interface LocationMatchingWorkflowInput extends SequenceWorkflowContext {
+  scenes: Scene[];
+  analysisModelId: AnalysisModelId;
+  suggestedLocationIds?: string[];
+}
+
+export interface LocationMatchingWorkflowOutput {
+  locationBible: LocationBibleEntry[];
+  matches: LibraryLocationMatch[];
+}
+/**
  * Regenerate frames workflow input for locations
  * Bulk regenerates images for frames at a specific location after recast
  */
@@ -469,7 +497,7 @@ export type MusicSceneSummary = {
 
 /**
  * Music generation workflow input
- * Generates background music for an entire sequence using audioDesign specs
+ * Generates background music for an entire sequence using musicDesign specs
  */
 export interface MusicWorkflowInput extends SequenceWorkflowContext {
   /** Compact scene summaries for AI prompt generation (legacy fallback) */

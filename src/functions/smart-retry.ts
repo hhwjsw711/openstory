@@ -4,25 +4,6 @@
  * Falls back to full storyboard retry when prompts are missing.
  */
 
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { sequenceAccessMiddleware } from './middleware';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { analyzeFailures } from '@/lib/failures/failure-analysis';
-import { requireCredits } from '@/lib/billing/preflight';
-import {
-  addMicros,
-  multiplyMicros,
-  ZERO_MICROS,
-  usdToMicros,
-} from '@/lib/billing/money';
-import {
-  estimateImageCost,
-  estimateStoryboardCost,
-  estimateVideoCost,
-} from '@/lib/billing/cost-estimation';
-import { triggerWorkflow } from '@/lib/workflow/client';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -30,17 +11,37 @@ import {
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
+import {
+  estimateImageCost,
+  estimateStoryboardCost,
+  estimateVideoCost,
+} from '@/lib/billing/cost-estimation';
+import {
+  addMicros,
+  multiplyMicros,
+  usdToMicros,
+  ZERO_MICROS,
+} from '@/lib/billing/money';
+import { requireCredits } from '@/lib/billing/preflight';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
+import type { Character } from '@/lib/db/schema';
+import type { Frame } from '@/lib/db/schema/frames';
+import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
   ImageWorkflowInput,
+  MergeVideoWorkflowInput,
   MotionWorkflowInput,
   MusicWorkflowInput,
-  MergeVideoWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
-import type { Frame } from '@/lib/db/schema/frames';
-import type { Character } from '@/lib/db/schema';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { sequenceAccessMiddleware } from './middleware';
+import { buildSceneSummaries } from './sequences';
 
 function resolveMotionPrompt(frame: Frame): string {
   return (
@@ -279,6 +280,36 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       await triggerWorkflow('/music', musicInput);
 
       retried.push('music');
+    }
+
+    // 3b. Retry missing music prompt (use scenes fallback for LLM generation)
+    if (
+      !sequence.musicPrompt &&
+      sequence.musicStatus !== 'completed' &&
+      sequence.status === 'failed'
+    ) {
+      const allFrames = await context.scopedDb.frames.listBySequence(
+        sequence.id
+      );
+      const scenes = buildSceneSummaries(allFrames);
+      const totalDuration = allFrames.reduce((sum, frame) => {
+        const seconds = frame.durationMs
+          ? frame.durationMs / 1000
+          : (frame.metadata?.metadata?.durationSeconds ?? 10);
+        return sum + seconds;
+      }, 0);
+
+      const musicInput: MusicWorkflowInput = {
+        userId: user.id,
+        teamId,
+        sequenceId: sequence.id,
+        scenes,
+        duration: totalDuration || 30,
+      };
+
+      await triggerWorkflow('/music', musicInput);
+
+      retried.push('music prompt');
     }
 
     // 4. Retry failed merge

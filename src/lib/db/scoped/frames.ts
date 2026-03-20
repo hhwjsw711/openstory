@@ -3,11 +3,11 @@
  * Frame CRUD, bulk operations, reorder, and reconciliation.
  */
 
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { Database } from '@/lib/db/client';
 import { frames } from '@/lib/db/schema';
 import type { Frame, NewFrame } from '@/lib/db/schema';
 import type { Sequence } from '@/lib/db/schema/sequences';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 
 type FrameWithSequence = Frame & {
   sequence: Pick<
@@ -115,7 +115,26 @@ export function createFramesMethods(db: Database) {
 
       return frame;
     },
-
+    /**
+     * Upsert a single frame using conflict resolution on (sequenceId, orderIndex).
+     * Idempotent: safe to call on retry without creating duplicates.
+     */
+    upsert: async (data: NewFrame): Promise<Frame> => {
+      const [frame] = await db
+        .insert(frames)
+        .values(data)
+        .onConflictDoUpdate({
+          target: [frames.sequenceId, frames.orderIndex],
+          set: {
+            description: sql.raw(`excluded."description"`),
+            durationMs: sql.raw(`excluded."duration_ms"`),
+            metadata: sql.raw(`excluded."metadata"`),
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return frame;
+    },
     delete: async (frameId: string): Promise<boolean> => {
       const result = await db.delete(frames).where(eq(frames.id, frameId));
       return (result.rowsAffected ?? 0) > 0;

@@ -14,9 +14,8 @@ type SceneListProps = {
   onSelectFrame: (frameId: string) => void;
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
-  onBatchGenerateMotion?: (frameIds: string[]) => Promise<void>;
+  onBatchGenerateMotion?: (includeMusic: boolean) => Promise<void>;
   musicPromptsReady: boolean;
-  onGenerateMusic?: () => Promise<void>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -34,10 +33,9 @@ const SceneListComponent: React.FC<SceneListProps> = ({
   regeneratingMotion,
   onBatchGenerateMotion,
   musicPromptsReady,
-  onGenerateMusic,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [includeMusic, setIncludeMusic] = useState(false);
+  const [includeMusic, setIncludeMusic] = useState(true);
 
   // Frames that need to be kicked off (not already generating)
   const notStartedFrames = useMemo(() => {
@@ -69,14 +67,7 @@ const SceneListComponent: React.FC<SceneListProps> = ({
 
     setIsGenerating(true);
     try {
-      // TB 2026-03-10: Both of these should be a mutation that calls a server function that triggers the workflow.
-      const promises: Promise<void>[] = [
-        onBatchGenerateMotion(notStartedFrames.map((f) => f.id)),
-      ];
-      if (includeMusic && onGenerateMusic) {
-        promises.push(onGenerateMusic());
-      }
-      await Promise.all(promises);
+      await onBatchGenerateMotion(includeMusic);
     } finally {
       setIsGenerating(false);
     }
@@ -208,10 +199,7 @@ const areEqual = (
   }
 
   // Compare callback references
-  if (
-    prevProps.onBatchGenerateMotion !== nextProps.onBatchGenerateMotion ||
-    prevProps.onGenerateMusic !== nextProps.onGenerateMusic
-  ) {
+  if (prevProps.onBatchGenerateMotion !== nextProps.onBatchGenerateMotion) {
     return false;
   }
 

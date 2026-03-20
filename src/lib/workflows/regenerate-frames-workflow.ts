@@ -66,6 +66,10 @@ export const regenerateFramesWorkflow = createScopedWorkflow<
     const { sequenceId, frameIds, userId, teamId, triggeringCharacterId } =
       input;
 
+    if (!sequenceId) {
+      throw new WorkflowValidationError('Sequence ID is required');
+    }
+
     const sequence = await context.run('get-sequence', async () => {
       const seq = await scopedDb.sequences.getById(sequenceId);
       if (!seq) {

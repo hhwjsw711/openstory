@@ -46,6 +46,6 @@ describe('sanitizeFailResponse', () => {
 
   test('handles non-string values', () => {
     expect(sanitizeFailResponse(42)).toBe('42');
-    expect(sanitizeFailResponse({ error: 'bad' })).toBe('[object Object]');
+    expect(sanitizeFailResponse({ error: 'bad' })).toBe('{"error":"bad"}');
   });
 });

@@ -25,16 +25,22 @@ export const generateStoryboardWorkflow =
   createScopedWorkflow<StoryboardWorkflowInput>(async (context, scopedDb) => {
     const input = context.requestPayload;
 
+    const { sequenceId, teamId, userId } = input;
+
     console.log('[StoryboardWorkflow] Input received:', {
       sequenceId: input.sequenceId,
       teamId: input.teamId,
       userId: input.userId,
       autoGenerateMotion: input.autoGenerateMotion,
     });
-    const seq = scopedDb.sequence(input.sequenceId);
+    if (!sequenceId || !teamId || !userId) {
+      throw new WorkflowValidationError(
+        'Sequence ID, team ID, and user ID are required'
+      );
+    }
+    const seq = scopedDb.sequence(sequenceId);
 
     const {
-      sequenceId,
       script,
       aspectRatio,
       styleConfig,
@@ -45,9 +51,7 @@ export const generateStoryboardWorkflow =
       validateSequenceAuth(input);
 
       const sequence = await scopedDb.sequences.getForUser({
-        sequenceId: input.sequenceId,
-        teamId: input.teamId,
-        userId: input.userId,
+        sequenceId,
       });
 
       if (!sequence.script || sequence.script.trim().length === 0) {
@@ -64,9 +68,7 @@ export const generateStoryboardWorkflow =
         throw new WorkflowValidationError('No style found');
       }
 
-      const existingFrames = await scopedDb.frames.listBySequence(
-        input.sequenceId
-      );
+      const existingFrames = await scopedDb.frames.listBySequence(sequenceId);
       await Promise.all(
         existingFrames.map((frame) => scopedDb.frames.delete(frame.id))
       );

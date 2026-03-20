@@ -1,7 +1,12 @@
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import {
+  aspectRatioToImageSize,
+  DEFAULT_IMAGE_SIZE,
+} from '@/lib/constants/aspect-ratios';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
+import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
@@ -9,6 +14,7 @@ import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
+import { WorkflowValidationError } from '../workflow/errors';
 
 const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
 
@@ -42,19 +48,24 @@ export const upscaleVariantWorkflow = createScopedWorkflow<
   async (context, scopedDb) => {
     const input = context.requestPayload;
 
+    const { sequenceId, teamId, frameId } = input;
+    if (!sequenceId || !teamId || !frameId) {
+      throw new WorkflowValidationError('sequenceId and teamId are required');
+    }
+
     console.log(
       '[UpscaleVariantWorkflow]',
-      `Starting upscale for frame ${input.frameId}`
+      `Starting upscale for frame ${frameId}`
     );
 
     const upscaleResult = await context.run('upscale-image', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        { frameId: input.frameId, status: 'generating' }
-      );
+      await getGenerationChannel(sequenceId).emit('generation.image:progress', {
+        frameId: frameId,
+        status: 'generating',
+      });
 
       const frame = await scopedDb.frames.update(
-        input.frameId,
+        frameId,
         {
           thumbnailStatus: 'generating',
           thumbnailWorkflowRunId: context.workflowRunId,
@@ -65,15 +76,36 @@ export const upscaleVariantWorkflow = createScopedWorkflow<
       if (!frame) {
         console.log(
           '[UpscaleVariantWorkflow]',
-          `Frame ${input.frameId} was deleted, skipping workflow`
+          `Frame ${frameId} was deleted, skipping workflow`
         );
         return null;
       }
 
+      // Build enhanced prompt with character/location references (ensure roles are set)
+      const allReferences = [
+        ...(input.characterReferences ?? []).map((r) => ({
+          ...r,
+          role: r.role ?? ('character' as const),
+        })),
+        ...(input.locationReferences ?? []).map((r) => ({
+          ...r,
+          role: r.role ?? ('location' as const),
+        })),
+      ];
+      const { prompt: enhancedPrompt, referenceUrls: charLocUrls } =
+        buildReferenceImagePrompt(UPSCALE_PROMPT, allReferences);
+
+      // Determine output image size from sequence aspect ratio
+      const imageSize = input.aspectRatio
+        ? aspectRatioToImageSize(input.aspectRatio)
+        : DEFAULT_IMAGE_SIZE;
+
+      // Cropped tile is primary source (first), char/loc refs appended after
       const result = await generateImageWithProvider({
         model: 'nano_banana_2',
-        prompt: UPSCALE_PROMPT,
-        referenceImageUrls: [input.croppedTileUrl],
+        prompt: enhancedPrompt,
+        imageSize,
+        referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
         numImages: 1,
         outputFormat: 'png',
         scopedDb,
@@ -103,8 +135,8 @@ export const upscaleVariantWorkflow = createScopedWorkflow<
     const storageResult = await context.run('upload-to-storage', async () => {
       const result = await uploadImageToStorage({
         imageUrl: upscaleResult.imageUrl,
-        teamId: input.teamId,
-        sequenceId: input.sequenceId,
+        teamId: teamId,
+        sequenceId: sequenceId,
         frameId: input.frameId,
       });
 

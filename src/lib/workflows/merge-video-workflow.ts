@@ -29,6 +29,7 @@ async function triggerMuxIfMusicReady(
   mergedVideoUrl: string,
   scopedDb: ScopedDb
 ): Promise<void> {
+  if (!input.sequenceId) return;
   const seqCtx = scopedDb.sequence(input.sequenceId);
   const musicStatus = await seqCtx.getMusicStatus();
 
@@ -164,13 +165,14 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
     failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
-      const failSeq = scopedDb.sequence(input.sequenceId);
+      if (input.sequenceId) {
+        const failSeq = scopedDb.sequence(input.sequenceId);
 
-      await failSeq.updateMergedVideoFields({
-        mergedVideoStatus: 'failed',
-        mergedVideoError: error,
-      });
-
+        await failSeq.updateMergedVideoFields({
+          mergedVideoStatus: 'failed',
+          mergedVideoError: error,
+        });
+      }
       console.error(
         `[MergeVideoWorkflow] Failed to merge sequence ${input.sequenceId}: ${error}`
       );

@@ -7,8 +7,10 @@
  * This reduces QStash steps by ~10x vs one-step-per-poll.
  */
 
-import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
+import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { micros, microsToUsd } from '@/lib/billing/money';
+import { ensureImageUnderLimit } from '@/lib/image/image-compress';
+import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import {
   calculateMotionMetadata,
   pollMotionJob,
@@ -30,6 +32,8 @@ const POLL_BATCH_DURATION_MS = 30_000;
 const POLL_INTERVAL_MS = 3_000;
 /** 30 batches × 30s = 15 minutes total timeout */
 const MAX_BATCHES = 30;
+/** Kling rejects start frame images over 10MB — use 9.5MB safety margin */
+const KLING_MAX_IMAGE_BYTES = 9.5 * 1024 * 1024;
 
 export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
   async (context, scopedDb) => {
@@ -78,10 +82,47 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Step 2a: Submit the motion generation job
+    // Step 2: Prepare start image — compress if Kling model and image exceeds 10MB
+    const startImageUrl = await context.run('prepare-start-image', async () => {
+      const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
+      if (modelConfig.provider !== 'kling') {
+        return input.imageUrl;
+      }
+
+      const compressed = await ensureImageUnderLimit(
+        input.imageUrl,
+        KLING_MAX_IMAGE_BYTES
+      );
+      if (!compressed) {
+        return input.imageUrl;
+      }
+
+      if (!input.teamId || !input.sequenceId || !input.frameId) {
+        console.warn(
+          '[MotionWorkflow] Missing storage context, using original image URL'
+        );
+        return input.imageUrl;
+      }
+
+      const result = await uploadImageBufferToStorage({
+        imageBuffer: compressed.buffer,
+        teamId: input.teamId,
+        sequenceId: input.sequenceId,
+        frameId: input.frameId,
+        contentType: compressed.contentType,
+      });
+
+      console.log(
+        `[MotionWorkflow] Compressed start image: ${(compressed.originalSizeBytes / 1024 / 1024).toFixed(1)}MB → ${(compressed.compressedSizeBytes / 1024 / 1024).toFixed(1)}MB`
+      );
+
+      return result.url;
+    });
+
+    // Step 3a: Submit the motion generation job
     const job = await context.run('submit-motion', async () => {
       return submitMotionJob({
-        imageUrl: input.imageUrl,
+        imageUrl: startImageUrl,
         prompt: input.prompt,
         model,
         duration: input.duration,
@@ -92,7 +133,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
       });
     });
 
-    // Step 2b: Batched polling — tight loop inside each context.run, checkpoint between batches
+    // Step 3b: Batched polling — tight loop inside each context.run, checkpoint between batches
     let videoUrl = '';
 
     for (let batch = 0; batch < MAX_BATCHES; batch++) {

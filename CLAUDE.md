@@ -205,7 +205,7 @@ frame.metadata = {
     motion: { fullPrompt, components, parameters },
   },
   continuity: { characterTags, environmentTag, colorPalette, lightingSetup },
-  audioDesign: { music, soundEffects, dialogue, ambient },
+  musicDesign: { presence, style, mood, atmosphere },
 };
 ```
 

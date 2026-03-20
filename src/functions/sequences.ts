@@ -67,7 +67,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
       imageModel,
       videoModel,
       autoGenerateMotion = false,
-      autoGenerateMusic = false,
+      autoGenerateMusic = true,
       musicModel,
       suggestedTalentIds,
       suggestedLocationIds,
@@ -275,9 +275,10 @@ export const archiveSequenceFn = createServerFn({ method: 'POST' })
   });
 
 /** Build compact scene summaries from frames for music prompt generation */
-function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
+export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   return frames.map((frame) => {
-    const music = frame.metadata?.audioDesign?.music;
+    const md = frame.metadata?.musicDesign;
+    const legacyMusic = frame.metadata?.audioDesign?.music;
     const meta = frame.metadata?.metadata;
     const durationSeconds = frame.durationMs
       ? frame.durationMs / 1000
@@ -287,10 +288,11 @@ function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
       title: meta?.title || 'Untitled Scene',
       storyBeat: meta?.storyBeat || '',
       durationSeconds,
-      musicStyle: music?.style || '',
-      musicMood: music?.mood || '',
-      musicPresence: music?.presence || 'none',
-      atmosphere: frame.metadata?.audioDesign?.ambient?.atmosphere,
+      musicStyle: md?.style || legacyMusic?.style || '',
+      musicMood: md?.mood || legacyMusic?.mood || '',
+      musicPresence: md?.presence || legacyMusic?.presence || 'none',
+      atmosphere:
+        md?.atmosphere || frame.metadata?.audioDesign?.ambient?.atmosphere,
     };
   });
 }
@@ -315,9 +317,6 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { sequence, user } = context;
 
-    const effectivePrompt = data.prompt ?? sequence.musicPrompt;
-    const effectiveTags = data.tags ?? sequence.musicTags;
-
     if (data.prompt || data.tags) {
       await context.scopedDb.sequences.updateMusicPrompt(
         sequence.id,
@@ -329,6 +328,10 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
     const allFrames = await context.scopedDb.frames.listBySequence(
       data.sequenceId
     );
+
+    // For explicit calls with overrides, build input directly
+    const effectivePrompt = data.prompt ?? sequence.musicPrompt;
+    const effectiveTags = data.tags ?? sequence.musicTags;
 
     const totalDuration = allFrames.reduce((sum, frame) => {
       const seconds = frame.durationMs

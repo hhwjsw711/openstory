@@ -1,5 +1,7 @@
+import { getEnv } from '#env';
 import { Providers } from '@/components/providers';
 import { Button } from '@/components/ui/button';
+import { SITE_CONFIG } from '@/lib/marketing/constants';
 import { getProductionDeploymentAppUrl } from '@/lib/utils/environment';
 import appCss from '@/styles/global.css?url';
 import type { QueryClient } from '@tanstack/react-query';
@@ -19,6 +21,14 @@ import { getRequestHeaders } from '@tanstack/react-start/server';
 type RouterContext = {
   queryClient: QueryClient;
 };
+const getIsPreviewFn = createIsomorphicFn()
+  .server(() => {
+    const appUrl = getEnv().VITE_APP_URL;
+    if (!appUrl) return true;
+    return appUrl.includes('pr-');
+  })
+  .client(() => false);
+
 const getCanonicalOriginFn = createIsomorphicFn().server(() => {
   const headers = getRequestHeaders();
   const host = headers.get('x-forwarded-host') ?? headers.get('host');
@@ -37,32 +47,93 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       throw redirect({ href: canonicalOrigin + location.href });
     }
   },
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        name: 'description',
-        content:
-          'Transform scripts into consistent, styled video productions using multiple AI models.',
-      },
-      { title: 'OpenStory' },
-    ],
-    links: [
-      { rel: 'stylesheet', href: appCss },
-      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
-      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icon-192.png' },
-      {
-        rel: 'apple-touch-icon',
-        sizes: '180x180',
-        href: '/apple-touch-icon.png',
-      },
-      { rel: 'manifest', href: '/manifest.json' },
-    ],
-  }),
+  head: () => {
+    const isPreview = getIsPreviewFn();
+    return {
+      meta: [
+        ...(isPreview
+          ? [{ name: 'robots', content: 'noindex, nofollow' }]
+          : []),
+        { charSet: 'utf-8' },
+        {
+          name: 'viewport',
+          content: 'width=device-width, initial-scale=1',
+        },
+        { title: SITE_CONFIG.name },
+        { name: 'description', content: SITE_CONFIG.description },
+        // Open Graph
+        { property: 'og:title', content: SITE_CONFIG.name },
+        { property: 'og:description', content: SITE_CONFIG.description },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:url', content: SITE_CONFIG.url },
+        { property: 'og:image', content: SITE_CONFIG.ogImage },
+        { property: 'og:site_name', content: SITE_CONFIG.name },
+        // Twitter
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: SITE_CONFIG.name },
+        { name: 'twitter:description', content: SITE_CONFIG.description },
+        { name: 'twitter:image', content: SITE_CONFIG.ogImage },
+        { name: 'twitter:url', content: SITE_CONFIG.url },
+      ],
+      scripts: [
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Organization',
+            name: SITE_CONFIG.name,
+            url: SITE_CONFIG.url,
+            logo: `${SITE_CONFIG.url}/icon.svg`,
+            sameAs: [SITE_CONFIG.githubHref],
+          }),
+        },
+        {
+          type: 'application/ld+json',
+          children: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: SITE_CONFIG.name,
+            url: SITE_CONFIG.url,
+            description: SITE_CONFIG.description,
+            publisher: {
+              '@type': 'Organization',
+              name: SITE_CONFIG.name,
+            },
+          }),
+        },
+      ],
+      links: [
+        { rel: 'stylesheet', href: appCss },
+        { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+        {
+          rel: 'icon',
+          type: 'image/png',
+          sizes: '32x32',
+          href: '/icon-192.png',
+        },
+        {
+          rel: 'apple-touch-icon',
+          sizes: '180x180',
+          href: '/apple-touch-icon.png',
+        },
+        { rel: 'manifest', href: '/manifest.json' },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        {
+          rel: 'preconnect',
+          href: 'https://fonts.gstatic.com',
+          crossOrigin: 'anonymous',
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Instrument+Serif:ital@0;1&display=swap',
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap',
+        },
+      ],
+    };
+  },
   component: RootLayout,
   notFoundComponent: NotFound,
   errorComponent: ErrorBoundary,

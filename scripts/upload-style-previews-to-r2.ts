@@ -6,7 +6,7 @@
  * 1. Reads existing images from preview/
  * 2. Processes to 512x512 (preview) and 256x256 (thumbnail) WebP
  * 3. Lets you choose which scene becomes each style's thumbnail
- * 4. Uploads to R2 public bucket (environment-specific)
+ * 4. Uploads to R2 public assets bucket (shared across all environments)
  *
  * Usage:
  *   bun scripts/upload-style-previews-to-r2.ts              # Upload (interactive)
@@ -26,20 +26,10 @@ const THUMBNAIL_SIZE = 256;
 
 const isDryRun = process.argv.includes('--dry-run');
 
-// Environment-specific configuration
-const ENV_CONFIG = {
-  prd: {
-    bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so'}`,
-  },
-  stg: {
-    bucket:
-      process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets-stg',
-    url: `https://${process.env.R2_PUBLIC_ASSETS_DOMAIN || 'assets-stg.openstory.so'}`,
-  },
+const R2_CONFIG = {
+  bucket: process.env.R2_PUBLIC_ASSETS_BUCKET || 'openstory-public-assets',
+  url: `https://${process.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so'}`,
 };
-
-type Environment = keyof typeof ENV_CONFIG;
 
 type ImageInfo = {
   styleName: string;
@@ -154,14 +144,12 @@ async function uploadToR2(
 }
 
 /**
- * Upload all images to a single environment
+ * Upload all images to R2
  */
-async function uploadToEnvironment(
-  env: Environment,
+async function uploadImages(
   images: ImageInfo[],
   thumbnailMap: Map<string, string>
 ): Promise<{ success: number; failed: number }> {
-  const config = ENV_CONFIG[env];
   let success = 0;
   let failed = 0;
 
@@ -174,7 +162,7 @@ async function uploadToEnvironment(
   }
 
   const spinner = p.spinner();
-  spinner.start(`Uploading to ${env.toUpperCase()} (${config.bucket})`);
+  spinner.start(`Uploading to ${R2_CONFIG.bucket}`);
 
   for (const [styleName, styleImages] of styleGroups) {
     const thumbnailScene = thumbnailMap.get(styleName) || 'character';
@@ -187,21 +175,21 @@ async function uploadToEnvironment(
         await uploadToR2(
           Buffer.from(originalBuffer),
           originalKey,
-          config.bucket
+          R2_CONFIG.bucket
         );
         success++;
 
         // Upload 512px preview
         const previewBuffer = await processImage(img.localPath, PREVIEW_SIZE);
         const previewKey = `styles/${img.sanitizedName}/${img.sceneName}-preview.webp`;
-        await uploadToR2(previewBuffer, previewKey, config.bucket);
+        await uploadToR2(previewBuffer, previewKey, R2_CONFIG.bucket);
         success++;
 
         // Upload 256px thumbnail if this is the chosen scene
         if (img.sceneName === thumbnailScene) {
           const thumbBuffer = await processImage(img.localPath, THUMBNAIL_SIZE);
           const thumbKey = `styles/${img.sanitizedName}/thumbnail.webp`;
-          await uploadToR2(thumbBuffer, thumbKey, config.bucket);
+          await uploadToR2(thumbBuffer, thumbKey, R2_CONFIG.bucket);
           success++;
         }
       } catch (error) {
@@ -212,12 +200,10 @@ async function uploadToEnvironment(
       }
     }
 
-    spinner.message(`Uploading to ${env.toUpperCase()} — ${styleName} done`);
+    spinner.message(`${styleName} done`);
   }
 
-  spinner.stop(
-    `Uploaded to ${env.toUpperCase()}: ${success} files, ${failed} failed`
-  );
+  spinner.stop(`Uploaded: ${success} files, ${failed} failed`);
   return { success, failed };
 }
 
@@ -239,30 +225,7 @@ async function main() {
     `Found ${images.length} images across ${styleNames.length} styles`
   );
 
-  // 1. Choose environment
-  const env = await p.select({
-    message: 'Which environment to upload to?',
-    options: [
-      {
-        value: 'stg' as const,
-        label: 'Staging',
-        hint: 'public-assets-stg bucket',
-      },
-      {
-        value: 'prd' as const,
-        label: 'Production',
-        hint: 'public-assets bucket',
-      },
-      { value: 'both' as const, label: 'Both', hint: 'staging + production' },
-    ],
-  });
-
-  if (p.isCancel(env)) {
-    p.cancel('Upload cancelled.');
-    process.exit(0);
-  }
-
-  // 2. Choose thumbnail scene
+  // 1. Choose thumbnail scene
   const sceneOptions = sceneNames.map((s) => ({
     value: s,
     label: s.charAt(0).toUpperCase() + s.slice(1),
@@ -327,12 +290,7 @@ async function main() {
     }
   }
 
-  // 3. Show summary
-  const environments: Environment[] = env === 'both' ? ['stg', 'prd'] : [env];
-  const envLabels = environments
-    .map((e) => `${e.toUpperCase()} (${ENV_CONFIG[e].bucket})`)
-    .join(', ');
-
+  // 2. Show summary
   const thumbnailSummary =
     defaultScene === 'per-style'
       ? [...thumbnailMap.entries()]
@@ -342,11 +300,12 @@ async function main() {
 
   p.note(
     [
-      `Environment: ${envLabels}`,
+      `Bucket: ${R2_CONFIG.bucket}`,
+      `URL: ${R2_CONFIG.url}`,
       `Styles: ${styleNames.length}`,
       `Scene images: ${images.length} (original + ${PREVIEW_SIZE}px)`,
       `Thumbnails: ${styleNames.length} (${THUMBNAIL_SIZE}px)`,
-      `Total files: ${images.length * 2 + styleNames.length} per environment`,
+      `Total files: ${images.length * 2 + styleNames.length}`,
       '',
       'Thumbnail scenes:',
       thumbnailSummary,
@@ -359,16 +318,15 @@ async function main() {
     p.log.info('Run without --dry-run to upload.');
 
     const sampleStyle = styleNames[0];
-    const sampleEnv = ENV_CONFIG[environments[0]];
     p.log.info(
-      `Sample URL: ${sampleEnv.url}/styles/${sampleStyle}/thumbnail.webp`
+      `Sample URL: ${R2_CONFIG.url}/styles/${sampleStyle}/thumbnail.webp`
     );
 
     p.outro('Dry run complete.');
     return;
   }
 
-  // 4. Confirm
+  // 3. Confirm
   const confirmed = await p.confirm({
     message: 'Proceed with upload?',
   });
@@ -378,12 +336,9 @@ async function main() {
     process.exit(0);
   }
 
-  // 5. Create temp directory and upload
+  // 4. Create temp directory and upload
   await mkdir(TEMP_DIR, { recursive: true });
-
-  for (const e of environments) {
-    await uploadToEnvironment(e, images, thumbnailMap);
-  }
+  await uploadImages(images, thumbnailMap);
 
   p.outro('Upload complete!');
 }

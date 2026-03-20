@@ -85,8 +85,8 @@ function writeEnvFile(vars: Map<string, string>) {
     {
       header: 'Core',
       keys: [
-        'APP_URL',
-        'APP_NAME',
+        'VITE_APP_URL',
+        'VITE_APP_NAME',
         'DEPLOY_PLATFORM',
         'BETTER_AUTH_SECRET',
         'TURSO_DATABASE_URL',
@@ -107,6 +107,7 @@ function writeEnvFile(vars: Map<string, string>) {
         'QSTASH_TOKEN',
         'QSTASH_CURRENT_SIGNING_KEY',
         'QSTASH_NEXT_SIGNING_KEY',
+        'UPSTASH_WORKFLOW_URL',
       ],
     },
     {
@@ -128,7 +129,7 @@ function writeEnvFile(vars: Map<string, string>) {
         'R2_BUCKET_NAME',
         'R2_PUBLIC_STORAGE_DOMAIN',
         'R2_PUBLIC_ASSETS_BUCKET',
-        'R2_PUBLIC_ASSETS_DOMAIN',
+        'VITE_R2_PUBLIC_ASSETS_DOMAIN',
       ],
     },
     {
@@ -220,7 +221,7 @@ function generateSecret(): string {
 
 const PR_PREVIEW_SECRETS_BASE = [
   'API_KEY_ENCRYPTION_KEY',
-  'APP_NAME',
+  'VITE_APP_NAME',
   'BETTER_AUTH_SECRET',
   'CEREBRAS_API_KEY',
   'EMAIL_FROM',
@@ -257,7 +258,9 @@ function getPrPreviewSecrets(vars: Map<string, string>): string[] {
 }
 
 const PR_PREVIEW_VARIABLES = [
-  'R2_PUBLIC_ASSETS_DOMAIN',
+  'VITE_CONTACT_EMAIL',
+  'VITE_PRIVACY_EMAIL',
+  'VITE_R2_PUBLIC_ASSETS_DOMAIN',
   'R2_PUBLIC_STORAGE_DOMAIN',
 ] as const;
 
@@ -371,7 +374,7 @@ async function prPreviewSetup() {
 
   // 4. Auto-set preview overrides
   const removed = [
-    'APP_URL',
+    'VITE_APP_URL',
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',
     'STRIPE_SECRET_KEY',
@@ -422,8 +425,8 @@ async function prPreviewSetup() {
     }
   }
 
-  // 6. Derive staging R2 domains from production APP_URL
-  const appUrl = prodVars.get('APP_URL') ?? '';
+  // 6. Derive staging R2 domains from production VITE_APP_URL
+  const appUrl = prodVars.get('VITE_APP_URL') ?? '';
   let baseDomain = '';
   try {
     const host = new URL(appUrl).hostname;
@@ -435,10 +438,12 @@ async function prPreviewSetup() {
 
   if (baseDomain) {
     merged.set('R2_PUBLIC_STORAGE_DOMAIN', `storage-stg.${baseDomain}`);
-    merged.set('R2_PUBLIC_ASSETS_DOMAIN', `assets-stg.${baseDomain}`);
+    merged.set('VITE_R2_PUBLIC_ASSETS_DOMAIN', `assets.${baseDomain}`);
+    merged.set('VITE_CONTACT_EMAIL', `hello@${baseDomain}`);
+    merged.set('VITE_PRIVACY_EMAIL', `privacy@${baseDomain}`);
   } else {
     p.log.warn(
-      'Could not derive R2 domains from APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
+      'Could not derive R2 domains from VITE_APP_URL. You may need to set R2_PUBLIC_STORAGE_DOMAIN and VITE_R2_PUBLIC_ASSETS_DOMAIN manually in GitHub.'
     );
   }
 
@@ -448,16 +453,16 @@ async function prPreviewSetup() {
   const prodAssetsBucket =
     prodVars.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
   merged.set('R2_BUCKET_NAME', `${prodStorageBucket}-stg`);
-  merged.set('R2_PUBLIC_ASSETS_BUCKET', `${prodAssetsBucket}-stg`);
+  merged.set('R2_PUBLIC_ASSETS_BUCKET', prodAssetsBucket);
 
   p.log.info(
     `R2_PUBLIC_STORAGE_DOMAIN = ${merged.get('R2_PUBLIC_STORAGE_DOMAIN') ?? '(not set)'}\n` +
-      `R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
+      `VITE_R2_PUBLIC_ASSETS_DOMAIN  = ${merged.get('VITE_R2_PUBLIC_ASSETS_DOMAIN') ?? '(not set)'}`
   );
 
   // Offer to attach custom domains to R2 buckets
   const stgStorageDomain = merged.get('R2_PUBLIC_STORAGE_DOMAIN');
-  const stgAssetsDomain = merged.get('R2_PUBLIC_ASSETS_DOMAIN');
+  const stgAssetsDomain = merged.get('VITE_R2_PUBLIC_ASSETS_DOMAIN');
 
   if (stgStorageDomain || stgAssetsDomain) {
     const attachDomains = await p.confirm({
@@ -519,8 +524,7 @@ async function prPreviewSetup() {
         const storageBucket =
           merged.get('R2_BUCKET_NAME') ?? 'openstory-storage-stg';
         const assetsBucket =
-          merged.get('R2_PUBLIC_ASSETS_BUCKET') ??
-          'openstory-public-assets-stg';
+          merged.get('R2_PUBLIC_ASSETS_BUCKET') ?? 'openstory-public-assets';
 
         for (const [domain, bucket] of [
           [stgStorageDomain, storageBucket],
@@ -898,7 +902,7 @@ async function deploySetup(
     }
 
     // Push R2 domain variables to GitHub production environment
-    // (CI seed step reads these via vars.R2_PUBLIC_ASSETS_DOMAIN)
+    // (CI seed step reads these via vars.VITE_R2_PUBLIC_ASSETS_DOMAIN)
     const varsToPush = PR_PREVIEW_VARIABLES.filter((k) => vars.get(k));
     if (varsToPush.length > 0) {
       const shouldPushVars = checkCancel(
@@ -1364,7 +1368,7 @@ async function main() {
 
   async function attachR2Domains(): Promise<void> {
     const storageDomain = vars.get('R2_PUBLIC_STORAGE_DOMAIN');
-    const assetsDomain = vars.get('R2_PUBLIC_ASSETS_DOMAIN');
+    const assetsDomain = vars.get('VITE_R2_PUBLIC_ASSETS_DOMAIN');
 
     if (!storageDomain && !assetsDomain) return;
 
@@ -1642,7 +1646,7 @@ async function main() {
 
   if (isProd) {
     await promptForKey(
-      'APP_URL',
+      'VITE_APP_URL',
       'Enter your production URL',
       'e.g. https://app.example.com'
     );
@@ -1680,12 +1684,26 @@ async function main() {
       );
     }
   } else {
-    if (!vars.has('APP_URL')) vars.set('APP_URL', 'http://localhost:3000');
+    if (!vars.has('VITE_APP_URL'))
+      vars.set('VITE_APP_URL', 'http://localhost:3000');
     if (!vars.has('TURSO_DATABASE_URL'))
       vars.set('TURSO_DATABASE_URL', 'file:local.db');
   }
 
-  if (!vars.has('APP_NAME')) vars.set('APP_NAME', 'OpenStory');
+  if (!vars.has('VITE_APP_NAME')) vars.set('VITE_APP_NAME', 'OpenStory');
+
+  if (!vars.has('VITE_CONTACT_EMAIL') || !vars.has('VITE_PRIVACY_EMAIL')) {
+    const appUrl = vars.get('VITE_APP_URL') ?? '';
+    try {
+      const domain = new URL(appUrl).hostname;
+      if (!vars.has('VITE_CONTACT_EMAIL'))
+        vars.set('VITE_CONTACT_EMAIL', `hello@${domain}`);
+      if (!vars.has('VITE_PRIVACY_EMAIL'))
+        vars.set('VITE_PRIVACY_EMAIL', `privacy@${domain}`);
+    } catch {
+      // localhost or invalid — skip, constants.ts handles fallback
+    }
+  }
 
   if (!vars.has('BETTER_AUTH_SECRET')) {
     const secret = generateSecret();
@@ -1707,7 +1725,7 @@ async function main() {
   } else if (vars.has('TURSO_DATABASE_URL')) {
     p.log.success(`Database: ${vars.get('TURSO_DATABASE_URL')}`);
   }
-  p.log.success(`App URL: ${vars.get('APP_URL')}`);
+  p.log.success(`App URL: ${vars.get('VITE_APP_URL')}`);
   saveProgress();
 
   // Run DB migrations + seed (local only)
@@ -1921,6 +1939,7 @@ async function main() {
           'sig_7kYjw48mhY7kAjqNGcy6cr29RJ6r'
         );
         vars.set('QSTASH_NEXT_SIGNING_KEY', 'sig_5ZB6DVzB1wjE8S6rZ7eenA8Pdnhs');
+        vars.set('UPSTASH_WORKFLOW_URL', 'http://host.docker.internal:3000');
         saveProgress();
         p.log.success('QStash configured for local Docker emulator');
       }
@@ -1974,17 +1993,17 @@ async function main() {
 
     if (
       !vars.has('R2_PUBLIC_STORAGE_DOMAIN') ||
-      !vars.has('R2_PUBLIC_ASSETS_DOMAIN')
+      !vars.has('VITE_R2_PUBLIC_ASSETS_DOMAIN')
     ) {
-      // Derive R2 domains from APP_URL base domain
-      const appUrl = vars.get('APP_URL') ?? '';
+      // Derive R2 domains from VITE_APP_URL base domain
+      const appUrl = vars.get('VITE_APP_URL') ?? '';
       let baseDomain = '';
       try {
-        const host = new URL(appUrl).hostname; // e.g. app.openstory.so
+        const host = new URL(appUrl).hostname; // e.g. openstory.so
         const parts = host.split('.');
         baseDomain = parts.length >= 2 ? parts.slice(-2).join('.') : host;
       } catch {
-        // APP_URL not set or invalid — fall through to manual prompt
+        // VITE_APP_URL not set or invalid — fall through to manual prompt
       }
 
       const isStaging = checkCancel(
@@ -2002,7 +2021,7 @@ async function main() {
       );
 
       const storageSub = isStaging === 'staging' ? 'storage-stg' : 'storage';
-      const assetsSub = isStaging === 'staging' ? 'assets-stg' : 'assets';
+      const assetsSub = 'assets';
 
       if (baseDomain) {
         const storageDomain = `${storageSub}.${baseDomain}`;
@@ -2011,7 +2030,7 @@ async function main() {
         p.log.info(
           `Derived from ${chalk.bold(baseDomain)}:\n` +
             `  R2_PUBLIC_STORAGE_DOMAIN = ${storageDomain}\n` +
-            `  R2_PUBLIC_ASSETS_DOMAIN  = ${assetsDomain}`
+            `  VITE_R2_PUBLIC_ASSETS_DOMAIN  = ${assetsDomain}`
         );
 
         const useDefaults = checkCancel(
@@ -2023,7 +2042,7 @@ async function main() {
 
         if (useDefaults) {
           vars.set('R2_PUBLIC_STORAGE_DOMAIN', storageDomain);
-          vars.set('R2_PUBLIC_ASSETS_DOMAIN', assetsDomain);
+          vars.set('VITE_R2_PUBLIC_ASSETS_DOMAIN', assetsDomain);
           saveProgress();
         } else {
           await promptForKey(
@@ -2031,7 +2050,7 @@ async function main() {
             `R2 Public Storage Domain (e.g. ${storageSub}.example.com)`
           );
           await promptForKey(
-            'R2_PUBLIC_ASSETS_DOMAIN',
+            'VITE_R2_PUBLIC_ASSETS_DOMAIN',
             `R2 Public Assets Domain (e.g. ${assetsSub}.example.com)`
           );
         }
@@ -2041,7 +2060,7 @@ async function main() {
           `R2 Public Storage Domain (e.g. ${storageSub}.example.com)`
         );
         await promptForKey(
-          'R2_PUBLIC_ASSETS_DOMAIN',
+          'VITE_R2_PUBLIC_ASSETS_DOMAIN',
           `R2 Public Assets Domain (e.g. ${assetsSub}.example.com)`
         );
       }
@@ -2050,7 +2069,7 @@ async function main() {
         `R2_PUBLIC_STORAGE_DOMAIN = ${vars.get('R2_PUBLIC_STORAGE_DOMAIN')}`
       );
       p.log.success(
-        `R2_PUBLIC_ASSETS_DOMAIN  = ${vars.get('R2_PUBLIC_ASSETS_DOMAIN')}`
+        `VITE_R2_PUBLIC_ASSETS_DOMAIN  = ${vars.get('VITE_R2_PUBLIC_ASSETS_DOMAIN')}`
       );
     }
   } else {
@@ -2282,7 +2301,7 @@ async function main() {
         'From your webhook endpoint in the Stripe dashboard'
       );
 
-      const appUrl = vars.get('APP_URL') ?? '<your-app-url>';
+      const appUrl = vars.get('VITE_APP_URL') ?? '<your-app-url>';
       p.note(
         [
           `Endpoint URL: ${appUrl}/api/billing/webhook`,

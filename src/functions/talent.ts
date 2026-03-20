@@ -1,29 +1,29 @@
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { authWithTeamMiddleware } from './middleware';
+import { deleteFile, moveFile, uploadFile } from '#storage';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
+import { generateId } from '@/lib/db/id';
+import type { Talent, TalentWithSheets } from '@/lib/db/schema';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
   createTalentSchema,
-  updateTalentSchema,
   createTalentSheetSchema,
   listTalentFilterSchema,
+  updateTalentSchema,
 } from '@/lib/schemas/talent.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import {
   STORAGE_BUCKETS,
   getPathFromUrl,
   getPublicUrl,
 } from '@/lib/storage/buckets';
-import { deleteFile, moveFile, uploadFile } from '#storage';
 import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
-import { generateId } from '@/lib/db/id';
-import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { triggerWorkflow } from '@/lib/workflow/client';
-import type { Talent, TalentWithSheets } from '@/lib/db/schema';
+import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { authWithTeamMiddleware } from './middleware';
 
 const talentIdSchema = z.object({ talentId: ulidSchema });
 const sheetIdSchema = z.object({ sheetId: ulidSchema });
@@ -407,8 +407,6 @@ export const addCharacterToLibraryFn = createServerFn({ method: 'POST' })
     // Verify the character's sequence belongs to this team
     await context.scopedDb.sequences.getForUser({
       sequenceId: character.sequenceId,
-      teamId: context.teamId,
-      userId: context.user.id,
     });
 
     const newTalent = await context.scopedDb.talent.create({

@@ -1,7 +1,7 @@
 // AUTO-GENERATED — do not edit manually. Run: bun scripts/update-fal-pricing.ts
 // Manual overrides (multipliers, matrices) are maintained in scripts/update-fal-pricing.ts
 
-import { micros, type Microdollars } from '@/lib/billing/money';
+import { type Microdollars, micros } from '@/lib/billing/money';
 
 // ============================================================================
 // Image Pricing (all prices in microdollars: 1 USD = 1,000,000)
@@ -133,7 +133,22 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     resolutionMultipliers: {
       '0.5K': 0.75,
       '1K': 1,
-      '2K': 1,
+      '2K': 1.5,
+      '4K': 2,
+    },
+    surcharges: {
+      webSearch: micros(15_000),
+    },
+    pricingNotes:
+      'Your request will cost **$0.08** per image. For **$1.00**, you can run this model **12** times. 2K and 4K outputs will be charged at **1.5** times and **2** times the standard rate, respectively. 0.5K (512px) resolution outputs will be charged at **0.75** times the standard rate. If web search is used, an additional $0.015 will be charged. **Note: Pricing is subject to change.**\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
+  },
+  'fal-ai/nano-banana-2/edit': {
+    basePrice: micros(80_000),
+    unit: 'per_image',
+    resolutionMultipliers: {
+      '0.5K': 0.75,
+      '1K': 1,
+      '2K': 1.5,
       '4K': 2,
     },
     surcharges: {
@@ -349,4 +364,4 @@ export const AUDIO_PRICING: Record<string, AudioPricing> = {
   },
 };
 
-export const PRICING_LAST_UPDATED = '2026-03-10T07:24:08.507Z';
+export const PRICING_LAST_UPDATED = '2026-03-19T05:54:07.400Z';

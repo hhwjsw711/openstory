@@ -1,3 +1,4 @@
+import { OpenStoryLogo } from '@/components/icons/openstory-logo';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +62,17 @@ const CenteredLayout: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
   <div className="flex min-h-screen items-center justify-center bg-background p-4">
-    <Card className="w-full max-w-sm text-center">{children}</Card>
+    <div className="w-full max-w-sm space-y-8">
+      <div className="flex flex-col items-center gap-4 text-center">
+        <Link to="/">
+          <OpenStoryLogo size="lg" />
+        </Link>
+        <p className="text-muted-foreground">
+          AI video production, from script to screen.
+        </p>
+      </div>
+      <Card className="text-center">{children}</Card>
+    </div>
   </div>
 );
 

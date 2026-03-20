@@ -3,12 +3,11 @@
  * Team-scoped sequence CRUD and per-sequence update methods.
  */
 
-import { and, desc, eq, not } from 'drizzle-orm';
-import type { Database } from '@/lib/db/client';
 import {
   type AspectRatio,
   DEFAULT_ASPECT_RATIO,
 } from '@/lib/constants/aspect-ratios';
+import type { Database } from '@/lib/db/client';
 import { sequences } from '@/lib/db/schema';
 import type { Frame, NewSequence, Sequence, Style } from '@/lib/db/schema';
 import type {
@@ -17,6 +16,7 @@ import type {
   SequenceStatus,
 } from '@/lib/db/schema/sequences';
 import { ValidationError } from '@/lib/errors';
+import { and, desc, eq, not } from 'drizzle-orm';
 
 export type MusicFieldsUpdate = {
   musicStatus?: MusicStatus;
@@ -85,15 +85,11 @@ export function createSequencesReadMethods(db: Database, teamId: string) {
       } as SequenceWithFrames;
     },
 
-    getForUser: async (params: {
-      sequenceId: string;
-      teamId: string;
-      userId: string;
-    }): Promise<Sequence> => {
+    getForUser: async (params: { sequenceId: string }): Promise<Sequence> => {
       const sequence = await db.query.sequences.findFirst({
         where: and(
           eq(sequences.id, params.sequenceId),
-          eq(sequences.teamId, params.teamId)
+          eq(sequences.teamId, teamId)
         ),
       });
       if (!sequence) {
@@ -159,22 +155,15 @@ export function createSequencesMethods(
       aspectRatio?: AspectRatio;
       imageModel?: string;
       videoModel?: string;
+      musicStatus?: MusicStatus;
+      musicError?: string | null;
+      musicUrl?: string;
+      musicPath?: string;
+      musicGeneratedAt?: Date;
     }): Promise<Sequence> => {
-      const updateData: Partial<NewSequence> = {
-        title: params.title,
-        script: params.script,
-        styleId: params.styleId,
-        status: params.status,
-        analysisModel: params.analysisModel,
-        imageModel: params.imageModel,
-        videoModel: params.videoModel,
-        updatedBy: userId,
-        updatedAt: new Date(),
-      };
-
       const [data] = await db
         .update(sequences)
-        .set(updateData)
+        .set(params)
         .where(eq(sequences.id, params.id))
         .returning();
 

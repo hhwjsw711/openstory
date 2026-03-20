@@ -29,8 +29,7 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
     } = input;
 
     console.log(
-      '[MotionPromptSceneWorkflow] Starting motion prompt generation input:',
-      input
+      `[MotionPromptSceneWorkflow] Generating motion prompt for scene ${sceneIndex + 1}/${scenes.length}`
     );
 
     // ============================================================

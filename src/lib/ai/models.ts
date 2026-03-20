@@ -744,7 +744,7 @@ export function safeAudioModel(
  * Map text-to-image models to their edit endpoints (if available)
  * These endpoints accept image_urls for reference-based generation
  */
-const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
+export const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
   nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   nano_banana_2: 'fal-ai/nano-banana-2/edit',
 };

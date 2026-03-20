@@ -23,9 +23,8 @@ type MobileSceneDrawerProps = {
   onSelectFrame: (frameId: string) => void;
   regeneratingImages: Set<string>;
   regeneratingMotion: Set<string>;
-  onBatchGenerateMotion?: (frameIds: string[]) => Promise<void>;
+  onBatchGenerateMotion?: (includeMusic: boolean) => Promise<void>;
   musicPromptsReady: boolean;
-  onGenerateMusic?: () => Promise<void>;
 };
 
 const isCompleted = (frame: Frame) => {
@@ -43,7 +42,6 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
   regeneratingMotion,
   onBatchGenerateMotion,
   musicPromptsReady,
-  onGenerateMusic,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -86,13 +84,7 @@ export const MobileSceneDrawer: React.FC<MobileSceneDrawerProps> = ({
 
     setIsGenerating(true);
     try {
-      const promises: Promise<void>[] = [
-        onBatchGenerateMotion(eligibleFrames.map((f) => f.id)),
-      ];
-      if (includeMusic && onGenerateMusic) {
-        promises.push(onGenerateMusic());
-      }
-      await Promise.all(promises);
+      await onBatchGenerateMotion(includeMusic);
     } finally {
       setIsGenerating(false);
     }
