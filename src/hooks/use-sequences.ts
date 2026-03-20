@@ -48,6 +48,7 @@ export function useSequence(
       if (!id) throw new Error('sequenceId is required');
       return await getSequenceFn({ data: { sequenceId: id } });
     },
+    throwOnError: true,
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
     // If refetchInterval is explicitly passed, use it; otherwise use smart polling

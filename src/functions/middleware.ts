@@ -6,7 +6,7 @@
 import { createMiddleware } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { emitLog } from '@/lib/observability/structured-log';
-import { OpenStoryError } from '@/lib/errors';
+import { NotFoundError, OpenStoryError } from '@/lib/errors';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { getAuth } from '@/lib/auth/config';
@@ -240,10 +240,14 @@ export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
     const sequence = await getSequenceById(data.sequenceId);
 
     if (!sequence) {
-      throw new Error('Sequence not found');
+      throw new NotFoundError('Sequence not found');
     }
 
-    await requireTeamMemberAccess(context.user.id, sequence.teamId);
+    try {
+      await requireTeamMemberAccess(context.user.id, sequence.teamId);
+    } catch {
+      throw new NotFoundError('Sequence not found');
+    }
 
     return next({
       context: {
@@ -267,10 +271,14 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
     const frameData = await getFrameWithSequence(data.frameId);
 
     if (!frameData || frameData.sequenceId !== data.sequenceId) {
-      throw new Error('Frame not found in this sequence');
+      throw new NotFoundError('Frame not found in this sequence');
     }
 
-    await requireTeamMemberAccess(context.user.id, frameData.sequence.teamId);
+    try {
+      await requireTeamMemberAccess(context.user.id, frameData.sequence.teamId);
+    } catch {
+      throw new NotFoundError('Frame not found in this sequence');
+    }
 
     // Extract sequence from frame data (using the partial sequence from the query)
     const { sequence: rawSequence, ...frame } = frameData;
