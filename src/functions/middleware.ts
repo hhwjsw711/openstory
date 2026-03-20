@@ -181,6 +181,37 @@ export const authRequestMiddleware = createMiddleware().server(
 );
 
 /**
+ * Request auth + team middleware — for use with server routes (server.middleware).
+ * Authenticates user, resolves their default team, and creates a scoped DB.
+ * Throws 401 if no user, 403 if no team.
+ */
+export const authWithTeamRequestMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    const auth = getAuth();
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    if (!session?.user) {
+      throw new Response('Unauthorized', { status: 401 });
+    }
+
+    const team = await resolveUserTeam(session.user.id);
+
+    if (!team) {
+      throw new Response('No team found for user', { status: 403 });
+    }
+
+    return next({
+      context: {
+        user: session.user,
+        session,
+        teamId: team.teamId,
+        scopedDb: createScopedDb(team.teamId, session.user.id),
+      },
+    });
+  }
+);
+
+/**
  * Stripe webhook signature verification middleware — for use with server routes.
  * Verifies the stripe-signature header and passes the validated event via context.
  * When Stripe is disabled, passes stripeEvent: null so the handler can early-return.
