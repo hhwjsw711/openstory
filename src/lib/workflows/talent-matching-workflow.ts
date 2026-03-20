@@ -94,7 +94,7 @@ export const talentMatchingWorkflow = createScopedWorkflow<
           if (usedCharacterIds.has(match.characterId)) continue;
 
           const talent = talentList.find((t) => t.id === match.talentId);
-          if (!talent?.imageUrl) continue;
+          if (!talent) continue;
 
           const character = characterBible.find(
             (c) => c.characterId === match.characterId
