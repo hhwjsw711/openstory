@@ -8,13 +8,7 @@
  */
 
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
 import { micros, microsToUsd } from '@/lib/billing/money';
-import {
-  getFrameWithSequence,
-  getSequenceFrames,
-  updateFrame,
-} from '@/lib/db/helpers/frames';
 import { ensureImageUnderLimit } from '@/lib/image/image-compress';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import {
@@ -27,12 +21,11 @@ import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 /** Each batch polls in a tight loop for ~30s, then checkpoints for durability */
 const POLL_BATCH_DURATION_MS = 30_000;
@@ -42,8 +35,8 @@ const MAX_BATCHES = 30;
 /** Kling rejects start frame images over 10MB — use 9.5MB safety margin */
 const KLING_MAX_IMAGE_BYTES = 9.5 * 1024 * 1024;
 
-export const generateMotionWorkflow = createWorkflow(
-  async (context: WorkflowContext<MotionWorkflowInput>) => {
+export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const model = input.model || DEFAULT_VIDEO_MODEL;
 
@@ -59,7 +52,7 @@ export const generateMotionWorkflow = createWorkflow(
       async () => {
         if (!input.frameId) return { frameDeleted: false };
 
-        const frame = await updateFrame(
+        const frame = await scopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'generating',
@@ -136,7 +129,7 @@ export const generateMotionWorkflow = createWorkflow(
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
-        teamId: input.teamId,
+        scopedDb,
       });
     });
 
@@ -152,11 +145,7 @@ export const generateMotionWorkflow = createWorkflow(
         const deadline = Date.now() + POLL_BATCH_DURATION_MS;
 
         while (Date.now() < deadline) {
-          const result = await pollMotionJob(
-            job.jobId,
-            job.modelKey,
-            input.teamId
-          );
+          const result = await pollMotionJob(job.jobId, job.modelKey, scopedDb);
 
           if (result.progress !== undefined) {
             console.log(`[MotionWorkflow] Progress: ${result.progress}%`);
@@ -211,15 +200,15 @@ export const generateMotionWorkflow = createWorkflow(
     const { teamId } = input;
     if (motionCostMicros > 0 && teamId && !job.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
+        const canAfford =
+          await scopedDb.billing.hasEnoughCredits(motionCostMicros);
         if (!canAfford) {
           console.warn(
             `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(motionCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, motionCostMicros, {
-          userId: input.userId,
+        await scopedDb.billing.deductCredits(motionCostMicros, {
           description: `Motion generation (${model})`,
           metadata: {
             model,
@@ -236,7 +225,7 @@ export const generateMotionWorkflow = createWorkflow(
 
       // Step 3: Fetch frame and sequence data for human-readable filename
       const frameData = await context.run('fetch-frame-data', async () => {
-        const frame = await getFrameWithSequence(frameId);
+        const frame = await scopedDb.frames.getWithSequence(frameId);
         if (!frame) throw new Error('Frame not found');
         return {
           sequenceTitle: frame.sequence.title,
@@ -270,7 +259,7 @@ export const generateMotionWorkflow = createWorkflow(
 
       // Step 5: Update frame with video path, URL, and status
       await context.run('update-frame', async () => {
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
             videoPath: storageResult.path,
@@ -303,7 +292,9 @@ export const generateMotionWorkflow = createWorkflow(
       await context.run('check-merge-trigger', async () => {
         if (!input.sequenceId || !input.teamId || !input.userId) return;
 
-        const allFrames = await getSequenceFrames(input.sequenceId);
+        const allFrames = await scopedDb.frames.listBySequence(
+          input.sequenceId
+        );
         if (allFrames.length === 0) return;
         if (!allFrames.every((f) => f.videoStatus === 'completed')) return;
 
@@ -335,11 +326,11 @@ export const generateMotionWorkflow = createWorkflow(
     return { videoUrl, duration: actualDuration };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
-      if (input.frameId) {
-        await updateFrame(
+      if (input.frameId && input.teamId) {
+        await scopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'failed',

@@ -10,12 +10,6 @@ import {
 } from '@/lib/ai/response-schemas';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { updateFrame } from '@/lib/db/helpers/frames';
-import {
-  updateSequenceAnalysisDurationMs,
-  updateSequenceMusicPrompt,
-  updateSequenceStatus,
-} from '@/lib/db/helpers/sequences';
 import type {
   CharacterMinimal,
   SequenceLocationMinimal,
@@ -32,8 +26,6 @@ import type {
   MotionWorkflowInput,
   MusicWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { snapDuration } from '@/lib/motion/motion-generation';
@@ -44,9 +36,11 @@ import { characterBibleWorkflow } from './character-bible-workflow';
 import { getFalFlowControl } from './constants';
 import { durableLLMCall, durableStreamingSceneSplit } from './llm-call-helper';
 import { locationBibleWorkflow } from './location-bible-workflow';
-import { locationMatchingWorkflow } from './location-matching-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
 import { reinforceInstrumentalTags } from './music-prompt.schema';
+
+import { createScopedWorkflow } from '../workflow/scoped-workflow';
+import { locationMatchingWorkflow } from './location-matching-workflow';
 import { talentMatchingWorkflow } from './talent-matching-workflow';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
@@ -112,8 +106,11 @@ function matchLocationsToScene(
   });
 }
 
-export const analyzeScriptWorkflow = createWorkflow(
-  async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
+export const analyzeScriptWorkflow = createScopedWorkflow<
+  AnalyzeScriptWorkflowInput,
+  Scene[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const {
       sequenceId,
@@ -140,7 +137,7 @@ export const analyzeScriptWorkflow = createWorkflow(
     const llmCallContext = {
       sequenceId,
       userId: input.userId,
-      teamId: input.teamId,
+      scopedDb,
     };
 
     const { scenes, frameMapping } = await durableStreamingSceneSplit(
@@ -221,6 +218,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       context.invoke('visual-prompts', {
         workflow: visualPromptWorkflow,
         body: {
+          userId: input.userId,
+          teamId: input.teamId,
           sequenceId,
           scenes,
           aspectRatio,
@@ -253,7 +252,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, {
+            await scopedDb.frames.update(matched.frameId, {
               metadata: scene,
               imagePrompt: scene.prompts?.visual?.fullPrompt,
             });
@@ -298,7 +297,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       await context.run('frame-images-start', async () => {
         if (sequenceId) {
-          await updateSequenceAnalysisDurationMs(
+          await scopedDb.sequences.updateAnalysisDurationMs(
             sequenceId,
             Date.now() - startTime
           );
@@ -371,6 +370,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       {
         workflow: motionPromptWorkflow,
         body: {
+          userId: input.userId,
+          teamId: input.teamId,
           sequenceId,
           scenes: scenesWithVisualPrompts,
           aspectRatio,
@@ -429,7 +430,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, {
+            await scopedDb.frames.update(matched.frameId, {
               metadata: scene,
               motionPrompt: scene.prompts?.motion?.fullPrompt,
               durationMs: Math.round(
@@ -502,7 +503,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, { metadata: scene });
+            await scopedDb.frames.update(matched.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
@@ -526,7 +527,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
     if (sequenceId) {
       await context.run('store-music-prompt', async () => {
-        await updateSequenceMusicPrompt(
+        await scopedDb.sequences.updateMusicPrompt(
           sequenceId,
           musicDesignResult.prompt,
           reinforcedTags
@@ -627,13 +628,13 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const { sequenceId } = context.requestPayload;
       if (!sequenceId) return;
 
       const error = sanitizeFailResponse(failResponse);
       console.error('[AnalyzeScriptWorkflow] Failure:', error);
-      await updateSequenceStatus(sequenceId, 'failed', error);
+      await scopedDb.sequence(sequenceId).updateStatus('failed', error);
       await getGenerationChannel(sequenceId).emit('generation.failed', {
         message: error,
       });

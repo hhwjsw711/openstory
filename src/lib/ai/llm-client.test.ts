@@ -1,5 +1,7 @@
-import type { TextModel } from '@/lib/ai/models';
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+
+// Import real exports before mock.module so they can be re-exported
+import * as tanstackAi from '@tanstack/ai';
 
 // Mock environment
 mock.module('#env', () => ({
@@ -11,8 +13,10 @@ mock.module('#env', () => ({
 }));
 
 // Mock @tanstack/ai — chat() is the only function callLLMStream uses
+// Re-export all real exports so other test files aren't affected by incomplete mock
 const mockChat = mock();
 mock.module('@tanstack/ai', () => ({
+  ...tanstackAi,
   chat: mockChat,
 }));
 
@@ -39,7 +43,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6',
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -66,7 +70,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6',
         messages: [{ role: 'user', content: 'test' }],
       });
 
@@ -96,7 +100,7 @@ describe('llm-client', () => {
       );
 
       const generator = callLLMStream({
-        model: 'test-model' as TextModel,
+        model: 'anthropic/claude-sonnet-4.6',
         messages: [{ role: 'user', content: 'test' }],
       });
 

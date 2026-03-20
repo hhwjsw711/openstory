@@ -6,7 +6,7 @@ import { describe, expect, it } from 'bun:test';
 import {
   matchLocationsToFrame,
   locationMatchesTag,
-} from './sequence-locations';
+} from '@/lib/db/scoped/sequence-locations';
 import type { Frame, SequenceLocation } from '@/lib/db/schema';
 
 // Mock location data - using full SequenceLocation type

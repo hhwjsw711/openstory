@@ -6,11 +6,6 @@
 import { createServerFn } from '@tanstack/react-start';
 import { authWithTeamMiddleware } from './middleware';
 import { isStripeEnabled } from '@/lib/billing/constants';
-import { apiKeyService } from '@/lib/byok/api-key.service';
-import {
-  getTeamBalance,
-  getBillingSettings,
-} from '@/lib/billing/credit-service';
 import { microsToUsd } from '@/lib/billing/money';
 
 /**
@@ -20,14 +15,14 @@ import { microsToUsd } from '@/lib/billing/money';
 export const getBillingGateStatusFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    const { teamId } = context;
+    const { scopedDb } = context;
 
     const [balance, hasFalKey, hasOpenRouterKey, billingSettings] =
       await Promise.all([
-        getTeamBalance(teamId),
-        apiKeyService.hasKey(teamId, 'fal'),
-        apiKeyService.hasKey(teamId, 'openrouter'),
-        getBillingSettings(teamId),
+        scopedDb.billing.getBalance(),
+        scopedDb.apiKeys.hasKey('fal'),
+        scopedDb.apiKeys.hasKey('openrouter'),
+        scopedDb.billing.getBillingSettings(),
       ]);
 
     return {

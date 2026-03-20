@@ -1,0 +1,942 @@
+// @ts-nocheck — test sentinels are intentionally partial objects
+import { describe, expect, it, mock, beforeEach } from 'bun:test';
+import type { NewLocationSheet } from '@/lib/db/schema';
+
+// Import pure utility functions before mock.module so they can be re-exported
+import {
+  locationMatchesTag,
+  matchLocationsToFrame,
+} from '@/lib/db/scoped/sequence-locations';
+
+// ============================================================================
+// Sub-module mocks — we test that scoped.ts composes them correctly
+// ============================================================================
+
+const mockSequencesList = mock();
+const mockSequencesCreate = mock();
+const mockSequencesGetById = mock();
+const mockSequencesGetWithFrames = mock();
+const mockSequencesUpdate = mock();
+const mockSequencesDelete = mock();
+const mockSequencesGetForUser = mock();
+const mockSequencesUpdateTitle = mock();
+const mockSequencesUpdateAnalysisDurationMs = mock();
+const mockSequencesUpdateMusicPrompt = mock();
+const mockSequencesUpdateWorkflow = mock();
+const mockUpdateStatus = mock();
+const mockUpdateMusicFields = mock();
+const mockUpdateMergedVideoFields = mock();
+const mockGetMusicStatus = mock();
+const mockGetMergedVideoStatus = mock();
+
+mock.module('@/lib/db/scoped/sequences', () => ({
+  createSequencesReadMethods: mock(() => ({
+    list: mockSequencesList,
+    getById: mockSequencesGetById,
+    getWithFrames: mockSequencesGetWithFrames,
+    getForUser: mockSequencesGetForUser,
+  })),
+  createSequencesMethods: mock(() => ({
+    list: mockSequencesList,
+    create: mockSequencesCreate,
+    getById: mockSequencesGetById,
+    getWithFrames: mockSequencesGetWithFrames,
+    update: mockSequencesUpdate,
+    delete: mockSequencesDelete,
+    getForUser: mockSequencesGetForUser,
+    updateTitle: mockSequencesUpdateTitle,
+    updateAnalysisDurationMs: mockSequencesUpdateAnalysisDurationMs,
+    updateMusicPrompt: mockSequencesUpdateMusicPrompt,
+    updateWorkflow: mockSequencesUpdateWorkflow,
+  })),
+  createSequenceReadMethods: mock((_db: unknown, sequenceId: string) => ({
+    sequenceId,
+    getMusicStatus: mockGetMusicStatus,
+    getMergedVideoStatus: mockGetMergedVideoStatus,
+  })),
+  createSequenceMethods: mock((_db: unknown, sequenceId: string) => ({
+    sequenceId,
+    updateStatus: mockUpdateStatus,
+    updateMusicFields: mockUpdateMusicFields,
+    updateMergedVideoFields: mockUpdateMergedVideoFields,
+    getMusicStatus: mockGetMusicStatus,
+    getMergedVideoStatus: mockGetMergedVideoStatus,
+  })),
+}));
+
+const mockTalentList = mock();
+const mockTalentGetByIds = mock();
+const mockTalentCreate = mock();
+const mockTalentUpdate = mock();
+const mockTalentDelete = mock();
+const mockTalentToggleFavorite = mock();
+const mockTalentGetById = mock();
+const mockTalentGetWithRelations = mock();
+const mockTalentSheetsGetById = mock();
+const mockTalentSheetsCreate = mock();
+const mockTalentSheetsUpdate = mock();
+const mockTalentSheetsDelete = mock();
+const mockTalentMediaGetById = mock();
+const mockTalentMediaCreate = mock();
+const mockTalentMediaDelete = mock();
+
+mock.module('@/lib/db/scoped/talent', () => ({
+  createTalentReadMethods: mock(() => ({
+    list: mockTalentList,
+    getByIds: mockTalentGetByIds,
+    getById: mockTalentGetById,
+    getWithRelations: mockTalentGetWithRelations,
+    sheets: { getById: mockTalentSheetsGetById },
+    media: { getById: mockTalentMediaGetById },
+  })),
+  createTalentMethods: mock(() => ({
+    list: mockTalentList,
+    getByIds: mockTalentGetByIds,
+    create: mockTalentCreate,
+    update: mockTalentUpdate,
+    delete: mockTalentDelete,
+    toggleFavorite: mockTalentToggleFavorite,
+    getById: mockTalentGetById,
+    getWithRelations: mockTalentGetWithRelations,
+    sheets: {
+      getById: mockTalentSheetsGetById,
+      create: mockTalentSheetsCreate,
+      update: mockTalentSheetsUpdate,
+      delete: mockTalentSheetsDelete,
+    },
+    media: {
+      getById: mockTalentMediaGetById,
+      create: mockTalentMediaCreate,
+      delete: mockTalentMediaDelete,
+    },
+  })),
+}));
+
+const mockStylesList = mock();
+const mockStylesCreate = mock();
+const mockStylesUpdate = mock();
+const mockStylesDelete = mock();
+const mockStylesGetById = mock();
+const mockStylesGetPublic = mock();
+
+mock.module('@/lib/db/scoped/styles', () => ({
+  createStylesReadMethods: mock(() => ({
+    list: mockStylesList,
+    getById: mockStylesGetById,
+    getPublic: mockStylesGetPublic,
+  })),
+  createStylesMethods: mock(() => ({
+    list: mockStylesList,
+    create: mockStylesCreate,
+    update: mockStylesUpdate,
+    delete: mockStylesDelete,
+    getById: mockStylesGetById,
+    getPublic: mockStylesGetPublic,
+  })),
+}));
+
+const mockLocationsList = mock();
+const mockLocationsSearch = mock();
+const mockLocationsCreate = mock();
+const mockLocationsWithReferences = mock();
+const mockLocationsGetById = mock();
+const mockLocationsGetByIds = mock();
+const mockLocationsCreateBulk = mock();
+const mockLocationsDelete = mock();
+const mockLocationsDeleteAll = mock();
+const mockLocationsUpdate = mock();
+const mockLocationsUpdateReference = mock();
+const mockLocationSheetsList = mock();
+const mockLocationSheetsInsert = mock();
+const mockLocationSheetsDelete = mock();
+const mockLocationSheetsGetWithLocation = mock();
+const mockLocationSheetsPromoteDefault = mock();
+
+mock.module('@/lib/db/scoped/location-library', () => ({
+  createLocationsReadMethods: mock(() => ({
+    list: mockLocationsList,
+    search: mockLocationsSearch,
+    withReferences: mockLocationsWithReferences,
+    getById: mockLocationsGetById,
+    getByIds: mockLocationsGetByIds,
+  })),
+  createLocationsMethods: mock(() => ({
+    list: mockLocationsList,
+    search: mockLocationsSearch,
+    create: mockLocationsCreate,
+    withReferences: mockLocationsWithReferences,
+    getById: mockLocationsGetById,
+    getByIds: mockLocationsGetByIds,
+    createBulk: mockLocationsCreateBulk,
+    delete: mockLocationsDelete,
+    deleteAll: mockLocationsDeleteAll,
+    update: mockLocationsUpdate,
+    updateReference: mockLocationsUpdateReference,
+  })),
+  createLocationSheetsReadMethods: mock(() => ({
+    list: mockLocationSheetsList,
+    getWithLocation: mockLocationSheetsGetWithLocation,
+  })),
+  createLocationSheetsMethods: mock(() => ({
+    list: mockLocationSheetsList,
+    insert: mockLocationSheetsInsert,
+    delete: mockLocationSheetsDelete,
+    getWithLocation: mockLocationSheetsGetWithLocation,
+    promoteDefault: mockLocationSheetsPromoteDefault,
+  })),
+}));
+
+const mockLibraryGetAll = mock();
+
+mock.module('@/lib/db/scoped/library', () => ({
+  createLibraryMethods: mock(() => ({
+    getAll: mockLibraryGetAll,
+  })),
+}));
+
+const mockBillingGetBalance = mock();
+const mockBillingDeductCredits = mock();
+
+mock.module('@/lib/db/scoped/billing', () => ({
+  createBillingReadMethods: mock(() => ({
+    getBalance: mockBillingGetBalance,
+  })),
+  createBillingMethods: mock(() => ({
+    getBalance: mockBillingGetBalance,
+    deductCredits: mockBillingDeductCredits,
+  })),
+}));
+
+const mockApiKeysResolveKey = mock();
+const mockApiKeysSaveKey = mock();
+
+mock.module('@/lib/db/scoped/api-keys', () => ({
+  createApiKeysReadMethods: mock(() => ({
+    resolveKey: mockApiKeysResolveKey,
+  })),
+  createApiKeysMethods: mock(() => ({
+    resolveKey: mockApiKeysResolveKey,
+    saveKey: mockApiKeysSaveKey,
+  })),
+}));
+
+const mockTeamManagementGetMembers = mock();
+const mockTeamManagementCreateInvitation = mock();
+
+mock.module('@/lib/db/scoped/team-management', () => ({
+  createTeamManagementReadMethods: mock(() => ({
+    getMembers: mockTeamManagementGetMembers,
+  })),
+  createTeamManagementMethods: mock(() => ({
+    getMembers: mockTeamManagementGetMembers,
+    createInvitation: mockTeamManagementCreateInvitation,
+  })),
+}));
+
+mock.module('@/lib/db/scoped/admin', () => ({
+  createAdminMethods: mock(() => ({})),
+}));
+
+const mockCharactersGetById = mock();
+const mockCharactersListWithTalent = mock();
+const mockCharactersListWithSheets = mock();
+const mockCharactersUpdateTalent = mock();
+const mockCharactersUpdateSheetStatus = mock();
+const mockCharactersGetFrameIdsForCharacter = mock();
+
+mock.module('@/lib/db/scoped/characters', () => ({
+  createCharactersMethods: mock(() => ({
+    getById: mockCharactersGetById,
+    listWithTalent: mockCharactersListWithTalent,
+    listWithSheets: mockCharactersListWithSheets,
+    updateTalent: mockCharactersUpdateTalent,
+    updateSheetStatus: mockCharactersUpdateSheetStatus,
+    getFrameIdsForCharacter: mockCharactersGetFrameIdsForCharacter,
+  })),
+}));
+
+const mockSeqLocationsGetById = mock();
+const mockSeqLocationsList = mock();
+const mockSeqLocationsListWithReferences = mock();
+const mockSeqLocationsUpdateReferenceStatus = mock();
+const mockSeqLocationsGetFrameIdsForLocation = mock();
+const mockSeqLocationsGetTeamLibrary = mock();
+
+mock.module('@/lib/db/scoped/sequence-locations', () => ({
+  createSequenceLocationsMethods: mock(() => ({
+    getById: mockSeqLocationsGetById,
+    list: mockSeqLocationsList,
+    listWithReferences: mockSeqLocationsListWithReferences,
+    updateReferenceStatus: mockSeqLocationsUpdateReferenceStatus,
+    getFrameIdsForLocation: mockSeqLocationsGetFrameIdsForLocation,
+    getTeamLibrary: mockSeqLocationsGetTeamLibrary,
+  })),
+  // Re-export pure utility functions so other test files importing them aren't broken
+  locationMatchesTag,
+  matchLocationsToFrame,
+}));
+
+// DB chain mock for inline operations (characters, frames)
+const mockWhere = mock();
+const mockSelect = mock();
+const mockFrom = mock();
+
+function wireDbChain() {
+  const chain = {
+    select: mockSelect,
+    from: mockFrom,
+    where: mockWhere,
+  };
+  mockSelect.mockReturnValue(chain);
+  mockFrom.mockReturnValue(chain);
+  mockWhere.mockResolvedValue([]);
+  return chain;
+}
+
+let dbChain: ReturnType<typeof wireDbChain>;
+const mockGetDb = mock(() => dbChain);
+
+mock.module('#db-client', () => ({
+  getDb: mockGetDb,
+}));
+
+const { createScopedDb } = await import('./scoped');
+
+const TEAM_ID = 'team_01';
+const USER_ID = 'user_01';
+
+describe('createScopedDb', () => {
+  beforeEach(() => {
+    // Clear all mocks
+    for (const m of [
+      mockSequencesList,
+      mockSequencesCreate,
+      mockSequencesGetById,
+      mockSequencesGetWithFrames,
+      mockUpdateStatus,
+      mockUpdateMusicFields,
+      mockUpdateMergedVideoFields,
+      mockGetMusicStatus,
+      mockGetMergedVideoStatus,
+      mockSequencesUpdate,
+      mockSequencesDelete,
+      mockSequencesGetForUser,
+      mockSequencesUpdateTitle,
+      mockSequencesUpdateAnalysisDurationMs,
+      mockSequencesUpdateMusicPrompt,
+      mockSequencesUpdateWorkflow,
+      mockTalentList,
+      mockTalentGetByIds,
+      mockTalentCreate,
+      mockTalentUpdate,
+      mockTalentDelete,
+      mockTalentToggleFavorite,
+      mockTalentGetById,
+      mockTalentGetWithRelations,
+      mockTalentSheetsGetById,
+      mockTalentSheetsCreate,
+      mockTalentSheetsUpdate,
+      mockTalentSheetsDelete,
+      mockTalentMediaGetById,
+      mockTalentMediaCreate,
+      mockTalentMediaDelete,
+      mockStylesList,
+      mockStylesCreate,
+      mockStylesUpdate,
+      mockStylesDelete,
+      mockStylesGetById,
+      mockStylesGetPublic,
+      mockLocationsList,
+      mockLocationsSearch,
+      mockLocationsCreate,
+      mockLocationsWithReferences,
+      mockLocationsGetById,
+      mockLocationsGetByIds,
+      mockLocationsCreateBulk,
+      mockLocationsDelete,
+      mockLocationsDeleteAll,
+      mockLocationsUpdate,
+      mockLocationsUpdateReference,
+      mockLocationSheetsList,
+      mockLocationSheetsInsert,
+      mockLocationSheetsDelete,
+      mockLocationSheetsGetWithLocation,
+      mockLocationSheetsPromoteDefault,
+      mockLibraryGetAll,
+      mockCharactersGetById,
+      mockCharactersListWithTalent,
+      mockCharactersListWithSheets,
+      mockCharactersUpdateTalent,
+      mockCharactersUpdateSheetStatus,
+      mockCharactersGetFrameIdsForCharacter,
+      mockSeqLocationsGetById,
+      mockSeqLocationsList,
+      mockSeqLocationsListWithReferences,
+      mockSeqLocationsUpdateReferenceStatus,
+      mockSeqLocationsGetFrameIdsForLocation,
+      mockSeqLocationsGetTeamLibrary,
+      mockBillingGetBalance,
+      mockBillingDeductCredits,
+      mockApiKeysResolveKey,
+      mockApiKeysSaveKey,
+      mockTeamManagementGetMembers,
+      mockTeamManagementCreateInvitation,
+      mockGetDb,
+      mockSelect,
+      mockFrom,
+      mockWhere,
+    ]) {
+      m.mockClear();
+    }
+    dbChain = wireDbChain();
+  });
+
+  it('exposes teamId and userId', () => {
+    const db = createScopedDb(TEAM_ID, USER_ID);
+    expect(db.teamId).toBe(TEAM_ID);
+    expect(db.userId).toBe(USER_ID);
+  });
+
+  describe('sequences', () => {
+    it('list() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'seq_1' }];
+      mockSequencesList.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequences.list();
+
+      expect(mockSequencesList).toHaveBeenCalled();
+      expect(result).toEqual(sentinel);
+    });
+
+    it('create() delegates to sub-module', async () => {
+      const sentinel = { id: 'seq_2' };
+      mockSequencesCreate.mockResolvedValue(sentinel);
+
+      const params = {
+        userId: 'user_1',
+        title: 'Test',
+        styleId: 'style_1',
+        analysisModel: 'model_1',
+      };
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequences.create(params);
+
+      expect(mockSequencesCreate).toHaveBeenCalledWith(params);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getById() delegates to sub-module', async () => {
+      const sentinel = { id: 'seq_1', teamId: TEAM_ID };
+      mockSequencesGetById.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequences.getById('seq_1');
+
+      expect(mockSequencesGetById).toHaveBeenCalledWith('seq_1');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getWithFrames() delegates to sub-module', async () => {
+      const sentinel = { id: 'seq_1', frames: [] };
+      mockSequencesGetWithFrames.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequences.getWithFrames('seq_1');
+
+      expect(mockSequencesGetWithFrames).toHaveBeenCalledWith('seq_1');
+      expect(result).toEqual(sentinel);
+    });
+  });
+
+  describe('sequence()', () => {
+    it('updateStatus() delegates to sub-module', async () => {
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.sequence('seq_01').updateStatus('processing');
+
+      expect(mockUpdateStatus).toHaveBeenCalledWith('processing');
+    });
+
+    it('updateStatus() passes error parameter', async () => {
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.sequence('seq_01').updateStatus('failed', 'Something broke');
+
+      expect(mockUpdateStatus).toHaveBeenCalledWith(
+        'failed',
+        'Something broke'
+      );
+    });
+
+    it('updateMusicFields() delegates to sub-module', async () => {
+      const fields = { musicStatus: 'generating' as const, musicError: null };
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.sequence('seq_01').updateMusicFields(fields);
+
+      expect(mockUpdateMusicFields).toHaveBeenCalledWith(fields);
+    });
+
+    it('updateMergedVideoFields() delegates to sub-module', async () => {
+      const fields = {
+        mergedVideoStatus: 'merging' as const,
+        mergedVideoError: null,
+      };
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.sequence('seq_01').updateMergedVideoFields(fields);
+
+      expect(mockUpdateMergedVideoFields).toHaveBeenCalledWith(fields);
+    });
+
+    it('getMusicStatus() delegates to sub-module', async () => {
+      const sentinel = { musicStatus: 'completed', musicUrl: 'url' };
+      mockGetMusicStatus.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequence('seq_01').getMusicStatus();
+
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getMergedVideoStatus() delegates to sub-module', async () => {
+      const sentinel = {
+        mergedVideoStatus: 'completed',
+        mergedVideoUrl: 'url',
+      };
+      mockGetMergedVideoStatus.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequence('seq_01').getMergedVideoStatus();
+
+      expect(result).toEqual(sentinel);
+    });
+  });
+
+  describe('talent', () => {
+    it('list() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'talent_1' }];
+      mockTalentList.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.talent.list();
+
+      expect(mockTalentList).toHaveBeenCalled();
+      expect(result).toEqual(sentinel);
+    });
+
+    it('list() forwards options', async () => {
+      mockTalentList.mockResolvedValue([]);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.talent.list({ favoritesOnly: true });
+
+      expect(mockTalentList).toHaveBeenCalledWith({ favoritesOnly: true });
+    });
+
+    it('getByIds() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'talent_1' }];
+      mockTalentGetByIds.mockResolvedValue(sentinel);
+
+      const ids = ['talent_1', 'talent_2'];
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.talent.getByIds(ids);
+
+      expect(mockTalentGetByIds).toHaveBeenCalledWith(ids);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('create() delegates to sub-module', async () => {
+      const sentinel = { id: 'talent_3' };
+      mockTalentCreate.mockResolvedValue(sentinel);
+
+      const data = { name: 'Actor' };
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.talent.create(data);
+
+      expect(mockTalentCreate).toHaveBeenCalledWith(data);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('update() delegates to sub-module', async () => {
+      const sentinel = { id: 'talent_1' };
+      mockTalentUpdate.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.talent.update('talent_1', { name: 'Updated' });
+
+      expect(mockTalentUpdate).toHaveBeenCalledWith('talent_1', {
+        name: 'Updated',
+      });
+      expect(result).toEqual(sentinel);
+    });
+
+    it('delete() delegates to sub-module', async () => {
+      mockTalentDelete.mockResolvedValue(true);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.talent.delete('talent_1');
+
+      expect(mockTalentDelete).toHaveBeenCalledWith('talent_1');
+      expect(result).toBe(true);
+    });
+
+    it('toggleFavorite() delegates to sub-module', async () => {
+      const sentinel = { isFavorite: true };
+      mockTalentToggleFavorite.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.talent.toggleFavorite('talent_1');
+
+      expect(mockTalentToggleFavorite).toHaveBeenCalledWith('talent_1');
+      expect(result).toEqual(sentinel);
+    });
+  });
+
+  describe('styles', () => {
+    it('list() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'style_1' }];
+      mockStylesList.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.styles.list();
+
+      expect(mockStylesList).toHaveBeenCalled();
+      expect(result).toEqual(sentinel);
+    });
+
+    it('create() delegates to sub-module', async () => {
+      const sentinel = { id: 'style_2' };
+      mockStylesCreate.mockResolvedValue(sentinel);
+
+      const data = { name: 'Noir' };
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.styles.create(data);
+
+      expect(mockStylesCreate).toHaveBeenCalledWith(data);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('update() delegates to sub-module', async () => {
+      const sentinel = { id: 'style_1' };
+      mockStylesUpdate.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.styles.update('style_1', { name: 'Updated' });
+
+      expect(mockStylesUpdate).toHaveBeenCalledWith('style_1', {
+        name: 'Updated',
+      });
+      expect(result).toEqual(sentinel);
+    });
+
+    it('delete() delegates to sub-module', async () => {
+      mockStylesDelete.mockResolvedValue(undefined);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.styles.delete('style_1');
+
+      expect(mockStylesDelete).toHaveBeenCalledWith('style_1');
+    });
+  });
+
+  describe('locations', () => {
+    it('list() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'loc_1' }];
+      mockLocationsList.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locations.list();
+
+      expect(mockLocationsList).toHaveBeenCalled();
+      expect(result).toEqual(sentinel);
+    });
+
+    it('search() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'loc_1' }];
+      mockLocationsSearch.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locations.search('park', 5);
+
+      expect(mockLocationsSearch).toHaveBeenCalledWith('park', 5);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('create() delegates to sub-module', async () => {
+      const sentinel = { id: 'loc_2' };
+      mockLocationsCreate.mockResolvedValue(sentinel);
+
+      const data = { name: 'Beach' };
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locations.create(data);
+
+      expect(mockLocationsCreate).toHaveBeenCalledWith(data);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('withReferences() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'loc_1', references: [] }];
+      mockLocationsWithReferences.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locations.withReferences();
+
+      expect(mockLocationsWithReferences).toHaveBeenCalled();
+      expect(result).toEqual(sentinel);
+    });
+  });
+
+  describe('locationSheets', () => {
+    it('list() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'sheet_1' }];
+      mockLocationSheetsList.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locationSheets.list('loc_01');
+
+      expect(mockLocationSheetsList).toHaveBeenCalledWith('loc_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('insert() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'sheet_2' }];
+      mockLocationSheetsInsert.mockResolvedValue(sentinel);
+
+      const sheets: NewLocationSheet[] = [
+        { locationId: 'loc_01', name: 'Night', source: 'manual_upload' },
+      ];
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locationSheets.insert(sheets);
+
+      expect(mockLocationSheetsInsert).toHaveBeenCalledWith(sheets);
+      expect(result).toEqual(sentinel);
+    });
+
+    it('delete() delegates to sub-module', async () => {
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.locationSheets.delete('sheet_01');
+
+      expect(mockLocationSheetsDelete).toHaveBeenCalledWith('sheet_01');
+    });
+
+    it('getWithLocation() delegates to sub-module', async () => {
+      const sentinel = {
+        sheet: { id: 'sheet_01' },
+        location: { id: 'loc_01' },
+      };
+      mockLocationSheetsGetWithLocation.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.locationSheets.getWithLocation('sheet_01');
+
+      expect(result).toEqual(sentinel);
+    });
+
+    it('promoteDefault() delegates to sub-module', async () => {
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      await db.locationSheets.promoteDefault('loc_01');
+
+      expect(mockLocationSheetsPromoteDefault).toHaveBeenCalledWith('loc_01');
+    });
+  });
+
+  describe('characters', () => {
+    it('getById() delegates to sub-module', async () => {
+      const sentinel = { id: 'char_01', name: 'Hero' };
+      mockCharactersGetById.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.characters.getById('char_01');
+
+      expect(mockCharactersGetById).toHaveBeenCalledWith('char_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('listWithTalent() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'char_01', name: 'Hero', talent: null }];
+      mockCharactersListWithTalent.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.characters.listWithTalent('seq_01');
+
+      expect(mockCharactersListWithTalent).toHaveBeenCalledWith('seq_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('listWithSheets() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'char_01', sheetStatus: 'completed' }];
+      mockCharactersListWithSheets.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.characters.listWithSheets('seq_01');
+
+      expect(mockCharactersListWithSheets).toHaveBeenCalledWith('seq_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('updateTalent() delegates to sub-module', async () => {
+      const sentinel = { id: 'char_01', talentId: 'talent_01' };
+      mockCharactersUpdateTalent.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.characters.updateTalent('char_01', 'talent_01');
+
+      expect(mockCharactersUpdateTalent).toHaveBeenCalledWith(
+        'char_01',
+        'talent_01'
+      );
+      expect(result).toEqual(sentinel);
+    });
+
+    it('updateSheetStatus() delegates to sub-module', async () => {
+      const sentinel = { id: 'char_01', sheetStatus: 'generating' };
+      mockCharactersUpdateSheetStatus.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.characters.updateSheetStatus(
+        'char_01',
+        'generating'
+      );
+
+      expect(mockCharactersUpdateSheetStatus).toHaveBeenCalledWith(
+        'char_01',
+        'generating'
+      );
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getFrameIdsForCharacter() delegates to sub-module', async () => {
+      const sentinel = ['frame_01', 'frame_02'];
+      mockCharactersGetFrameIdsForCharacter.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.characters.getFrameIdsForCharacter(
+        'seq_01',
+        'char_01'
+      );
+
+      expect(mockCharactersGetFrameIdsForCharacter).toHaveBeenCalledWith(
+        'seq_01',
+        'char_01'
+      );
+      expect(result).toEqual(sentinel);
+    });
+  });
+
+  describe('sequenceLocations', () => {
+    it('getById() delegates to sub-module', async () => {
+      const sentinel = { id: 'loc_01', name: 'Park' };
+      mockSeqLocationsGetById.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequenceLocations.getById('loc_01');
+
+      expect(mockSeqLocationsGetById).toHaveBeenCalledWith('loc_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('list() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'loc_01' }];
+      mockSeqLocationsList.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequenceLocations.list('seq_01');
+
+      expect(mockSeqLocationsList).toHaveBeenCalledWith('seq_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('listWithReferences() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'loc_01', referenceStatus: 'completed' }];
+      mockSeqLocationsListWithReferences.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequenceLocations.listWithReferences('seq_01');
+
+      expect(mockSeqLocationsListWithReferences).toHaveBeenCalledWith('seq_01');
+      expect(result).toEqual(sentinel);
+    });
+
+    it('updateReferenceStatus() delegates to sub-module', async () => {
+      const sentinel = { id: 'loc_01', referenceStatus: 'generating' };
+      mockSeqLocationsUpdateReferenceStatus.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequenceLocations.updateReferenceStatus(
+        'loc_01',
+        'generating'
+      );
+
+      expect(mockSeqLocationsUpdateReferenceStatus).toHaveBeenCalledWith(
+        'loc_01',
+        'generating'
+      );
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getFrameIdsForLocation() delegates to sub-module', async () => {
+      const sentinel = ['frame_01', 'frame_03'];
+      mockSeqLocationsGetFrameIdsForLocation.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequenceLocations.getFrameIdsForLocation(
+        'seq_01',
+        'loc_01'
+      );
+
+      expect(mockSeqLocationsGetFrameIdsForLocation).toHaveBeenCalledWith(
+        'seq_01',
+        'loc_01'
+      );
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getTeamLibrary() delegates to sub-module', async () => {
+      const sentinel = [{ id: 'loc_01', sequenceTitle: 'Test' }];
+      mockSeqLocationsGetTeamLibrary.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.sequenceLocations.getTeamLibrary(TEAM_ID, {
+        completedOnly: true,
+      });
+
+      expect(mockSeqLocationsGetTeamLibrary).toHaveBeenCalledWith(TEAM_ID, {
+        completedOnly: true,
+      });
+      expect(result).toEqual(sentinel);
+    });
+  });
+
+  describe('frames', () => {
+    it('getById() queries db directly', async () => {
+      const sentinel = { id: 'frame_01' };
+      mockWhere.mockResolvedValue([sentinel]);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.frames.getById('frame_01');
+
+      expect(result).toEqual(sentinel);
+    });
+
+    it('getById() returns null when not found', async () => {
+      mockWhere.mockResolvedValue([]);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.frames.getById('frame_99');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('library', () => {
+    it('getAll() delegates to sub-module', async () => {
+      const sentinel = { styles: [], vfx: [], audio: [] };
+      mockLibraryGetAll.mockResolvedValue(sentinel);
+
+      const db = createScopedDb(TEAM_ID, USER_ID);
+      const result = await db.library.getAll();
+
+      expect(mockLibraryGetAll).toHaveBeenCalled();
+      expect(result).toEqual(sentinel);
+    });
+  });
+});

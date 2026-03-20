@@ -3,7 +3,7 @@
  * Provides role-based access control functions for team resources
  */
 
-import { getUserTeam } from '@/lib/db/helpers/team-permissions';
+import { getUserTeamMembership } from '@/lib/db/scoped';
 
 // Role hierarchy (higher number = more permissions)
 const ROLE_HIERARCHY = {
@@ -23,7 +23,7 @@ export async function getUserRole(
   userId: string,
   teamId: string
 ): Promise<TeamRole | null> {
-  const membership = await getUserTeam(userId, teamId);
+  const membership = await getUserTeamMembership(userId, teamId);
 
   if (!membership) {
     return null;

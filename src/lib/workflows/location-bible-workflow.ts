@@ -10,18 +10,12 @@
  * 3. Updates database with reference image URLs
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import {
-  createSequenceLocationsBulk,
-  updateLocationReference,
-} from '@/lib/db/helpers/sequence-locations';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import type {
   NewSequenceLocation,
@@ -30,17 +24,19 @@ import type {
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LibraryLocationMatch,
   LocationBibleWorkflowInput,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const locationBibleWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<LocationBibleWorkflowInput>
-  ): Promise<SequenceLocationMinimal[]> => {
+export const locationBibleWorkflow = createScopedWorkflow<
+  LocationBibleWorkflowInput,
+  SequenceLocationMinimal[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const { libraryLocationMatches = [] } = input;
 
@@ -98,7 +94,7 @@ export const locationBibleWorkflow = createWorkflow(
           }
         );
 
-        return await createSequenceLocationsBulk(locationInserts);
+        return await scopedDb.sequenceLocations.createBulk(locationInserts);
       }
     );
 
@@ -127,23 +123,24 @@ export const locationBibleWorkflow = createWorkflow(
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
           // Generate location reference image
-          const imageResult = await generateImageWithProvider({
-            model,
-            prompt,
-            imageSize: 'landscape_16_9' as const,
-            numImages: 1,
-            referenceImageUrls:
-              referenceUrls.length > 0 ? referenceUrls : undefined,
-            traceName: 'location-bible-image',
-            teamId: input.teamId,
-          });
+          const imageResult = await generateImageWithProvider(
+            {
+              model,
+              prompt,
+              imageSize: 'landscape_16_9' as const,
+              numImages: 1,
+              referenceImageUrls:
+                referenceUrls.length > 0 ? referenceUrls : undefined,
+              traceName: 'location-bible-image',
+            },
+            { scopedDb }
+          );
 
           // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
-            teamId: input.teamId,
+            scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
             usedOwnKey: imageResult.metadata.usedOwnKey,
-            userId: input.userId,
             description: `Location bible sheet (${model})`,
             metadata: { model, locationId: location.locationId },
             workflowName: 'LocationBibleWorkflow',
@@ -176,7 +173,7 @@ export const locationBibleWorkflow = createWorkflow(
             );
 
             // Update location record with reference image
-            await updateLocationReference(
+            await scopedDb.sequenceLocations.updateReference(
               dbId,
               storageResult.publicUrl,
               storageResult.path

@@ -1,21 +1,20 @@
 import { ZERO_MICROS } from '@/lib/billing/money';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import {
   aspectRatioToImageSize,
   DEFAULT_IMAGE_SIZE,
 } from '@/lib/constants/aspect-ratios';
-import { updateFrame } from '@/lib/db/helpers/frames';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   UpscaleVariantWorkflowInput,
   UpscaleVariantWorkflowResult,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
+import { WorkflowValidationError } from '../workflow/errors';
 
 const UPSCALE_PROMPT = `Upscale this image to a clean, high-resolution frame suitable for animation.
 
@@ -42,23 +41,31 @@ OUTPUT
 - Resolution: upscale to animation-ready quality.
 - No text overlays, borders, watermarks, or new graphics added by the model.`;
 
-export const upscaleVariantWorkflow = createWorkflow(
-  async (context: WorkflowContext<UpscaleVariantWorkflowInput>) => {
+export const upscaleVariantWorkflow = createScopedWorkflow<
+  UpscaleVariantWorkflowInput,
+  UpscaleVariantWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
+
+    const { sequenceId, teamId, frameId } = input;
+    if (!sequenceId || !teamId || !frameId) {
+      throw new WorkflowValidationError('sequenceId and teamId are required');
+    }
 
     console.log(
       '[UpscaleVariantWorkflow]',
-      `Starting upscale for frame ${input.frameId}`
+      `Starting upscale for frame ${frameId}`
     );
 
     const upscaleResult = await context.run('upscale-image', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        { frameId: input.frameId, status: 'generating' }
-      );
+      await getGenerationChannel(sequenceId).emit('generation.image:progress', {
+        frameId: frameId,
+        status: 'generating',
+      });
 
-      const frame = await updateFrame(
-        input.frameId,
+      const frame = await scopedDb.frames.update(
+        frameId,
         {
           thumbnailStatus: 'generating',
           thumbnailWorkflowRunId: context.workflowRunId,
@@ -69,7 +76,7 @@ export const upscaleVariantWorkflow = createWorkflow(
       if (!frame) {
         console.log(
           '[UpscaleVariantWorkflow]',
-          `Frame ${input.frameId} was deleted, skipping workflow`
+          `Frame ${frameId} was deleted, skipping workflow`
         );
         return null;
       }
@@ -94,15 +101,17 @@ export const upscaleVariantWorkflow = createWorkflow(
         : DEFAULT_IMAGE_SIZE;
 
       // Cropped tile is primary source (first), char/loc refs appended after
-      const result = await generateImageWithProvider({
-        model: 'nano_banana_2',
-        prompt: enhancedPrompt,
-        imageSize,
-        referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
-        numImages: 1,
-        outputFormat: 'png',
-        teamId: input.teamId,
-      });
+      const result = await generateImageWithProvider(
+        {
+          model: 'nano_banana_2',
+          prompt: enhancedPrompt,
+          imageSize,
+          referenceImageUrls: [input.croppedTileUrl, ...charLocUrls],
+          numImages: 1,
+          outputFormat: 'png',
+        },
+        { scopedDb }
+      );
       return {
         imageUrl: result.imageUrls[0],
         cost: result.metadata.cost ?? ZERO_MICROS,
@@ -116,10 +125,9 @@ export const upscaleVariantWorkflow = createWorkflow(
 
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: upscaleResult.cost,
         usedOwnKey: upscaleResult.usedOwnKey,
-        userId: input.userId,
         description: 'Variant upscale (nano_banana_2)',
         metadata: { frameId: input.frameId, sequenceId: input.sequenceId },
         workflowName: 'UpscaleVariantWorkflow',
@@ -129,8 +137,8 @@ export const upscaleVariantWorkflow = createWorkflow(
     const storageResult = await context.run('upload-to-storage', async () => {
       const result = await uploadImageToStorage({
         imageUrl: upscaleResult.imageUrl,
-        teamId: input.teamId,
-        sequenceId: input.sequenceId,
+        teamId: teamId,
+        sequenceId: sequenceId,
         frameId: input.frameId,
       });
 
@@ -142,7 +150,7 @@ export const upscaleVariantWorkflow = createWorkflow(
     });
 
     await context.run('update-frame', async () => {
-      const updatedFrame = await updateFrame(
+      const updatedFrame = await scopedDb.frames.update(
         input.frameId,
         {
           thumbnailUrl: storageResult.url,
@@ -182,7 +190,7 @@ export const upscaleVariantWorkflow = createWorkflow(
     } satisfies UpscaleVariantWorkflowResult;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
@@ -191,19 +199,21 @@ export const upscaleVariantWorkflow = createWorkflow(
         `Upscale failed for frame ${input.frameId}: ${error}`
       );
 
-      await updateFrame(
-        input.frameId,
-        {
-          thumbnailStatus: 'completed',
-          thumbnailGeneratedAt: new Date(),
-        },
-        { throwOnMissing: false }
-      );
+      if (input.frameId && input.teamId) {
+        await scopedDb.frames.update(
+          input.frameId,
+          {
+            thumbnailStatus: 'completed',
+            thumbnailGeneratedAt: new Date(),
+          },
+          { throwOnMissing: false }
+        );
 
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.image:progress',
-        { frameId: input.frameId, status: 'completed' }
-      );
+        await getGenerationChannel(input.sequenceId).emit(
+          'generation.image:progress',
+          { frameId: input.frameId, status: 'completed' }
+        );
+      }
 
       return `Upscale failed for frame ${input.frameId}`;
     },

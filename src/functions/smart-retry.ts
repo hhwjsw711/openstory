@@ -4,29 +4,6 @@
  * Falls back to full storyboard retry when prompts are missing.
  */
 
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-
-import { sequenceAccessMiddleware } from './middleware';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { analyzeFailures } from '@/lib/failures/failure-analysis';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
-import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import { requireCredits } from '@/lib/billing/preflight';
-import {
-  addMicros,
-  multiplyMicros,
-  ZERO_MICROS,
-  usdToMicros,
-} from '@/lib/billing/money';
-import {
-  estimateImageCost,
-  estimateStoryboardCost,
-  estimateVideoCost,
-} from '@/lib/billing/cost-estimation';
-import { triggerWorkflow } from '@/lib/workflow/client';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
@@ -34,20 +11,37 @@ import {
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
+import {
+  estimateImageCost,
+  estimateStoryboardCost,
+  estimateVideoCost,
+} from '@/lib/billing/cost-estimation';
+import {
+  addMicros,
+  multiplyMicros,
+  usdToMicros,
+  ZERO_MICROS,
+} from '@/lib/billing/money';
+import { requireCredits } from '@/lib/billing/preflight';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
+import type { Character } from '@/lib/db/schema';
+import type { Frame } from '@/lib/db/schema/frames';
+import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
-import { getDb } from '#db-client';
-import { sequences } from '@/lib/db/schema';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
   ImageWorkflowInput,
+  MergeVideoWorkflowInput,
   MotionWorkflowInput,
   MusicWorkflowInput,
-  MergeVideoWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { sequenceAccessMiddleware } from './middleware';
 import { buildSceneSummaries } from './sequences';
-import type { Frame } from '@/lib/db/schema/frames';
-import type { Character } from '@/lib/db/schema';
 
 function resolveMotionPrompt(frame: Frame): string {
   return (
@@ -86,7 +80,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
   .inputValidator(zodValidator(z.object({ sequenceId: ulidSchema })))
   .handler(async ({ context }) => {
     const { sequence, user, teamId } = context;
-    const frames = await getSequenceFrames(sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(sequence.id);
     const summary = analyzeFailures(frames, sequence);
 
     if (!summary.hasFailed) {
@@ -105,7 +99,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       );
 
       await requireCredits(
-        teamId,
+        context.scopedDb,
         estimateStoryboardCost({
           imageModel,
           aspectRatio: sequence.aspectRatio,
@@ -117,10 +111,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         }
       );
 
-      await getDb()
-        .update(sequences)
-        .set({ status: 'processing', statusError: null, updatedAt: new Date() })
-        .where(eq(sequences.id, sequence.id));
+      await context.scopedDb.sequence(sequence.id).updateStatus('processing');
 
       const workflowInput: StoryboardWorkflowInput = {
         userId: user.id,
@@ -194,7 +185,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // Single credit check for all retries
     if (totalCost > 0) {
-      await requireCredits(teamId, totalCost, {
+      await requireCredits(context.scopedDb, totalCost, {
         providers: ['fal'],
         errorMessage: 'Insufficient credits to retry failed items',
       });
@@ -202,7 +193,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // 1. Retry failed images
     if (failedImageFrames.length > 0) {
-      const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+      const allCharacters = await context.scopedDb.characters.listWithSheets(
+        sequence.id
+      );
 
       for (const frame of failedImageFrames) {
         const prompt =
@@ -260,7 +253,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // 3. Retry failed music
     if (hasMusicFailure && sequence.musicPrompt) {
-      const allFrames = await getSequenceFrames(sequence.id);
+      const allFrames = await context.scopedDb.frames.listBySequence(
+        sequence.id
+      );
       const totalDuration = allFrames.reduce((sum, frame) => {
         const seconds = frame.durationMs
           ? frame.durationMs / 1000
@@ -277,14 +272,10 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         duration: totalDuration || 30,
       };
 
-      await getDb()
-        .update(sequences)
-        .set({
-          musicStatus: 'generating',
-          musicError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, sequence.id));
+      await context.scopedDb.sequence(sequence.id).updateMusicFields({
+        musicStatus: 'generating',
+        musicError: null,
+      });
 
       await triggerWorkflow('/music', musicInput);
 
@@ -297,7 +288,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       sequence.musicStatus !== 'completed' &&
       sequence.status === 'failed'
     ) {
-      const allFrames = await getSequenceFrames(sequence.id);
+      const allFrames = await context.scopedDb.frames.listBySequence(
+        sequence.id
+      );
       const scenes = buildSceneSummaries(allFrames);
       const totalDuration = allFrames.reduce((sum, frame) => {
         const seconds = frame.durationMs
@@ -314,15 +307,6 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         duration: totalDuration || 30,
       };
 
-      await getDb()
-        .update(sequences)
-        .set({
-          musicStatus: 'generating',
-          musicError: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(sequences.id, sequence.id));
-
       await triggerWorkflow('/music', musicInput);
 
       retried.push('music prompt');
@@ -330,7 +314,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // 4. Retry failed merge
     if (hasMergeFailure) {
-      const allFrames = await getSequenceFrames(sequence.id);
+      const allFrames = await context.scopedDb.frames.listBySequence(
+        sequence.id
+      );
       const incompleteCount = allFrames.filter(
         (f) => f.videoStatus !== 'completed' || !f.videoUrl
       ).length;
@@ -341,14 +327,10 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           .map((f) => f.videoUrl)
           .filter((url): url is string => Boolean(url));
 
-        await getDb()
-          .update(sequences)
-          .set({
-            mergedVideoStatus: 'merging',
-            mergedVideoError: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(sequences.id, sequence.id));
+        await context.scopedDb.sequence(sequence.id).updateMergedVideoFields({
+          mergedVideoStatus: 'merging',
+          mergedVideoError: null,
+        });
 
         const mergeInput: MergeVideoWorkflowInput = {
           userId: user.id,
@@ -365,10 +347,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
 
     // Reset sequence status from 'failed' back to 'completed'
     if (sequence.status === 'failed') {
-      await getDb()
-        .update(sequences)
-        .set({ status: 'completed', statusError: null, updatedAt: new Date() })
-        .where(eq(sequences.id, sequence.id));
+      await context.scopedDb.sequence(sequence.id).updateStatus('completed');
     }
 
     return { retryType: 'smart' as const, retriedItems: retried };

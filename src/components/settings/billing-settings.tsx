@@ -31,6 +31,11 @@ import {
   MIN_TOPUP_AMOUNT_USD,
 } from '@/lib/billing/constants';
 import {
+  createCheckoutSessionFn,
+  getTransactionsFn,
+  updateAutoTopUpFn,
+} from '@/functions/billing';
+import {
   useBillingBalance,
   BILLING_BALANCE_KEY,
 } from '@/hooks/use-billing-balance';
@@ -52,40 +57,6 @@ type BillingSettingsProps = {
   success?: boolean;
   canceled?: boolean;
 };
-
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: { message?: string };
-};
-
-type InvoiceData = {
-  id: string;
-  type: string;
-  amount: number;
-  description: string | null;
-  metadata?: { receiptUrl?: string } | null;
-  createdAt: string;
-};
-
-type InvoiceApiResponse = {
-  success: boolean;
-  data?: { transactions: InvoiceData[]; total: number };
-  error?: { message?: string };
-};
-
-async function fetchInvoices(): Promise<{
-  transactions: InvoiceData[];
-  total: number;
-}> {
-  const res = await fetch(
-    '/api/billing/transactions?type=credit_purchase&limit=10'
-  );
-  const json: InvoiceApiResponse = await res.json();
-  if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch invoices');
-  return json.data;
-}
 
 type SectionHeaderProps = {
   icon: LucideIcon;
@@ -191,22 +162,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     error: invoicesError,
   } = useQuery({
     queryKey: ['billing-invoices'],
-    queryFn: fetchInvoices,
+    queryFn: () =>
+      getTransactionsFn({
+        data: { type: 'credit_purchase', limit: 10, offset: 0 },
+      }),
     staleTime: 5 * 60 * 1000,
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: async (amountUsd: number) => {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountUsd }),
-      });
-      const json: ApiResponse<{ url: string }> = await res.json();
-      if (!json.success || !json.data)
-        throw new Error(json.error?.message ?? 'Checkout failed');
-      return json.data;
-    },
+    mutationFn: (amountUsd: number) =>
+      createCheckoutSessionFn({ data: { amountUsd } }),
     onSuccess: (data) => {
       window.location.href = data.url;
     },
@@ -216,21 +181,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   });
 
   const autoTopUpMutation = useMutation({
-    mutationFn: async (body: {
+    mutationFn: (body: {
       enabled: boolean;
       thresholdUsd?: number;
       amountUsd?: number;
-    }) => {
-      const res = await fetch('/api/billing/auto-topup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json: ApiResponse<void> = await res.json();
-      if (!json.success)
-        throw new Error(json.error?.message ?? 'Failed to update');
-      return json;
-    },
+    }) => updateAutoTopUpFn({ data: body }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],

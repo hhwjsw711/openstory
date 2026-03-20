@@ -1,6 +1,7 @@
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
-import { apiKeyService } from '../byok/api-key.service';
+import { getEnv } from '#env';
+import type { ScopedDb } from '@/lib/db/scoped';
 
 // Typed as `string` so the adapter uses its generic fallback -- the merge
 // endpoint isn't a video generation model, so fal types lack aspect_ratio/prompt
@@ -21,12 +22,12 @@ export type MergeVideosResult = {
 
 /** Merge multiple video segments into a single video via fal.ai ffmpeg API */
 export async function mergeVideos({
-  teamId,
+  scopedDb,
   videoUrls,
   targetFps,
   resolution,
 }: {
-  teamId?: string; // required to resolve the API key for the merge videos with BYOK
+  scopedDb?: ScopedDb; // scopedDb is used to resolve the API key for the merge videos with BYOK
   videoUrls: string[];
   targetFps?: number;
   resolution?: { width: number; height: number };
@@ -40,7 +41,9 @@ export async function mergeVideos({
     resolution,
   });
 
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', teamId);
+  const falApiKeyInfo = scopedDb
+    ? await scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
   const falApiKey = falApiKeyInfo.key;
   const adapter = falVideo(MERGE_VIDEOS_MODEL_ID, {
     apiKey: falApiKey,

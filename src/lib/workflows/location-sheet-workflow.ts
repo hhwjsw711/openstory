@@ -5,18 +5,12 @@
  * These images are later used as reference images when generating scene images.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import {
-  updateLocationReference,
-  updateReferenceStatus,
-} from '@/lib/db/helpers/sequence-locations';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -24,16 +18,20 @@ import {
 } from '@/lib/image/image-generation';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LocationSheetWorkflowInput,
   LocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const locationSheetWorkflow = createWorkflow(
-  async (context: WorkflowContext<LocationSheetWorkflowInput>) => {
+export const locationSheetWorkflow = createScopedWorkflow<
+  LocationSheetWorkflowInput,
+  LocationSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     // Emit realtime event that generation has started
@@ -90,7 +88,6 @@ export const locationSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'location-sheet-image',
-          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
@@ -104,19 +101,16 @@ export const locationSheetWorkflow = createWorkflow(
           `Generating reference for ${input.locationName} with model ${generationParams.model}`
         );
 
-        return await generateImageWithProvider({
-          ...generationParams,
-        });
+        return await generateImageWithProvider(generationParams, { scopedDb });
       }
     );
 
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId ?? null,
         description: `Location sheet (${generationParams.model})`,
         metadata: {
           model: generationParams.model,
@@ -178,7 +172,7 @@ export const locationSheetWorkflow = createWorkflow(
           `Updating database for ${input.locationName}`
         );
 
-        await updateLocationReference(
+        await scopedDb.sequenceLocations.updateReference(
           input.locationDbId,
           storageResult.url,
           storageResult.path
@@ -217,13 +211,17 @@ export const locationSheetWorkflow = createWorkflow(
     return result;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
       const error = sanitizeFailResponse(failResponse);
 
       // Mark location reference as failed
-      if (input.locationDbId) {
-        await updateReferenceStatus(input.locationDbId, 'failed', error);
+      if (input.locationDbId && input.teamId) {
+        await scopedDb.sequenceLocations.updateReferenceStatus(
+          input.locationDbId,
+          'failed',
+          error
+        );
 
         // Emit failure event for realtime UI update
         if (input.sequenceId) {

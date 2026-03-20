@@ -27,9 +27,8 @@ import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { StyleConfigSchema } from '@/lib/db/schema/libraries';
 import { getPrompt } from '@/lib/prompts';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/byok/api-key.service';
 import { authWithTeamMiddleware } from './middleware';
 
 const promptShorteningRateLimiter = new RateLimiter(10, 60_000);
@@ -69,16 +68,15 @@ function enforceRateLimit(limiter: RateLimiter, key: string): void {
  * Returns `undefined` when billing is skipped (disabled or team has own key).
  */
 async function prepareBilling(
-  teamId: string,
-  userId: string,
+  scopedDb: ScopedDb,
   description: string,
   metadata?: Record<string, unknown>
 ): Promise<(() => Promise<void>) | undefined> {
-  const teamHasOwnKey = await apiKeyService.hasKey(teamId, 'openrouter');
+  const teamHasOwnKey = await scopedDb.apiKeys.hasKey('openrouter');
   if (teamHasOwnKey) return undefined;
 
   const cost = estimateLLMCost(1);
-  const canAfford = await hasEnoughCredits(teamId, cost);
+  const canAfford = await scopedDb.billing.hasEnoughCredits(cost);
   if (!canAfford) {
     throw new InsufficientCreditsError(
       `Insufficient credits for ${description.toLowerCase()}`
@@ -87,7 +85,10 @@ async function prepareBilling(
 
   return async () => {
     if (cost > 0) {
-      await deductCredits(teamId, cost, { userId, description, metadata });
+      await scopedDb.billing.deductCredits(cost, {
+        description,
+        metadata,
+      });
     }
   };
 }
@@ -112,8 +113,7 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
     }
 
     const deduct = await prepareBilling(
-      context.teamId,
-      context.user.id,
+      context.scopedDb,
       `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
       { model: RECOMMENDED_MODELS.fast }
     );
@@ -171,11 +171,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
   .handler(async function* ({ data, context }) {
     enforceRateLimit(scriptEnhancementRateLimiter, getClientIP());
 
-    const deduct = await prepareBilling(
-      context.teamId,
-      context.user.id,
-      'Script enhancement'
-    );
+    const deduct = await prepareBilling(context.scopedDb, 'Script enhancement');
 
     if (checkForInjectionAttempts(data.script)) {
       console.warn('Script enhancement: Potential injection attempt detected');

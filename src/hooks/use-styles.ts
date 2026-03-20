@@ -1,13 +1,13 @@
-import type { Style } from '@/types/database';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getStylesFn,
-  getStyleFn,
   createStyleFn,
-  updateStyleFn,
   deleteStyleFn,
+  getStyleFn,
+  getStylesFn,
+  updateStyleFn,
 } from '@/functions/styles';
 import type { StyleConfig } from '@/lib/db/schema/libraries';
+import type { Style } from '@/types/database';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // Local hook input types (simpler than server schema types)
 type CreateStyleInput = {

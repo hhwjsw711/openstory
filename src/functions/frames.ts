@@ -8,15 +8,6 @@ import {
   updateFrameSchema,
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import {
-  getSequenceFrames,
-  createFrame,
-  bulkInsertFrames,
-  updateFrame,
-  deleteFrame,
-  deleteSequenceFrames,
-  reorderFrames,
-} from '@/lib/db/helpers/frames';
 import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import type { NewFrame } from '@/lib/db/schema';
 import { reconcileStaleFrameStatuses } from '@/lib/workflow/reconcile';
@@ -29,10 +20,14 @@ const frameIdInputSchema = z.object({
 export const getFramesFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    const frames = await getSequenceFrames(context.sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(
+      context.sequence.id
+    );
 
     // Fire-and-forget: reconcile stale statuses in background
-    reconcileStaleFrameStatuses(frames).catch(console.error);
+    reconcileStaleFrameStatuses(frames, context.scopedDb.frames).catch(
+      console.error
+    );
 
     return frames;
   });
@@ -48,8 +43,8 @@ export const createFrameFn = createServerFn({ method: 'POST' })
   .inputValidator(
     zodValidator(singleFrameSchema.extend({ sequenceId: ulidSchema }))
   )
-  .handler(async ({ data }) => {
-    return createFrame(data);
+  .handler(async ({ data, context }) => {
+    return context.scopedDb.frames.create(data);
   });
 
 export const createFramesBulkFn = createServerFn({ method: 'POST' })
@@ -62,12 +57,12 @@ export const createFramesBulkFn = createServerFn({ method: 'POST' })
       })
     )
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const frameInserts: NewFrame[] = data.frames.map((frame) => ({
       sequenceId: data.sequenceId,
       ...frame,
     }));
-    return bulkInsertFrames(frameInserts);
+    return context.scopedDb.frames.bulkInsert(frameInserts);
   });
 
 export const updateFrameFn = createServerFn({ method: 'POST' })
@@ -77,23 +72,23 @@ export const updateFrameFn = createServerFn({ method: 'POST' })
       updateFrameSchema.extend({ sequenceId: ulidSchema, frameId: ulidSchema })
     )
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const { sequenceId: _, frameId, ...updateData } = data;
-    return updateFrame(frameId, updateData);
+    return context.scopedDb.frames.update(frameId, updateData);
   });
 
 export const deleteFrameFn = createServerFn({ method: 'POST' })
   .middleware([frameAccessMiddleware])
   .inputValidator(zodValidator(frameIdInputSchema))
-  .handler(async ({ data }) => {
-    await deleteFrame(data.frameId);
+  .handler(async ({ data, context }) => {
+    await context.scopedDb.frames.delete(data.frameId);
     return { success: true, sequenceId: data.sequenceId };
   });
 
 export const deleteFramesBySequenceFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    await deleteSequenceFrames(context.sequence.id);
+    await context.scopedDb.frames.deleteBySequence(context.sequence.id);
     return { success: true };
   });
 
@@ -109,12 +104,12 @@ export const reorderFramesFn = createServerFn({ method: 'POST' })
       })
     )
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const frameOrders = data.frameOrders.map((f) => ({
       id: f.id,
       order_index: f.orderIndex,
     }));
-    await reorderFrames(data.sequenceId, frameOrders);
+    await context.scopedDb.frames.reorder(data.sequenceId, frameOrders);
     return { success: true };
   });
 
