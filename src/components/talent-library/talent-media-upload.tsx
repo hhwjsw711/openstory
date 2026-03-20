@@ -113,7 +113,6 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
   return (
     <FileUpload
       accept="image/*,video/*"
-      maxSize={50 * 1024 * 1024}
       multiple
       disabled={disabled}
       value={files}
@@ -134,9 +133,7 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
             Browse files
           </Button>
         </FileUploadTrigger>
-        <p className="text-xs text-muted-foreground">
-          Images and videos up to 50MB
-        </p>
+        <p className="text-xs text-muted-foreground">Images and videos</p>
       </FileUploadDropzone>
 
       <FileUploadList className="grid grid-cols-3 gap-3">

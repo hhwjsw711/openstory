@@ -45,12 +45,10 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
 
   const handleValueChange = useCallback(
     (newFiles: File[]) => {
-      // Limit to maxFiles
-      const limitedFiles = newFiles.slice(0, maxFiles);
-      onFilesChange(limitedFiles);
+      onFilesChange(newFiles);
 
       // Clean up URLs for removed files
-      const currentKeys = new Set(limitedFiles.map(getFileKey));
+      const currentKeys = new Set(newFiles.map(getFileKey));
       setUploadedUrlsMap((prev) => {
         const next = new Map(prev);
         let changed = false;
@@ -63,7 +61,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
         return changed ? next : prev;
       });
     },
-    [onFilesChange, maxFiles]
+    [onFilesChange]
   );
 
   const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
@@ -101,8 +99,8 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
   return (
     <FileUpload
       accept="image/*"
-      maxSize={20 * 1024 * 1024}
-      multiple={maxFiles > 1}
+      maxFiles={maxFiles}
+      multiple
       disabled={disabled}
       value={files}
       onValueChange={handleValueChange}
@@ -123,7 +121,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
           </Button>
         </FileUploadTrigger>
         <p className="text-xs text-muted-foreground">
-          Images up to 20MB{maxFiles > 1 ? ` (max ${maxFiles})` : ''}
+          Images{maxFiles > 1 ? ` (max ${maxFiles})` : ''}
         </p>
       </FileUploadDropzone>
 
