@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Link, useRouter } from '@tanstack/react-router';
+import { DefaultNotFound } from './default-not-found';
+import { useRouter } from '@tanstack/react-router';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { AlertCircle } from 'lucide-react';
 
@@ -11,7 +12,11 @@ type RouteErrorFallbackProps = ErrorComponentProps & {
 function isNotFoundError(error: unknown): boolean {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
-    return message.includes('not found') || message.includes('not_found');
+    return (
+      message.includes('not found') ||
+      message.includes('not_found') ||
+      message.includes('invalid ulid')
+    );
   }
   return false;
 }
@@ -27,23 +32,7 @@ export const RouteErrorFallback: React.FC<RouteErrorFallbackProps> = ({
   console.error(`[RouteError:${heading}]`, error);
 
   if (is404) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <Alert className="max-w-lg">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Page not found</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3">
-            <p>
-              The resource you're looking for doesn't exist or you don't have
-              access to it.
-            </p>
-            <Button variant="outline" size="sm" className="w-fit" asChild>
-              <Link to="/sequences">Back to sequences</Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
+    return <DefaultNotFound />;
   }
 
   return (
