@@ -6,23 +6,16 @@
  */
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { getFramesByIds } from '@/lib/db/helpers/frames';
-import { getSequenceById } from '@/lib/db/helpers/queries';
-import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import {
-  getSequenceLocationsWithReferences,
-  matchLocationsToFrame,
-} from '@/lib/db/helpers/sequence-locations';
 import type { CharacterMinimal } from '@/lib/db/schema';
+import { matchLocationsToFrame } from '@/lib/db/scoped/sequence-locations';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { RegenerateFramesWorkflowInput } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import { getFalFlowControl } from './constants';
 import { generateImageWorkflow } from './image-workflow';
 
@@ -58,14 +51,27 @@ type FrameResult = {
   error?: string;
 };
 
-export const regenerateFramesWorkflow = createWorkflow(
-  async (context: WorkflowContext<RegenerateFramesWorkflowInput>) => {
+type RegenerateFramesResult = {
+  totalFrames: number;
+  successCount: number;
+  failedFrames: string[];
+};
+
+export const regenerateFramesWorkflow = createScopedWorkflow<
+  RegenerateFramesWorkflowInput,
+  RegenerateFramesResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const { sequenceId, frameIds, userId, teamId, triggeringCharacterId } =
       input;
 
+    if (!sequenceId) {
+      throw new WorkflowValidationError('Sequence ID is required');
+    }
+
     const sequence = await context.run('get-sequence', async () => {
-      const seq = await getSequenceById(sequenceId);
+      const seq = await scopedDb.sequences.getById(sequenceId);
       if (!seq) {
         throw new WorkflowValidationError(`Sequence ${sequenceId} not found`);
       }
@@ -73,7 +79,7 @@ export const regenerateFramesWorkflow = createWorkflow(
     });
 
     const allCharacters = await context.run('get-all-characters', async () => {
-      const chars = await getSequenceCharactersWithSheets(sequenceId);
+      const chars = await scopedDb.characters.listWithSheets(sequenceId);
       console.log(
         '[RegenerateFramesWorkflow]',
         `Found ${chars.length} characters with completed sheets`
@@ -82,7 +88,8 @@ export const regenerateFramesWorkflow = createWorkflow(
     });
 
     const allLocations = await context.run('get-all-locations', async () => {
-      const locs = await getSequenceLocationsWithReferences(sequenceId);
+      const locs =
+        await scopedDb.sequenceLocations.listWithReferences(sequenceId);
       console.log(
         '[RegenerateFramesWorkflow]',
         `Found ${locs.length} locations with completed reference images`
@@ -91,7 +98,7 @@ export const regenerateFramesWorkflow = createWorkflow(
     });
 
     const framesToRegenerate = await context.run('get-frames', async () => {
-      const frames = await getFramesByIds(frameIds);
+      const frames = await scopedDb.frames.getByIds(frameIds);
       console.log(
         '[RegenerateFramesWorkflow]',
         `Found ${frames.length}/${frameIds.length} frames to regenerate`

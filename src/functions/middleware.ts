@@ -3,26 +3,32 @@
  * Reusable middleware for authentication, team access, and resource validation
  */
 
-import { createMiddleware } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
-import { emitLog } from '@/lib/observability/structured-log';
-import { NotFoundError, OpenStoryError } from '@/lib/errors';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { getAuth } from '@/lib/auth/config';
-import type { User, Session } from '@/lib/auth/config';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
-import { getSequenceById } from '@/lib/db/helpers/queries';
-import { getFrameWithSequence } from '@/lib/db/helpers/frames';
 import {
-  requireTeamMemberAccess,
   requireTeamAdminAccess,
+  requireTeamMemberAccess,
   requireTeamOwnerAccess,
 } from '@/lib/auth/action-utils';
+import { getAuth } from '@/lib/auth/config';
+import type { Session, User } from '@/lib/auth/config';
 import { requireSystemAdmin } from '@/lib/auth/system-admin';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import type { Sequence, Frame } from '@/types/database';
+import { isStripeEnabled } from '@/lib/billing/constants';
+import { getStripeOrThrow, getStripeWebhookSecret } from '@/lib/billing/stripe';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import {
+  createScopedDb,
+  createSystemAdminScopedDb,
+  resolveUserTeam,
+  type ScopedDb,
+} from '@/lib/db/scoped';
+import { NotFoundError, OpenStoryError } from '@/lib/errors';
+import { emitLog } from '@/lib/observability/structured-log';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import type { Frame, Sequence } from '@/types/database';
+import { createMiddleware } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
+import { zodValidator } from '@tanstack/zod-adapter';
+import type Stripe from 'stripe';
+import { z } from 'zod';
 
 // ============================================================================
 // Context Types
@@ -35,9 +41,17 @@ export type AuthContext = {
 
 export type TeamContext = AuthContext & {
   teamId: string;
+  scopedDb: ScopedDb;
 };
 
 export type SystemAdminContext = TeamContext;
+
+export type StripeWebhookContext = {
+  stripeEvent: Stripe.Event | null;
+  scopedDb: ScopedDb | null;
+  teamId: string | null;
+  userId: string | null;
+};
 
 export type SequenceContext = TeamContext & {
   sequence: Sequence;
@@ -167,6 +181,120 @@ export const authRequestMiddleware = createMiddleware().server(
 );
 
 /**
+ * Request auth + team middleware — for use with server routes (server.middleware).
+ * Authenticates user, resolves their default team, and creates a scoped DB.
+ * Throws 401 if no user, 403 if no team.
+ */
+export const authWithTeamRequestMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    const auth = getAuth();
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    if (!session?.user) {
+      throw new Response('Unauthorized', { status: 401 });
+    }
+
+    const team = await resolveUserTeam(session.user.id);
+
+    if (!team) {
+      throw new Response('No team found for user', { status: 403 });
+    }
+
+    return next({
+      context: {
+        user: session.user,
+        session,
+        teamId: team.teamId,
+        scopedDb: createScopedDb(team.teamId, session.user.id),
+      },
+    });
+  }
+);
+
+/**
+ * Stripe webhook signature verification middleware — for use with server routes.
+ * Verifies the stripe-signature header and passes the validated event via context.
+ * When Stripe is disabled, passes stripeEvent: null so the handler can early-return.
+ */
+export const stripeWebhookMiddleware = createMiddleware().server(
+  async ({ next, request }) => {
+    if (!isStripeEnabled()) {
+      return next({
+        context: {
+          stripeEvent: null as Stripe.Event | null,
+          scopedDb: null as ScopedDb | null,
+          teamId: null as string | null,
+          userId: null as string | null,
+        },
+      });
+    }
+
+    const stripe = getStripeOrThrow();
+    const webhookSecret = getStripeWebhookSecret();
+    if (!webhookSecret) {
+      throw Response.json(
+        { error: 'Webhook secret not configured' },
+        { status: 500 }
+      );
+    }
+
+    const body = await request.text();
+    const signature = request.headers.get('stripe-signature');
+    if (!signature) {
+      throw Response.json(
+        { error: 'Missing stripe-signature header' },
+        { status: 400 }
+      );
+    }
+
+    try {
+      const event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature,
+        webhookSecret
+      );
+
+      const obj = event.data.object;
+
+      if (
+        !('metadata' in obj) ||
+        typeof obj.metadata !== 'object' ||
+        obj.metadata === null
+      ) {
+        throw new Error(`Stripe event ${event.id} missing metadata`);
+      }
+      const metadata = obj.metadata;
+      if (!('teamId' in metadata && 'userId' in metadata)) {
+        throw new Error(
+          `Stripe event ${event.id} missing teamId or userId in metadata`
+        );
+      }
+
+      const teamId = metadata.teamId;
+      const userId = metadata.userId;
+      if (typeof teamId !== 'string' || typeof userId !== 'string') {
+        throw new Error(
+          `Stripe event ${event.id} missing teamId or userId in metadata`
+        );
+      }
+      return next({
+        context: {
+          stripeEvent: event,
+          scopedDb: createScopedDb(teamId, userId),
+          teamId,
+          userId,
+        },
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('missing teamId')) {
+        throw Response.json({ error: error.message }, { status: 400 });
+      }
+      throw Response.json({ error: 'Invalid signature' }, { status: 400 });
+    }
+  }
+);
+
+/**
  * Basic auth middleware - requires authenticated user
  * Adds user and session to context
  */
@@ -196,7 +324,7 @@ export const authMiddleware = createMiddleware({ type: 'function' })
 export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
   .middleware([authMiddleware])
   .server(async ({ next, context }) => {
-    const team = await getUserDefaultTeam(context.user.id);
+    const team = await resolveUserTeam(context.user.id);
 
     if (!team) {
       throw new Error('No team found for user');
@@ -205,6 +333,7 @@ export const authWithTeamMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: team.teamId,
+        scopedDb: createScopedDb(team.teamId, context.user.id),
       },
     });
   });
@@ -221,7 +350,11 @@ export const systemAdminMiddleware = createMiddleware({ type: 'function' })
   .middleware([authWithTeamMiddleware])
   .server(async ({ next, context }) => {
     requireSystemAdmin(context.user.email);
-    return next();
+    return next({
+      context: {
+        adminScopedDb: createSystemAdminScopedDb(),
+      },
+    });
   });
 
 // ============================================================================
@@ -234,25 +367,18 @@ export const systemAdminMiddleware = createMiddleware({ type: 'function' })
  * Requires sequenceId in input data
  */
 export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ sequenceId: ulidSchema })))
   .server(async ({ next, context, data }) => {
-    const sequence = await getSequenceById(data.sequenceId);
+    const sequence = await context.scopedDb.sequences.getById(data.sequenceId);
 
     if (!sequence) {
-      throw new NotFoundError('Sequence not found');
-    }
-
-    try {
-      await requireTeamMemberAccess(context.user.id, sequence.teamId);
-    } catch {
       throw new NotFoundError('Sequence not found');
     }
 
     return next({
       context: {
         sequence,
-        teamId: sequence.teamId,
       },
     });
   });
@@ -263,20 +389,20 @@ export const sequenceAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires sequenceId and frameId in input data
  */
 export const frameAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(
     zodValidator(z.looseObject({ sequenceId: ulidSchema, frameId: ulidSchema }))
   )
   .server(async ({ next, context, data }) => {
-    const frameData = await getFrameWithSequence(data.frameId);
+    const frameData = await context.scopedDb.frames.getWithSequence(
+      data.frameId
+    );
 
     if (!frameData || frameData.sequenceId !== data.sequenceId) {
       throw new NotFoundError('Frame not found in this sequence');
     }
 
-    try {
-      await requireTeamMemberAccess(context.user.id, frameData.sequence.teamId);
-    } catch {
+    if (frameData.sequence.teamId !== context.teamId) {
       throw new NotFoundError('Frame not found in this sequence');
     }
 
@@ -293,7 +419,6 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
       context: {
         frame,
         sequence,
-        teamId: sequence.teamId,
       },
     });
   });
@@ -304,14 +429,20 @@ export const frameAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires teamId in input data
  */
 export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
-    await requireTeamMemberAccess(context.user.id, data.teamId);
+    if (data.teamId !== context.teamId) {
+      await requireTeamMemberAccess(context.user.id, data.teamId);
+    }
 
     return next({
       context: {
         teamId: data.teamId,
+        scopedDb:
+          data.teamId === context.teamId
+            ? context.scopedDb
+            : createScopedDb(data.teamId, context.user.id),
       },
     });
   });
@@ -322,7 +453,7 @@ export const teamMemberAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires teamId in input data
  */
 export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamAdminAccess(context.user.id, data.teamId);
@@ -330,6 +461,10 @@ export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
+        scopedDb:
+          data.teamId === context.teamId
+            ? context.scopedDb
+            : createScopedDb(data.teamId, context.user.id),
       },
     });
   });
@@ -340,7 +475,7 @@ export const teamAdminAccessMiddleware = createMiddleware({ type: 'function' })
  * Requires teamId in input data
  */
 export const teamOwnerAccessMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(z.looseObject({ teamId: ulidSchema })))
   .server(async ({ next, context, data }) => {
     await requireTeamOwnerAccess(context.user.id, data.teamId);
@@ -348,6 +483,10 @@ export const teamOwnerAccessMiddleware = createMiddleware({ type: 'function' })
     return next({
       context: {
         teamId: data.teamId,
+        scopedDb:
+          data.teamId === context.teamId
+            ? context.scopedDb
+            : createScopedDb(data.teamId, context.user.id),
       },
     });
   });

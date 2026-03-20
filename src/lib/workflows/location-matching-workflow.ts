@@ -1,13 +1,11 @@
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import { buildLocationMatchingPromptVariables } from '../ai/location-matching-prompt';
 import {
   locationExtractionResultSchema,
   locationMatchResponseSchema,
 } from '../ai/response-schemas';
-import { getLibraryLocationsByIds } from '../db/helpers/location-library';
 import { getGenerationChannel } from '../realtime';
 import { sanitizeFailResponse } from '../workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '../workflow/scoped-workflow';
 import type {
   LibraryLocationMatch,
   LocationMatchingWorkflowInput,
@@ -15,10 +13,11 @@ import type {
 } from '../workflow/types';
 import { durableLLMCall } from './llm-call-helper';
 
-export const locationMatchingWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<LocationMatchingWorkflowInput>
-  ): Promise<LocationMatchingWorkflowOutput> => {
+export const locationMatchingWorkflow = createScopedWorkflow<
+  LocationMatchingWorkflowInput,
+  LocationMatchingWorkflowOutput
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const { scenes, analysisModelId, suggestedLocationIds } = input;
     const { sequenceId, userId, teamId } = input;
@@ -56,7 +55,7 @@ export const locationMatchingWorkflow = createWorkflow(
           };
         }
         const libraryLocationList =
-          await getLibraryLocationsByIds(suggestedLocationIds);
+          await scopedDb.locations.getByIds(suggestedLocationIds);
         return {
           libraryLocationList,
           locationMatchingPromptVariables: buildLocationMatchingPromptVariables(

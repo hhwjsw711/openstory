@@ -14,7 +14,15 @@ const CF_ERROR_CODES: Record<string, string> = {
  * This function extracts the inner error and maps known codes to friendly messages.
  */
 export function sanitizeFailResponse(failResponse: unknown): string {
-  const raw = String(failResponse ?? '').trim();
+  const raw =
+    typeof failResponse === 'string'
+      ? failResponse.trim()
+      : failResponse == null
+        ? ''
+        : (failResponse instanceof Error
+            ? failResponse.message
+            : JSON.stringify(failResponse)
+          ).trim();
   if (!raw) return 'Unknown error';
 
   // Extract inner message from QStash wrapper pattern

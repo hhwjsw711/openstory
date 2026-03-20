@@ -35,10 +35,6 @@ import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
 import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback'
 import { Route as ApiDevMemoryRouteImport } from './routes/api/dev/memory'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
-import { Route as ApiBillingTransactionsRouteImport } from './routes/api/billing/transactions'
-import { Route as ApiBillingCheckoutRouteImport } from './routes/api/billing/checkout'
-import { Route as ApiBillingBalanceRouteImport } from './routes/api/billing/balance'
-import { Route as ApiBillingAutoTopupRouteImport } from './routes/api/billing/auto-topup'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ProtectedTalentIdRouteImport } from './routes/_protected/talent/$id'
 import { Route as ProtectedSettingsPasskeysRouteImport } from './routes/_protected/settings/passkeys'
@@ -52,8 +48,6 @@ import { Route as ProtectedSequencesIdScenesRouteImport } from './routes/_protec
 import { Route as ProtectedSequencesIdMusicRouteImport } from './routes/_protected/sequences/$id/music'
 import { Route as ProtectedSequencesIdLocationsIndexRouteImport } from './routes/_protected/sequences/$id/locations/index'
 import { Route as ProtectedSequencesIdCastIndexRouteImport } from './routes/_protected/sequences/$id/cast/index'
-import { Route as ApiTeamsInvitationsInvitationIdAcceptRouteImport } from './routes/api/teams/invitations/$invitationId/accept'
-import { Route as ApiSequencesSequenceIdChaptersVttRouteImport } from './routes/api/sequences/$sequenceId/chapters/vtt'
 import { Route as ProtectedSequencesIdLocationsLocationIdRouteImport } from './routes/_protected/sequences/$id/locations/$locationId'
 import { Route as ProtectedSequencesIdCastCharacterIdRouteImport } from './routes/_protected/sequences/$id/cast/$characterId'
 
@@ -184,26 +178,6 @@ const ApiBillingWebhookRoute = ApiBillingWebhookRouteImport.update({
   path: '/api/billing/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBillingTransactionsRoute = ApiBillingTransactionsRouteImport.update({
-  id: '/api/billing/transactions',
-  path: '/api/billing/transactions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingCheckoutRoute = ApiBillingCheckoutRouteImport.update({
-  id: '/api/billing/checkout',
-  path: '/api/billing/checkout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingBalanceRoute = ApiBillingBalanceRouteImport.update({
-  id: '/api/billing/balance',
-  path: '/api/billing/balance',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingAutoTopupRoute = ApiBillingAutoTopupRouteImport.update({
-  id: '/api/billing/auto-topup',
-  path: '/api/billing/auto-topup',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -279,18 +253,6 @@ const ProtectedSequencesIdCastIndexRoute =
     path: '/cast/',
     getParentRoute: () => ProtectedSequencesIdRouteRoute,
   } as any)
-const ApiTeamsInvitationsInvitationIdAcceptRoute =
-  ApiTeamsInvitationsInvitationIdAcceptRouteImport.update({
-    id: '/api/teams/invitations/$invitationId/accept',
-    path: '/api/teams/invitations/$invitationId/accept',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiSequencesSequenceIdChaptersVttRoute =
-  ApiSequencesSequenceIdChaptersVttRouteImport.update({
-    id: '/api/sequences/$sequenceId/chapters/vtt',
-    path: '/api/sequences/$sequenceId/chapters/vtt',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ProtectedSequencesIdLocationsLocationIdRoute =
   ProtectedSequencesIdLocationsLocationIdRouteImport.update({
     id: '/locations/$locationId',
@@ -327,10 +289,6 @@ export interface FileRoutesByFullPath {
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
-  '/api/billing/balance': typeof ApiBillingBalanceRoute
-  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
-  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
@@ -345,8 +303,6 @@ export interface FileRoutesByFullPath {
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
   '/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
 }
@@ -372,10 +328,6 @@ export interface FileRoutesByTo {
   '/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
-  '/api/billing/balance': typeof ApiBillingBalanceRoute
-  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
-  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
@@ -390,8 +342,6 @@ export interface FileRoutesByTo {
   '/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
   '/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/sequences/$id/cast': typeof ProtectedSequencesIdCastIndexRoute
   '/sequences/$id/locations': typeof ProtectedSequencesIdLocationsIndexRoute
 }
@@ -422,10 +372,6 @@ export interface FileRoutesById {
   '/_protected/settings/passkeys': typeof ProtectedSettingsPasskeysRoute
   '/_protected/talent/$id': typeof ProtectedTalentIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/billing/auto-topup': typeof ApiBillingAutoTopupRoute
-  '/api/billing/balance': typeof ApiBillingBalanceRoute
-  '/api/billing/checkout': typeof ApiBillingCheckoutRoute
-  '/api/billing/transactions': typeof ApiBillingTransactionsRoute
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
@@ -440,8 +386,6 @@ export interface FileRoutesById {
   '/_protected/sequences/$id/theatre': typeof ProtectedSequencesIdTheatreRoute
   '/_protected/sequences/$id/cast/$characterId': typeof ProtectedSequencesIdCastCharacterIdRoute
   '/_protected/sequences/$id/locations/$locationId': typeof ProtectedSequencesIdLocationsLocationIdRoute
-  '/api/sequences/$sequenceId/chapters/vtt': typeof ApiSequencesSequenceIdChaptersVttRoute
-  '/api/teams/invitations/$invitationId/accept': typeof ApiTeamsInvitationsInvitationIdAcceptRoute
   '/_protected/sequences/$id/cast/': typeof ProtectedSequencesIdCastIndexRoute
   '/_protected/sequences/$id/locations/': typeof ProtectedSequencesIdLocationsIndexRoute
 }
@@ -470,10 +414,6 @@ export interface FileRouteTypes {
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
-    | '/api/billing/auto-topup'
-    | '/api/billing/balance'
-    | '/api/billing/checkout'
-    | '/api/billing/transactions'
     | '/api/billing/webhook'
     | '/api/dev/memory'
     | '/api/openrouter/callback'
@@ -488,8 +428,6 @@ export interface FileRouteTypes {
     | '/sequences/$id/theatre'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
-    | '/api/sequences/$sequenceId/chapters/vtt'
-    | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast/'
     | '/sequences/$id/locations/'
   fileRoutesByTo: FileRoutesByTo
@@ -515,10 +453,6 @@ export interface FileRouteTypes {
     | '/settings/passkeys'
     | '/talent/$id'
     | '/api/auth/$'
-    | '/api/billing/auto-topup'
-    | '/api/billing/balance'
-    | '/api/billing/checkout'
-    | '/api/billing/transactions'
     | '/api/billing/webhook'
     | '/api/dev/memory'
     | '/api/openrouter/callback'
@@ -533,8 +467,6 @@ export interface FileRouteTypes {
     | '/sequences/$id/theatre'
     | '/sequences/$id/cast/$characterId'
     | '/sequences/$id/locations/$locationId'
-    | '/api/sequences/$sequenceId/chapters/vtt'
-    | '/api/teams/invitations/$invitationId/accept'
     | '/sequences/$id/cast'
     | '/sequences/$id/locations'
   id:
@@ -564,10 +496,6 @@ export interface FileRouteTypes {
     | '/_protected/settings/passkeys'
     | '/_protected/talent/$id'
     | '/api/auth/$'
-    | '/api/billing/auto-topup'
-    | '/api/billing/balance'
-    | '/api/billing/checkout'
-    | '/api/billing/transactions'
     | '/api/billing/webhook'
     | '/api/dev/memory'
     | '/api/openrouter/callback'
@@ -582,8 +510,6 @@ export interface FileRouteTypes {
     | '/_protected/sequences/$id/theatre'
     | '/_protected/sequences/$id/cast/$characterId'
     | '/_protected/sequences/$id/locations/$locationId'
-    | '/api/sequences/$sequenceId/chapters/vtt'
-    | '/api/teams/invitations/$invitationId/accept'
     | '/_protected/sequences/$id/cast/'
     | '/_protected/sequences/$id/locations/'
   fileRoutesById: FileRoutesById
@@ -600,16 +526,10 @@ export interface RootRouteChildren {
   MetaOgRoute: typeof MetaOgRoute
   MetaOgLinkedinRoute: typeof MetaOgLinkedinRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiBillingAutoTopupRoute: typeof ApiBillingAutoTopupRoute
-  ApiBillingBalanceRoute: typeof ApiBillingBalanceRoute
-  ApiBillingCheckoutRoute: typeof ApiBillingCheckoutRoute
-  ApiBillingTransactionsRoute: typeof ApiBillingTransactionsRoute
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiDevMemoryRoute: typeof ApiDevMemoryRoute
   ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
-  ApiSequencesSequenceIdChaptersVttRoute: typeof ApiSequencesSequenceIdChaptersVttRoute
-  ApiTeamsInvitationsInvitationIdAcceptRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -796,34 +716,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/transactions': {
-      id: '/api/billing/transactions'
-      path: '/api/billing/transactions'
-      fullPath: '/api/billing/transactions'
-      preLoaderRoute: typeof ApiBillingTransactionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/billing/checkout': {
-      id: '/api/billing/checkout'
-      path: '/api/billing/checkout'
-      fullPath: '/api/billing/checkout'
-      preLoaderRoute: typeof ApiBillingCheckoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/billing/balance': {
-      id: '/api/billing/balance'
-      path: '/api/billing/balance'
-      fullPath: '/api/billing/balance'
-      preLoaderRoute: typeof ApiBillingBalanceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/billing/auto-topup': {
-      id: '/api/billing/auto-topup'
-      path: '/api/billing/auto-topup'
-      fullPath: '/api/billing/auto-topup'
-      preLoaderRoute: typeof ApiBillingAutoTopupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -914,20 +806,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/sequences/$id/cast/'
       preLoaderRoute: typeof ProtectedSequencesIdCastIndexRouteImport
       parentRoute: typeof ProtectedSequencesIdRouteRoute
-    }
-    '/api/teams/invitations/$invitationId/accept': {
-      id: '/api/teams/invitations/$invitationId/accept'
-      path: '/api/teams/invitations/$invitationId/accept'
-      fullPath: '/api/teams/invitations/$invitationId/accept'
-      preLoaderRoute: typeof ApiTeamsInvitationsInvitationIdAcceptRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/sequences/$sequenceId/chapters/vtt': {
-      id: '/api/sequences/$sequenceId/chapters/vtt'
-      path: '/api/sequences/$sequenceId/chapters/vtt'
-      fullPath: '/api/sequences/$sequenceId/chapters/vtt'
-      preLoaderRoute: typeof ApiSequencesSequenceIdChaptersVttRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_protected/sequences/$id/locations/$locationId': {
       id: '/_protected/sequences/$id/locations/$locationId'
@@ -1067,18 +945,10 @@ const rootRouteChildren: RootRouteChildren = {
   MetaOgRoute: MetaOgRoute,
   MetaOgLinkedinRoute: MetaOgLinkedinRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiBillingAutoTopupRoute: ApiBillingAutoTopupRoute,
-  ApiBillingBalanceRoute: ApiBillingBalanceRoute,
-  ApiBillingCheckoutRoute: ApiBillingCheckoutRoute,
-  ApiBillingTransactionsRoute: ApiBillingTransactionsRoute,
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiDevMemoryRoute: ApiDevMemoryRoute,
   ApiOpenrouterCallbackRoute: ApiOpenrouterCallbackRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
-  ApiSequencesSequenceIdChaptersVttRoute:
-    ApiSequencesSequenceIdChaptersVttRoute,
-  ApiTeamsInvitationsInvitationIdAcceptRoute:
-    ApiTeamsInvitationsInvitationIdAcceptRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

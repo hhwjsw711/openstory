@@ -1,43 +1,41 @@
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { sequenceAccessMiddleware, frameAccessMiddleware } from './middleware';
-import {
-  regenerateFrameSchema,
-  generateVariantSchema,
-} from '@/lib/schemas/frame.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  safeTextToImageModel,
   safeImageToVideoModel,
+  safeTextToImageModel,
 } from '@/lib/ai/models';
-import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import {
   estimateImageCost,
   estimateStoryboardCost,
 } from '@/lib/billing/cost-estimation';
 import { requireCredits } from '@/lib/billing/preflight';
-import type {
-  ImageWorkflowInput,
-  StoryboardWorkflowInput,
-  VariantWorkflowInput,
-  UpscaleVariantWorkflowInput,
-} from '@/lib/workflow/types';
-import { triggerWorkflow } from '@/lib/workflow/client';
+import {
+  aspectRatioToImageSize,
+  getVariantGridConfig,
+} from '@/lib/constants/aspect-ratios';
+import type { Character, SequenceLocation } from '@/lib/db/schema';
+import { locationMatchesTag } from '@/lib/db/scoped/sequence-locations';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
-import { updateFrame } from '@/lib/db/helpers/frames';
-import { getSequenceCharactersWithSheets } from '@/lib/db/helpers/sequence-characters';
-import {
-  getSequenceLocationsWithReferences,
-  locationMatchesTag,
-} from '@/lib/db/helpers/sequence-locations';
-import type { Character, SequenceLocation } from '@/lib/db/schema';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
+import {
+  generateVariantSchema,
+  regenerateFrameSchema,
+} from '@/lib/schemas/frame.schemas';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
+import { triggerWorkflow } from '@/lib/workflow/client';
+import type {
+  ImageWorkflowInput,
+  StoryboardWorkflowInput,
+  UpscaleVariantWorkflowInput,
+  VariantWorkflowInput,
+} from '@/lib/workflow/types';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -94,7 +92,7 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
     const { sequence, user } = context;
 
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateStoryboardCost({
         imageModel: safeTextToImageModel(
           sequence.imageModel,
@@ -158,7 +156,9 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       throw new Error('Frame has no prompt or description to regenerate from');
     }
 
-    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const allCharacters = await context.scopedDb.characters.listWithSheets(
+      sequence.id
+    );
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const referenceImages = getSceneCharacterReferenceImages(
       allCharacters,
@@ -169,7 +169,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       data.model || safeTextToImageModel(frame.imageModel, DEFAULT_IMAGE_MODEL);
 
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateImageCost(model, sequence.aspectRatio, 1),
       { errorMessage: 'Insufficient credits for image generation' }
     );
@@ -212,14 +212,17 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       throw new Error('Frame must have a thumbnail image to generate variants');
     }
 
-    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const allCharacters = await context.scopedDb.characters.listWithSheets(
+      sequence.id
+    );
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const characterReferences = getSceneCharacterReferenceImages(
       allCharacters,
       characterTags
     );
 
-    const allLocations = await getSequenceLocationsWithReferences(sequence.id);
+    const allLocations =
+      await context.scopedDb.sequenceLocations.listWithReferences(sequence.id);
     const locationReferences = getSceneLocationReferenceImages(
       allLocations,
       frame.metadata?.continuity?.environmentTag ?? '',
@@ -228,7 +231,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
 
     const numImages = data.numImages ?? 1;
     await requireCredits(
-      sequence.teamId,
+      context.scopedDb,
       estimateImageCost(
         data.model ?? DEFAULT_IMAGE_MODEL,
         sequence.aspectRatio,
@@ -236,6 +239,8 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       ),
       { errorMessage: 'Insufficient credits for variant generation' }
     );
+
+    const gridConfig = getVariantGridConfig(sequence.aspectRatio);
 
     const workflowInput: VariantWorkflowInput = {
       userId: user.id,
@@ -245,7 +250,8 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       thumbnailUrl: frame.thumbnailUrl,
       scenePrompt: frame.metadata?.prompts?.visual?.fullPrompt,
       model: data.model,
-      imageSize: data.imageSize || aspectRatioToImageSize(sequence.aspectRatio),
+      aspectRatio: sequence.aspectRatio,
+      imageSize: data.imageSize || gridConfig.imageSize,
       numImages,
       seed: data.seed,
       characterReferences,
@@ -271,11 +277,14 @@ const selectVariantInputSchema = z.object({
   variantIndex: z.number().int().min(0).max(8),
 });
 
-/** Convert 0-8 grid index to 1-based row/col in a 3x3 grid. */
-function indexToRowCol(index: number): { row: number; col: number } {
+/** Convert flat grid index to 1-based row/col given the number of columns. */
+function indexToRowCol(
+  index: number,
+  cols: number
+): { row: number; col: number } {
   return {
-    row: Math.floor(index / 3) + 1,
-    col: (index % 3) + 1,
+    row: Math.floor(index / cols) + 1,
+    col: (index % cols) + 1,
   };
 }
 
@@ -289,12 +298,22 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       throw new Error('Frame has no variant image to select from');
     }
 
-    const { row, col } = indexToRowCol(data.variantIndex);
+    const gridConfig = getVariantGridConfig(sequence.aspectRatio);
+
+    if (data.variantIndex >= gridConfig.count) {
+      throw new Error(
+        `Variant index ${data.variantIndex} exceeds grid count ${gridConfig.count}`
+      );
+    }
+
+    const { row, col } = indexToRowCol(data.variantIndex, gridConfig.cols);
 
     const cropResult = await cropTileFromGrid({
       gridImageUrl: frame.variantImageUrl,
       row,
       col,
+      gridCols: gridConfig.cols,
+      gridRows: gridConfig.rows,
     });
 
     const uploadResult = await uploadImageBufferToStorage({
@@ -310,7 +329,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     }
 
     // Set cropped thumbnail and clear stale motion fields
-    await updateFrame(frame.id, {
+    await context.scopedDb.frames.update(frame.id, {
       thumbnailUrl: uploadResult.url,
       thumbnailPath: uploadResult.path || null,
       thumbnailStatus: 'generating',
@@ -324,14 +343,17 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     });
 
     // Fetch character and location references for upscale consistency
-    const allCharacters = await getSequenceCharactersWithSheets(sequence.id);
+    const allCharacters = await context.scopedDb.characters.listWithSheets(
+      sequence.id
+    );
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
     const characterReferences = getSceneCharacterReferenceImages(
       allCharacters,
       characterTags
     );
 
-    const allLocations = await getSequenceLocationsWithReferences(sequence.id);
+    const allLocations =
+      await context.scopedDb.sequenceLocations.listWithReferences(sequence.id);
     const locationReferences = getSceneLocationReferenceImages(
       allLocations,
       frame.metadata?.continuity?.environmentTag ?? '',
@@ -339,8 +361,8 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     );
 
     await requireCredits(
-      sequence.teamId,
-      estimateImageCost('nano_banana_2', '16:9', 1),
+      context.scopedDb,
+      estimateImageCost('nano_banana_2', sequence.aspectRatio, 1),
       { errorMessage: 'Insufficient credits for variant upscale' }
     );
 
@@ -351,6 +373,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       frameId: frame.id,
       croppedTileUrl: uploadResult.url,
       croppedTilePath: uploadResult.path || '',
+      aspectRatio: sequence.aspectRatio,
       characterReferences,
       locationReferences,
     };

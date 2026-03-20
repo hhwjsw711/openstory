@@ -1,4 +1,15 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
+
+// Import real exports before mock.module so they can be re-exported
+import * as tanstackAi from '@tanstack/ai';
+
+// Mock @tanstack/ai with all real exports preserved (script-enhancer → llm-client → @tanstack/ai)
+const mockChat = mock();
+mock.module('@tanstack/ai', () => ({
+  ...tanstackAi,
+  chat: mockChat,
+}));
+
 import {
   INJECTION_PATTERNS,
   sanitizeScriptContent,
@@ -6,7 +17,7 @@ import {
 } from '../prompt-validation';
 import { enhanceScript } from '../script-enhancer';
 
-// Mock OpenAI for security tests
+// Mock OpenAI for security tests (legacy — no longer used but kept for skipped e2e tests)
 const mockChatCompletionsCreate = mock();
 
 mock.module('openai', () => {

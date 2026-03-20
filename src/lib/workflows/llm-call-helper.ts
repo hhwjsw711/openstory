@@ -4,6 +4,7 @@
  * Uses @tanstack/ai-openrouter adapters instead of context.api.openai.call
  */
 
+import { getEnv } from '#env';
 import { createAdapter } from '@/lib/ai/create-adapter';
 import { callLLMStream } from '@/lib/ai/llm-client';
 import type { TextModel } from '@/lib/ai/models';
@@ -15,20 +16,14 @@ import {
 } from '@/lib/ai/streaming-scene-parser';
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
-import { apiKeyService } from '@/lib/byok/api-key.service';
-import { bulkInsertFrames, upsertFrame } from '@/lib/db/helpers/frames';
-import {
-  updateSequenceStatus,
-  updateSequenceTitle,
-  updateSequenceWorkflow,
-} from '@/lib/db/helpers/sequences';
-import type { NewFrame } from '@/lib/db/schema';
+import type { ScopedDb } from '@/lib/db/scoped';
 import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { chat } from '@tanstack/ai';
 import type { WorkflowContext } from '@upstash/workflow';
 import { z } from 'zod';
+import type { NewFrame } from '../db/schema';
 
 export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
   name: string;
@@ -43,9 +38,10 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
 export type DurableLLMCallContext = {
   sequenceId?: string;
   userId?: string;
-  teamId?: string;
   /** Override OpenRouter API key (e.g., user-provided key). Falls back to platform env key. */
   openRouterApiKey?: string;
+  /** Scoped DB context for resolving team API keys and deducting credits. Falls back to env key when absent. */
+  scopedDb?: ScopedDb;
 };
 
 /**
@@ -101,10 +97,14 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
 
   // Step 2: Durable LLM call (QStash retries step delivery on failure)
   const jsonResponse = await context.run(name, async () => {
-    const openRouterApiKeyInfo = await apiKeyService.resolveKey(
-      'openrouter',
-      callContext.teamId
-    );
+    const openRouterApiKeyInfo = callContext.scopedDb
+      ? await callContext.scopedDb.apiKeys.resolveKey('openrouter')
+      : (() => {
+          const env = getEnv();
+          if (!env.OPENROUTER_KEY)
+            throw new Error('No API key available for provider: openrouter');
+          return { key: env.OPENROUTER_KEY, source: 'platform' as const };
+        })();
     const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
 
     console.log(`[LLM:${logName}] Starting call`, {
@@ -149,13 +149,12 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   });
 
   // Deduct LLM credits (cost tracked via Langfuse; adapter doesn't expose per-call usage)
-  if (callContext.teamId) {
+  if (callContext.scopedDb) {
     await context.run(`deduct-llm-credits-${name}`, async () => {
       await deductWorkflowCredits({
-        teamId: callContext.teamId,
+        scopedDb: callContext.scopedDb,
         costMicros: ZERO_MICROS,
         usedOwnKey: !!callContext.openRouterApiKey,
-        userId: callContext.userId,
         description: `LLM analysis (${modelId})`,
         metadata: {
           model: modelId,
@@ -254,10 +253,14 @@ export async function durableStreamingSceneSplit<TInput>(
   // Step 2: Stream LLM response, create frames as scenes arrive
   // Returns the full parsed result + frame mapping (all serializable for QStash caching)
   const streamResult = await context.run('scene-splitting-stream', async () => {
-    const openRouterApiKeyInfo = await apiKeyService.resolveKey(
-      'openrouter',
-      callContext.teamId
-    );
+    const openRouterApiKeyInfo = callContext.scopedDb
+      ? await callContext.scopedDb.apiKeys.resolveKey('openrouter')
+      : (() => {
+          const env = getEnv();
+          if (!env.OPENROUTER_KEY)
+            throw new Error('No API key available for provider: openrouter');
+          return { key: env.OPENROUTER_KEY, source: 'platform' as const };
+        })();
 
     console.log(`[LLM:${logName}] Starting streaming call`, {
       model: config.modelId,
@@ -297,7 +300,10 @@ export async function durableStreamingSceneSplit<TInput>(
           console.log(
             `[Stream:${logName}] 🎬 Title detected: "${event.title}" (chunk #${chunkCount})`
           );
-          await updateSequenceTitle(config.sequenceId, event.title);
+          await callContext.scopedDb?.sequences.updateTitle(
+            config.sequenceId,
+            event.title
+          );
           await getGenerationChannel(config.sequenceId).emit(
             'generation.updated',
             { title: event.title }
@@ -319,8 +325,8 @@ export async function durableStreamingSceneSplit<TInput>(
             }
           );
 
-          if (config.sequenceId) {
-            const frame = await upsertFrame({
+          if (config.sequenceId && callContext.scopedDb) {
+            const frame = await callContext.scopedDb?.frames.upsert({
               sequenceId: config.sequenceId,
               description: event.scene.originalScript?.extract || '',
               orderIndex: event.index,
@@ -344,7 +350,7 @@ export async function durableStreamingSceneSplit<TInput>(
             await getGenerationChannel(config.sequenceId).emit(
               'generation.frame:created',
               {
-                frameId: frame.id,
+                frameId: frame?.id || '',
                 sceneId: event.scene.sceneId,
                 orderIndex: event.index,
               }
@@ -376,7 +382,7 @@ export async function durableStreamingSceneSplit<TInput>(
       const { scenes, projectMetadata } = streamResult;
       const resolvedTitle = projectMetadata?.title || 'Untitled';
 
-      if (!config.sequenceId) {
+      if (!config.sequenceId || !callContext.scopedDb) {
         return {
           scenes,
           title: resolvedTitle,
@@ -401,19 +407,26 @@ export async function durableStreamingSceneSplit<TInput>(
           }) satisfies NewFrame
       );
 
-      const reconciledFrames = await bulkInsertFrames(frameInserts);
+      const reconciledFrames =
+        await callContext.scopedDb.frames.bulkInsert(frameInserts);
       const reconciledMapping = reconciledFrames.map((f) => ({
         sceneId: f.metadata?.sceneId || '',
         frameId: f.id,
       }));
 
       // Ensure title, workflow, and status are set
-      await updateSequenceTitle(config.sequenceId, resolvedTitle);
-      await updateSequenceWorkflow(
+      await callContext.scopedDb.sequences.updateTitle(
+        config.sequenceId,
+        resolvedTitle
+      );
+      await callContext.scopedDb.sequences.updateWorkflow(
         config.sequenceId,
         'analyze-script-shorter-prompts-batch-size-1'
       );
-      await updateSequenceStatus(config.sequenceId, 'completed');
+      await callContext.scopedDb.sequences.update({
+        id: config.sequenceId,
+        status: 'completed',
+      });
 
       // Emit frame:created for any frames the streaming step didn't cover
       const streamedSceneIds = new Set(
@@ -442,13 +455,12 @@ export async function durableStreamingSceneSplit<TInput>(
   );
 
   // Step 4: Deduct credits + emit phase complete
-  if (callContext.teamId) {
+  if (callContext.scopedDb) {
     await context.run('deduct-llm-credits-scene-splitting', async () => {
       await deductWorkflowCredits({
-        teamId: callContext.teamId,
+        scopedDb: callContext.scopedDb,
         costMicros: ZERO_MICROS,
         usedOwnKey: !!callContext.openRouterApiKey,
-        userId: callContext.userId,
         description: `LLM analysis (${config.modelId})`,
         metadata: {
           model: config.modelId,

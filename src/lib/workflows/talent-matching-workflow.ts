@@ -1,13 +1,11 @@
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import {
   characterExtractionResultSchema,
   talentMatchResponseSchema,
 } from '../ai/response-schemas';
 import { buildMatchingPromptVariables } from '../ai/talent-matching-prompt';
-import { getTalentByIds } from '../db/helpers/talent';
 import { getGenerationChannel } from '../realtime';
 import { sanitizeFailResponse } from '../workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '../workflow/scoped-workflow';
 import type {
   TalentCharacterMatch,
   TalentMatchingWorkflowInput,
@@ -15,10 +13,11 @@ import type {
 } from '../workflow/types';
 import { durableLLMCall } from './llm-call-helper';
 
-export const talentMatchingWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<TalentMatchingWorkflowInput>
-  ): Promise<TalentMatchingWorkflowOutput> => {
+export const talentMatchingWorkflow = createScopedWorkflow<
+  TalentMatchingWorkflowInput,
+  TalentMatchingWorkflowOutput
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const { scenes, analysisModelId, suggestedTalentIds } = input;
     const { sequenceId, userId, teamId } = input;
@@ -54,10 +53,7 @@ export const talentMatchingWorkflow = createWorkflow(
         if (!suggestedTalentIds?.length || !input.teamId) {
           return { talentList: [], matchingPromptVariables: {} };
         }
-        const talentList = await getTalentByIds(
-          suggestedTalentIds,
-          input.teamId
-        );
+        const talentList = await scopedDb.talent.getByIds(suggestedTalentIds);
         return {
           talentList,
           matchingPromptVariables: buildMatchingPromptVariables(
