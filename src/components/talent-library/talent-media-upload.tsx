@@ -110,14 +110,12 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
     [talentId, uploadTempMedia, uploadTalentMedia, onComplete]
   );
 
-  const isUploading = uploadTempMedia.isPending || uploadTalentMedia.isPending;
-
   return (
     <FileUpload
       accept="image/*,video/*"
       maxSize={50 * 1024 * 1024}
       multiple
-      disabled={disabled || isUploading}
+      disabled={disabled}
       value={files}
       onValueChange={handleValueChange}
       onUpload={onUpload}

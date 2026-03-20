@@ -98,14 +98,12 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
     [locationId, uploadMedia, onComplete]
   );
 
-  const isUploading = uploadMedia.isPending;
-
   return (
     <FileUpload
       accept="image/*"
       maxSize={20 * 1024 * 1024}
       multiple={maxFiles > 1}
-      disabled={disabled || isUploading}
+      disabled={disabled}
       value={files}
       onValueChange={handleValueChange}
       onUpload={onUpload}

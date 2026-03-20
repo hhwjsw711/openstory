@@ -61,41 +61,6 @@ export async function uploadFile(
   }
 }
 
-export async function uploadStream(
-  bucket: StorageBucket,
-  path: string,
-  stream: ReadableStream<Uint8Array>,
-  contentLength: number,
-  options?: { contentType?: string; cacheControl?: string }
-): Promise<UploadResult> {
-  // contentLength required for S3 API parity; R2 bindings infer it from the stream
-  void contentLength;
-
-  const r2 = getR2Bucket();
-  const key = buildR2Key(bucket, path);
-
-  try {
-    await r2.put(key, stream, {
-      httpMetadata: {
-        contentType: options?.contentType,
-        cacheControl: options?.cacheControl ?? 'public, max-age=31536000',
-      },
-    });
-
-    const publicUrl = getPublicUrl(bucket, path);
-
-    return {
-      path: key,
-      publicUrl,
-      fullPath: key,
-    };
-  } catch (error) {
-    throw new Error(
-      `Failed to stream upload to ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
-}
-
 export async function getSignedUrl(
   bucket: StorageBucket,
   path: string,

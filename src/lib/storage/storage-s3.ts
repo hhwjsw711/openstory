@@ -99,54 +99,6 @@ export async function uploadFile(
   }
 }
 
-export async function uploadStream(
-  bucket: StorageBucket,
-  path: string,
-  stream: ReadableStream<Uint8Array>,
-  _contentLength: number,
-  options?: { contentType?: string; cacheControl?: string }
-): Promise<UploadResult> {
-  const client = createR2Client();
-  const bucketName = getR2BucketName();
-  const key = buildR2Key(bucket, path);
-
-  try {
-    // S3 SDK needs a buffer to compute checksums — can't hash a flowing ReadableStream.
-    // Cloudflare R2 bindings handle streams natively; this path only runs in local dev.
-    const chunks: Uint8Array[] = [];
-    const reader = stream.getReader();
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-    }
-    const body = Buffer.concat(chunks);
-
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: key,
-      Body: body,
-      ContentLength: body.byteLength,
-      ContentType: options?.contentType,
-      CacheControl: options?.cacheControl ?? 'public, max-age=31536000',
-    });
-
-    await client.send(command);
-
-    const publicUrl = getPublicUrl(bucket, path);
-
-    return {
-      path: key,
-      publicUrl,
-      fullPath: key,
-    };
-  } catch (error) {
-    throw new Error(
-      `Failed to stream upload to ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
-}
-
 export async function getSignedUrl(
   bucket: StorageBucket,
   path: string,
