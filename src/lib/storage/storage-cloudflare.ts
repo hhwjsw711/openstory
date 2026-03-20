@@ -61,41 +61,6 @@ export async function uploadFile(
   }
 }
 
-export async function uploadStream(
-  bucket: StorageBucket,
-  path: string,
-  stream: ReadableStream<Uint8Array>,
-  contentLength: number,
-  options?: { contentType?: string; cacheControl?: string }
-): Promise<UploadResult> {
-  // contentLength required for S3 API parity; R2 bindings infer it from the stream
-  void contentLength;
-
-  const r2 = getR2Bucket();
-  const key = buildR2Key(bucket, path);
-
-  try {
-    await r2.put(key, stream, {
-      httpMetadata: {
-        contentType: options?.contentType,
-        cacheControl: options?.cacheControl ?? 'public, max-age=31536000',
-      },
-    });
-
-    const publicUrl = getPublicUrl(bucket, path);
-
-    return {
-      path: key,
-      publicUrl,
-      fullPath: key,
-    };
-  } catch (error) {
-    throw new Error(
-      `Failed to stream upload to ${bucket}/${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
-  }
-}
-
 export async function getSignedUrl(
   bucket: StorageBucket,
   path: string,
@@ -116,6 +81,25 @@ export async function getSignedUrlWithDownload(
   const { getSignedUrlWithDownload: s3GetSignedUrlWithDownload } =
     await import('./storage-s3');
   return s3GetSignedUrlWithDownload(bucket, path, filename, expiresIn);
+}
+
+export async function getSignedUploadUrl(
+  bucket: StorageBucket,
+  path: string,
+  contentType: string,
+  _expiresIn = 600
+): Promise<{
+  uploadUrl: string;
+  publicUrl: string;
+  path: string;
+  contentType: string;
+}> {
+  // R2 bindings don't support presigned URLs — proxy through the worker instead
+  // Pass raw path — uploadFile will call buildR2Key itself
+  const params = new URLSearchParams({ bucket, path, contentType });
+  const uploadUrl = `/api/storage/upload?${params}`;
+  const publicUrl = getPublicUrl(bucket, path);
+  return { uploadUrl, publicUrl, path: buildR2Key(bucket, path), contentType };
 }
 
 export async function deleteFile(

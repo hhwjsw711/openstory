@@ -40,7 +40,6 @@ teams
 bun install
 bun setup                          # Auto-configure local dev (SQLite + QStash)
 bun db:setup                       # Migrate + seed database
-bun scripts/setup-r2-buckets.sh    # Setup storage (follow prompts)
 ```
 
 **Daily workflow (2 terminals):**

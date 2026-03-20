@@ -5,13 +5,14 @@ import {
   generateTalentSheetFn,
   getTalentByIdFn,
   getTalentFn,
+  presignTalentUploadFn,
+  finalizeTalentUploadFn,
   setDefaultSheetFn,
   toggleTalentFavoriteFn,
   updateTalentFn,
-  uploadTalentMediaFn,
-  uploadTempMediaFn,
   deleteTalentMediaFn,
 } from '@/functions/talent';
+import { putToR2 } from '@/lib/utils/upload';
 import type {
   CreateTalentInput,
   UpdateTalentInput,
@@ -115,18 +116,49 @@ export function useToggleTalentFavorite() {
 }
 
 /**
- * Hook to upload talent media
+ * Hook to upload talent media via presigned URL
  */
 export function useUploadTalentMedia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       talentId: string;
       type: 'image' | 'video' | 'recording';
-      base64Data: string;
-      filename: string;
-    }) => uploadTalentMediaFn({ data }),
+      file: File;
+      onProgress?: (percent: number) => void;
+    }) => {
+      const presign = await presignTalentUploadFn({
+        data: {
+          filename: data.file.name,
+          type: data.type,
+          talentId: data.talentId,
+        },
+      });
+
+      await putToR2(
+        presign.uploadUrl,
+        data.file,
+        presign.contentType,
+        data.onProgress
+      );
+
+      await finalizeTalentUploadFn({
+        data: {
+          talentId: data.talentId,
+          type: data.type,
+          mediaId: presign.mediaId,
+          publicUrl: presign.publicUrl,
+          path: presign.path,
+        },
+      });
+
+      return {
+        url: presign.publicUrl,
+        path: presign.path,
+        mediaId: presign.mediaId,
+      };
+    },
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
         queryKey: talentKeys.detail(variables.talentId),
@@ -136,15 +168,31 @@ export function useUploadTalentMedia() {
 }
 
 /**
- * Hook to upload media to temporary storage (before talent creation)
+ * Hook to upload temporary talent media (before talent record exists)
  */
 export function useUploadTempMedia() {
   return useMutation({
-    mutationFn: (data: {
-      base64Data: string;
-      filename: string;
+    mutationFn: async (data: {
+      file: File;
       type: 'image' | 'video';
-    }) => uploadTempMediaFn({ data }),
+      onProgress?: (percent: number) => void;
+    }) => {
+      const presign = await presignTalentUploadFn({
+        data: {
+          filename: data.file.name,
+          type: data.type,
+        },
+      });
+
+      await putToR2(
+        presign.uploadUrl,
+        data.file,
+        presign.contentType,
+        data.onProgress
+      );
+
+      return { url: presign.publicUrl, path: presign.path };
+    },
   });
 }
 

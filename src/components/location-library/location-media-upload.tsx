@@ -12,6 +12,7 @@ import {
   type FileUploadProps,
 } from '@/components/ui/file-upload';
 import { useUploadLocationMedia } from '@/hooks/use-location-library';
+import { getFileKey } from '@/lib/utils/upload';
 import { Upload, X } from 'lucide-react';
 
 type LocationMediaUploadProps = {
@@ -23,23 +24,6 @@ type LocationMediaUploadProps = {
   disabled?: boolean;
   maxFiles?: number;
 };
-
-const getFileKey = (file: File) => `${file.name}-${file.lastModified}`;
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read file'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
   files,
@@ -61,12 +45,10 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
 
   const handleValueChange = useCallback(
     (newFiles: File[]) => {
-      // Limit to maxFiles
-      const limitedFiles = newFiles.slice(0, maxFiles);
-      onFilesChange(limitedFiles);
+      onFilesChange(newFiles);
 
       // Clean up URLs for removed files
-      const currentKeys = new Set(limitedFiles.map(getFileKey));
+      const currentKeys = new Set(newFiles.map(getFileKey));
       setUploadedUrlsMap((prev) => {
         const next = new Map(prev);
         let changed = false;
@@ -79,22 +61,17 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
         return changed ? next : prev;
       });
     },
-    [onFilesChange, maxFiles]
+    [onFilesChange]
   );
 
   const onUpload: NonNullable<FileUploadProps['onUpload']> = useCallback(
     async (newFiles, { onProgress, onSuccess, onError }) => {
       const uploadPromises = newFiles.map(async (file) => {
         try {
-          onProgress(file, 10);
-
-          const base64 = await fileToBase64(file);
-          onProgress(file, 30);
-
           const result = await uploadMedia.mutateAsync({
-            base64Data: base64,
-            filename: file.name,
+            file,
             locationId,
+            onProgress: (percent) => onProgress(file, percent),
           });
 
           setUploadedUrlsMap((prev) =>
@@ -119,14 +96,12 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
     [locationId, uploadMedia, onComplete]
   );
 
-  const isUploading = uploadMedia.isPending;
-
   return (
     <FileUpload
       accept="image/*"
-      maxSize={50 * 1024 * 1024}
-      multiple={maxFiles > 1}
-      disabled={disabled || isUploading}
+      maxFiles={maxFiles}
+      multiple
+      disabled={disabled}
       value={files}
       onValueChange={handleValueChange}
       onUpload={onUpload}
@@ -146,7 +121,7 @@ export const LocationMediaUpload: React.FC<LocationMediaUploadProps> = ({
           </Button>
         </FileUploadTrigger>
         <p className="text-xs text-muted-foreground">
-          Images up to 50MB{maxFiles > 1 ? ` (max ${maxFiles})` : ''}
+          Images{maxFiles > 1 ? ` (max ${maxFiles})` : ''}
         </p>
       </FileUploadDropzone>
 

@@ -115,6 +115,19 @@ export async function setupMockRoutes(page: Page): Promise<void> {
     });
   });
 
+  // Mock upload proxy (used in e2e when getSignedUploadUrl returns proxy URL)
+  await page.route('**/api/storage/upload*', async (route: Route) => {
+    if (route.request().method() === 'PUT') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true }),
+      });
+    } else {
+      await route.continue();
+    }
+  });
+
   // Mock R2 storage uploads (PutObject operations)
   await page.route('**/*.r2.cloudflarestorage.com/**', async (route: Route) => {
     const method = route.request().method();

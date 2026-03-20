@@ -32,6 +32,7 @@ import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
 import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
+import { Route as ApiStorageUploadRouteImport } from './routes/api/storage/upload'
 import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback'
 import { Route as ApiDevMemoryRouteImport } from './routes/api/dev/memory'
 import { Route as ApiBillingWebhookRouteImport } from './routes/api/billing/webhook'
@@ -163,6 +164,11 @@ const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   path: '/api/workflows/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStorageUploadRoute = ApiStorageUploadRouteImport.update({
+  id: '/api/storage/upload',
+  path: '/api/storage/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiOpenrouterCallbackRoute = ApiOpenrouterCallbackRouteImport.update({
   id: '/api/openrouter/callback',
   path: '/api/openrouter/callback',
@@ -292,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
+  '/api/storage/upload': typeof ApiStorageUploadRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations/': typeof ProtectedLocationsIndexRoute
   '/sequences/': typeof ProtectedSequencesIndexRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByTo {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
+  '/api/storage/upload': typeof ApiStorageUploadRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations': typeof ProtectedLocationsIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/api/billing/webhook': typeof ApiBillingWebhookRoute
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
+  '/api/storage/upload': typeof ApiStorageUploadRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/locations/': typeof ProtectedLocationsIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
@@ -417,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/dev/memory'
     | '/api/openrouter/callback'
+    | '/api/storage/upload'
     | '/api/workflows/$'
     | '/locations/'
     | '/sequences/'
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/dev/memory'
     | '/api/openrouter/callback'
+    | '/api/storage/upload'
     | '/api/workflows/$'
     | '/locations'
     | '/sequences'
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/api/billing/webhook'
     | '/api/dev/memory'
     | '/api/openrouter/callback'
+    | '/api/storage/upload'
     | '/api/workflows/$'
     | '/_protected/locations/'
     | '/_protected/sequences/'
@@ -529,6 +541,7 @@ export interface RootRouteChildren {
   ApiBillingWebhookRoute: typeof ApiBillingWebhookRoute
   ApiDevMemoryRoute: typeof ApiDevMemoryRoute
   ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
+  ApiStorageUploadRoute: typeof ApiStorageUploadRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
 }
 
@@ -693,6 +706,13 @@ declare module '@tanstack/react-router' {
       path: '/api/workflows/$'
       fullPath: '/api/workflows/$'
       preLoaderRoute: typeof ApiWorkflowsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/storage/upload': {
+      id: '/api/storage/upload'
+      path: '/api/storage/upload'
+      fullPath: '/api/storage/upload'
+      preLoaderRoute: typeof ApiStorageUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/openrouter/callback': {
@@ -948,6 +968,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingWebhookRoute: ApiBillingWebhookRoute,
   ApiDevMemoryRoute: ApiDevMemoryRoute,
   ApiOpenrouterCallbackRoute: ApiOpenrouterCallbackRoute,
+  ApiStorageUploadRoute: ApiStorageUploadRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
 }
 export const routeTree = rootRouteImport

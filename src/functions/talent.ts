@@ -1,4 +1,5 @@
-import { deleteFile, moveFile, uploadFile } from '#storage';
+import { deleteFile, moveFile, getSignedUploadUrl } from '#storage';
+import { getEnv } from '#env';
 import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import { generateId } from '@/lib/db/id';
 import type { Talent, TalentWithSheets } from '@/lib/db/schema';
@@ -47,14 +48,6 @@ async function requireTalentOwnership(
   return record;
 }
 
-/**
- * Decode a base64 data URL or raw base64 string into a Blob.
- */
-function decodeBase64ToBlob(base64Data: string): Blob {
-  const raw = base64Data.split(',')[1] ?? base64Data;
-  return new Blob([Buffer.from(raw, 'base64')]);
-}
-
 // List Talent
 
 export const getTalentFn = createServerFn({ method: 'GET' })
@@ -100,23 +93,39 @@ export const createTalentFn = createServerFn({ method: 'POST' })
     const tempUrls = data.referenceImageUrls ?? [];
     const permanentUrls: string[] = [];
 
-    for (const tempUrl of tempUrls) {
-      const tempPath = getPathFromUrl(tempUrl, STORAGE_BUCKETS.TALENT);
-      const ext = getExtensionFromUrl(tempUrl);
-      const mediaId = generateId();
-      const permanentPath = `${context.teamId}/${newTalent.id}/${mediaId}.${ext}`;
+    if (getEnv().E2E_TEST === 'true') {
+      for (const tempUrl of tempUrls) {
+        const mediaId = generateId();
+        permanentUrls.push(tempUrl);
+        await context.scopedDb.talent.media.create({
+          talentId: newTalent.id,
+          type: 'image',
+          url: tempUrl,
+          path: `e2e-mock/${mediaId}`,
+        });
+      }
+    } else {
+      for (const tempUrl of tempUrls) {
+        const tempPath = getPathFromUrl(tempUrl, STORAGE_BUCKETS.TALENT);
+        const ext = getExtensionFromUrl(tempUrl);
+        const mediaId = generateId();
+        const permanentPath = `${context.teamId}/${newTalent.id}/${mediaId}.${ext}`;
 
-      await moveFile(STORAGE_BUCKETS.TALENT, tempPath, permanentPath);
+        await moveFile(STORAGE_BUCKETS.TALENT, tempPath, permanentPath);
 
-      const permanentUrl = getPublicUrl(STORAGE_BUCKETS.TALENT, permanentPath);
-      permanentUrls.push(permanentUrl);
+        const permanentUrl = getPublicUrl(
+          STORAGE_BUCKETS.TALENT,
+          permanentPath
+        );
+        permanentUrls.push(permanentUrl);
 
-      await context.scopedDb.talent.media.create({
-        talentId: newTalent.id,
-        type: 'image',
-        url: permanentUrl,
-        path: permanentPath,
-      });
+        await context.scopedDb.talent.media.create({
+          talentId: newTalent.id,
+          type: 'image',
+          url: permanentUrl,
+          path: permanentPath,
+        });
+      }
     }
 
     // Trigger talent sheet generation workflow asynchronously
@@ -263,63 +272,6 @@ export const setDefaultSheetFn = createServerFn({ method: 'POST' })
     return updated;
   });
 
-// Upload Talent Media
-
-const uploadMediaInputSchema = z.object({
-  talentId: ulidSchema,
-  type: z.enum(['image', 'video', 'recording']),
-  base64Data: z.string(),
-  filename: z.string(),
-});
-
-export const uploadTalentMediaFn = createServerFn({ method: 'POST' })
-  .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(uploadMediaInputSchema))
-  .handler(async ({ context, data }) => {
-    await requireTalentOwnership(context.scopedDb, data.talentId);
-
-    const blob = decodeBase64ToBlob(data.base64Data);
-    const ext = getExtensionFromUrl(data.filename);
-    const mediaId = generateId();
-    const storagePath = `${context.teamId}/${data.talentId}/${mediaId}.${ext}`;
-
-    const result = await uploadFile(STORAGE_BUCKETS.TALENT, storagePath, blob, {
-      contentType: getMimeTypeFromExtension(ext),
-    });
-
-    return context.scopedDb.talent.media.create({
-      id: mediaId,
-      talentId: data.talentId,
-      type: data.type,
-      url: result.publicUrl,
-      path: result.path,
-    });
-  });
-
-// Upload Temp Media (before talent creation)
-
-const uploadTempMediaInputSchema = z.object({
-  base64Data: z.string(),
-  filename: z.string(),
-  type: z.enum(['image', 'video']),
-});
-
-export const uploadTempMediaFn = createServerFn({ method: 'POST' })
-  .middleware([authWithTeamMiddleware])
-  .inputValidator(zodValidator(uploadTempMediaInputSchema))
-  .handler(async ({ context, data }) => {
-    const blob = decodeBase64ToBlob(data.base64Data);
-    const ext = getExtensionFromUrl(data.filename);
-    const uploadId = generateId();
-    const storagePath = `${context.teamId}/temp/${uploadId}.${ext}`;
-
-    const result = await uploadFile(STORAGE_BUCKETS.TALENT, storagePath, blob, {
-      contentType: getMimeTypeFromExtension(ext),
-    });
-
-    return { url: result.publicUrl, path: result.path };
-  });
-
 // Delete Talent Media
 
 export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
@@ -348,6 +300,74 @@ export const deleteTalentMediaFn = createServerFn({ method: 'POST' })
     if (!deleted) {
       throw new Error('Failed to delete media');
     }
+
+    return { success: true };
+  });
+
+// Presigned Upload
+
+const mediaTypeSchema = z.enum(['image', 'video', 'recording']);
+
+export const presignTalentUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        filename: z.string().min(1),
+        type: mediaTypeSchema.optional(),
+        talentId: ulidSchema.optional(),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (data.talentId) {
+      await requireTalentOwnership(context.scopedDb, data.talentId);
+    }
+
+    const ext = getExtensionFromUrl(data.filename);
+    const mediaId = generateId();
+    const contentType = getMimeTypeFromExtension(ext);
+
+    const storagePath = data.talentId
+      ? `${context.teamId}/${data.talentId}/${mediaId}.${ext}`
+      : `${context.teamId}/temp/${mediaId}.${ext}`;
+
+    const result = await getSignedUploadUrl(
+      STORAGE_BUCKETS.TALENT,
+      storagePath,
+      contentType
+    );
+
+    return { ...result, mediaId };
+  });
+
+export const finalizeTalentUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        talentId: ulidSchema,
+        type: mediaTypeSchema,
+        mediaId: ulidSchema,
+        publicUrl: z.string().url(),
+        path: z.string().min(1),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (!data.path.startsWith(`talent/${context.teamId}/`)) {
+      throw new Error('Invalid storage path');
+    }
+
+    await requireTalentOwnership(context.scopedDb, data.talentId);
+
+    await context.scopedDb.talent.media.create({
+      id: data.mediaId,
+      talentId: data.talentId,
+      type: data.type,
+      url: data.publicUrl,
+      path: data.path,
+    });
 
     return { success: true };
   });

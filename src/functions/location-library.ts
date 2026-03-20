@@ -1,4 +1,5 @@
-import { moveFile, uploadFile } from '#storage';
+import { moveFile, getSignedUploadUrl } from '#storage';
+import { getEnv } from '#env';
 import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import { generateId } from '@/lib/db/id';
 import type { LibraryLocation } from '@/lib/db/schema';
@@ -26,6 +27,14 @@ async function processReferenceImages(
   teamId: string
 ): Promise<ProcessedImage[]> {
   const results: ProcessedImage[] = [];
+
+  if (getEnv().E2E_TEST === 'true') {
+    for (const tempUrl of tempUrls) {
+      const mediaId = generateId();
+      results.push({ url: tempUrl, path: `e2e-mock/${mediaId}` });
+    }
+    return results;
+  }
 
   for (const tempUrl of tempUrls) {
     const tempPathMatch = tempUrl.match(/\/locations\/(.+)$/);
@@ -162,48 +171,60 @@ export const deleteLibraryLocationFn = createServerFn({ method: 'POST' })
     return { success: true };
   });
 
-export const uploadLocationMediaFn = createServerFn({ method: 'POST' })
+export const presignLocationUploadFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(
     zodValidator(
       z.object({
-        base64Data: z.string(),
-        filename: z.string(),
+        filename: z.string().min(1),
         locationId: ulidSchema.optional(),
       })
     )
   )
   .handler(async ({ context, data }) => {
-    const base64Content = data.base64Data.split(',')[1] ?? data.base64Data;
-    const buffer = Buffer.from(base64Content, 'base64');
-    const blob = new Blob([buffer]);
-
-    const ext = getExtensionFromUrl(data.filename);
-    const uploadId = generateId();
-
     if (data.locationId) {
       await requireLocation(context.scopedDb, data.locationId);
     }
+
+    const ext = getExtensionFromUrl(data.filename);
+    const uploadId = generateId();
+    const contentType = getMimeTypeFromExtension(ext);
 
     const storagePath = data.locationId
       ? `${context.teamId}/library/${uploadId}.${ext}`
       : `${context.teamId}/temp/${uploadId}.${ext}`;
 
-    const result = await uploadFile(
+    return getSignedUploadUrl(
       STORAGE_BUCKETS.LOCATIONS,
       storagePath,
-      blob,
-      { contentType: getMimeTypeFromExtension(ext) }
+      contentType
     );
+  });
 
-    if (data.locationId) {
-      await context.scopedDb.locations.update(data.locationId, {
-        referenceImageUrl: result.publicUrl,
-        referenceImagePath: result.path,
-      });
+export const finalizeLocationUploadFn = createServerFn({ method: 'POST' })
+  .middleware([authWithTeamMiddleware])
+  .inputValidator(
+    zodValidator(
+      z.object({
+        locationId: ulidSchema,
+        publicUrl: z.string().url(),
+        path: z.string().min(1),
+      })
+    )
+  )
+  .handler(async ({ context, data }) => {
+    if (!data.path.startsWith(`locations/${context.teamId}/`)) {
+      throw new Error('Invalid storage path');
     }
 
-    return { url: result.publicUrl, path: result.path };
+    await requireLocation(context.scopedDb, data.locationId);
+
+    await context.scopedDb.locations.update(data.locationId, {
+      referenceImageUrl: data.publicUrl,
+      referenceImagePath: data.path,
+    });
+
+    return { success: true };
   });
 
 export const addLocationSheetsFn = createServerFn({ method: 'POST' })
