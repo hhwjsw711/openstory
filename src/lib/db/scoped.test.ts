@@ -2,6 +2,12 @@
 import { describe, expect, it, mock, beforeEach } from 'bun:test';
 import type { NewLocationSheet } from '@/lib/db/schema';
 
+// Import pure utility functions before mock.module so they can be re-exported
+import {
+  locationMatchesTag,
+  matchLocationsToFrame,
+} from '@/lib/db/scoped/sequence-locations';
+
 // ============================================================================
 // Sub-module mocks — we test that scoped.ts composes them correctly
 // ============================================================================
@@ -265,6 +271,9 @@ mock.module('@/lib/db/scoped/sequence-locations', () => ({
     getFrameIdsForLocation: mockSeqLocationsGetFrameIdsForLocation,
     getTeamLibrary: mockSeqLocationsGetTeamLibrary,
   })),
+  // Re-export pure utility functions so other test files importing them aren't broken
+  locationMatchesTag,
+  matchLocationsToFrame,
 }));
 
 // DB chain mock for inline operations (characters, frames)
