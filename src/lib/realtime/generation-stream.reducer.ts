@@ -104,12 +104,12 @@ export type GenerationStreamAction =
 
 const PHASE_NAMES = [
   'Analyzing script…',
-  'Finding characters…',
-  'Drawing characters…',
-  'Designing locations…',
-  'Writing prompts…',
-  'Designing sound…',
+  'Casting characters & locations…',
+  'Generating references & prompts…',
   'Generating images…',
+  'Writing motion prompts…',
+  'Composing music…',
+  'Generating motion…',
 ];
 
 export const initialGenerationStreamState: GenerationStreamState = {
@@ -231,7 +231,7 @@ export function generationStreamReducer(
       return {
         ...state,
         isComplete: true,
-        currentPhase: 8,
+        currentPhase: 8, // > 7 so all phases marked complete
         phases: state.phases.map((p) => ({ ...p, status: 'completed' })),
       };
 

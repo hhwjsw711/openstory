@@ -4,13 +4,13 @@
  */
 
 const PHASE_BUDGETS = [
-  { base: 15, perScene: 0 }, // 1. Analyzing script
-  { base: 10, perScene: 0 }, // 2. Finding characters
-  { base: 20, perScene: 0 }, // 3. Drawing characters
-  { base: 15, perScene: 0 }, // 4. Designing locations
-  { base: 5, perScene: 3 }, // 5. Writing prompts
-  { base: 5, perScene: 0 }, // 6. Designing sound
-  { base: 10, perScene: 15 }, // 7. Generating images
+  { base: 45, perScene: 0 }, // 1. Analyzing script
+  { base: 30, perScene: 0 }, // 2. Casting characters & locations
+  { base: 20, perScene: 3 }, // 3. Generating references & prompts
+  { base: 10, perScene: 15 }, // 4. Generating images
+  { base: 5, perScene: 3 }, // 5. Writing motion prompts
+  { base: 15, perScene: 0 }, // 6. Composing music
+  { base: 30, perScene: 15 }, // 7. Generating motion
 ] as const;
 
 const DEFAULT_SCENE_COUNT = 6;

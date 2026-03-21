@@ -67,7 +67,7 @@ export const visualPromptSceneWorkflow = createScopedWorkflow<
       context,
       {
         name: 'visual-prompts',
-        phase: { number: 4, name: 'Writing image prompts…' },
+        phase: { number: 3, name: 'Writing image prompts…' },
 
         promptName: 'phase/visual-prompt-scene-generation-chat',
         promptVariables,

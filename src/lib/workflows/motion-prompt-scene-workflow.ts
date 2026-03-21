@@ -64,7 +64,7 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
       context,
       {
         name: 'motion-prompts',
-        phase: { number: 4, name: 'Writing motion prompts…' },
+        phase: { number: 5, name: 'Writing motion prompts…' },
 
         promptName: 'phase/motion-prompt-scene-generation-chat',
         promptVariables,

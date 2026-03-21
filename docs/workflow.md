@@ -14,28 +14,28 @@ flowchart TD
 
     SceneSplit --> P2
 
-    subgraph "Phase 2+3 — Extraction + Matching (parallel) · ~2.5min"
+    subgraph "Phase 2 — Casting Characters & Locations (parallel) · ~2.5min"
         P2["<b>Promise.all</b>"]
         P2 --> TalentSub
         P2 --> LocationSub
 
         subgraph TalentSub["talentMatchingWorkflow"]
             CharExtract["<b>Character Extraction</b> · LLM<br/>phase 2 · 'Finding characters…'<br/>IN: scenes[]<br/>OUT: characterBible[]"]
-            TalentMatch["<b>Talent Matching</b> · LLM<br/>phase 3 · 'Casting characters…'<br/><i>skipped if no suggestedTalentIds</i>"]
+            TalentMatch["<b>Talent Matching</b> · LLM<br/>phase 2 · 'Casting characters…'<br/><i>skipped if no suggestedTalentIds</i>"]
             CharExtract --> TalentMatch
         end
 
         subgraph LocationSub["locationMatchingWorkflow"]
             LocExtract["<b>Location Extraction</b> · LLM<br/>phase 2 · 'Finding locations…'<br/>IN: scenes[]<br/>OUT: locationBible[]"]
-            LocMatch["<b>Location Matching</b> · LLM<br/>phase 3 · 'Matching locations…'<br/><i>skipped if no suggestedLocationIds</i>"]
+            LocMatch["<b>Location Matching</b> · LLM<br/>phase 2 · 'Matching locations…'<br/><i>skipped if no suggestedLocationIds</i>"]
             LocExtract --> LocMatch
         end
     end
 
-    subgraph "Phases 3+4 — Reference Generation (parallel) · ~1min"
+    subgraph "Phase 3 — References & Prompts (parallel) · ~1min"
         CharSheets["<b>Character Sheets</b> · image gen ×N chars<br/>phase 3<br/>IN: characterBible[], talentCharacterMatches[]<br/>OUT: charactersWithSheets[]"]
-        LocSheets["<b>Location Sheets</b> · image gen ×N locs<br/>phase 4<br/>IN: locationBible[], libraryLocationMatches[]<br/>OUT: locationsWithSheets[]"]
-        VisualPrompts["<b>Visual Prompts</b> · LLM ×N scenes<br/>phase 4<br/>IN: scenes[], characterBible[], locationBible[],<br/>styleConfig, aspectRatio, analysisModelId<br/>OUT: scenesWithVisualPrompts[]"]
+        LocSheets["<b>Location Sheets</b> · image gen ×N locs<br/>phase 3<br/>IN: locationBible[], libraryLocationMatches[]<br/>OUT: locationsWithSheets[]"]
+        VisualPrompts["<b>Visual Prompts</b> · LLM ×N scenes<br/>phase 3<br/>IN: scenes[], characterBible[], locationBible[],<br/>styleConfig, aspectRatio, analysisModelId<br/>OUT: scenesWithVisualPrompts[]"]
     end
 
     TalentSub --> CharSheets
@@ -43,7 +43,7 @@ flowchart TD
     LocationSub --> LocSheets
     LocationSub --> VisualPrompts
 
-    subgraph "Phase 5 — Image Generation · ~1.5min"
+    subgraph "Phase 4 — Image Generation · ~1.5min"
         PersistVisual["<b>Persist Visual Prompts</b> · DB<br/>IN: scenesWithVisualPrompts[], frameMapping<br/>OUT: frames updated with prompts + continuity"]
         ImageGen["<b>Image Generation</b> · Fal.ai ×N scenes parallel<br/>IN: fullPrompt, imageModel, imageSize,<br/>characterRefs[], locationRefs[] per scene<br/>OUT: imageUrls[] (thumbnailUrl per frame)"]
         PersistVisual --> ImageGen
@@ -53,7 +53,7 @@ flowchart TD
     LocSheets -->|"locationsWithSheets"| ImageGen
     VisualPrompts -->|"scenesWithVisualPrompts"| PersistVisual
 
-    subgraph "Phase 6 — Motion Prompts · ~30s"
+    subgraph "Phase 5 — Motion Prompts · ~30s"
         MotionPrompts["<b>Motion Prompt Generation</b> · LLM ×N scenes parallel<br/>IN: scenes[], aspectRatio, characterBible[], styleConfig<br/>OUT: motionPrompt per scene"]
         MergeMotion["<b>Merge + Persist</b> · DB<br/>IN: scenesWithVisualPrompts[], motionPrompts[],<br/>videoModel capabilities<br/>OUT: scenesWithMotionPrompts[]<br/>(snapped durationSeconds per scene)"]
         MotionPrompts --> MergeMotion
@@ -61,7 +61,7 @@ flowchart TD
 
     VisualPrompts -->|"scenes"| MotionPrompts
 
-    subgraph "Phase 7 — Music Design · ~1-2min"
+    subgraph "Phase 6 — Music Design · ~1-2min"
         MusicDesign["<b>Music Design</b> · LLM · ~1-2min<br/>IN: sceneSummaries (sceneId, title, storyBeat,<br/>durationSeconds, location, timeOfDay, visualSummary)<br/>OUT: musicDesign per scene<br/>(presence, style, mood, atmosphere)<br/>+ unified tags, prompt"]
         MergeMusicDesign["<b>Merge + Persist</b> · DB<br/>IN: scenesWithMotionPrompts[], musicDesign[]<br/>OUT: completeScenes[]"]
         MusicDesign --> MergeMusicDesign
@@ -72,7 +72,7 @@ flowchart TD
     StoreMusicPrompt["<b>Store Music Prompt</b> · DB<br/><i>always runs if sequenceId exists</i>"]
     MergeMusicDesign --> StoreMusicPrompt
 
-    subgraph "Phase 8 — Motion + Music Generation (gated on scenesWithMusic)"
+    subgraph "Phase 7 — Motion + Music Generation (gated on scenesWithMusic)"
         MotionGen["<b>Motion Generation</b> · Fal.ai ×N parallel · ~1-5min<br/>IN: imageUrls[], motionPrompts[],<br/>videoModel, aspectRatio, durationSeconds<br/>OUT: videoUrl per frame<br/><i>only if autoGenerateMotion + videoModel + images</i>"]
         MusicGen["<b>Music Generation</b> · Fal.ai · ~30-120s<br/>IN: prompt, tags, totalDuration, musicModel<br/>OUT: musicUrl on sequence<br/><i>only if autoGenerateMusic</i>"]
     end
@@ -99,7 +99,7 @@ Image generation, motion prompts, and motion generation each fan out to parallel
 
 ```mermaid
 flowchart LR
-    subgraph "Phase 5 — Image Generation · ~1.5min wall time"
+    subgraph "Phase 4 — Image Generation · ~1.5min wall time"
         direction LR
         ImgFork["Persist visual<br/>prompts to frames"] --> Img1["<b>Scene 1</b><br/>image workflow"]
         ImgFork --> Img2["<b>Scene 2</b><br/>image workflow"]
@@ -117,7 +117,7 @@ flowchart LR
 
     ImgJoin --> MPFork
 
-    subgraph "Phase 6 — Motion Prompts · ~30s wall time"
+    subgraph "Phase 5 — Motion Prompts · ~30s wall time"
         direction LR
         MPFork["Start motion<br/>prompt workflow"] --> MP1["<b>Scene 1</b><br/>LLM call"]
         MPFork --> MP2["<b>Scene 2</b><br/>LLM call"]
@@ -129,11 +129,11 @@ flowchart LR
         MPN --> MPJoin
     end
 
-    MPJoin --> MusicDesign["Phase 7: Music Design"]
+    MPJoin --> MusicDesign["Phase 6: Music Design"]
     MusicDesign --> StoreMusicPrompt["Store music prompt"]
     StoreMusicPrompt --> MotFork
 
-    subgraph "Phase 8 — Motion Generation · ~1-5min wall time (gated on scenesWithMusic)"
+    subgraph "Phase 7 — Motion Generation · ~1-5min wall time (gated on scenesWithMusic)"
         direction LR
         MotFork["Start motion<br/>generation"] --> Mot1["<b>Scene 1</b><br/>motion workflow"]
         MotFork --> Mot2["<b>Scene 2</b><br/>motion workflow"]
@@ -229,7 +229,7 @@ Uses `durableStreamingSceneSplit()` — a streaming variant that creates frames 
 - **Response schema:** `sceneSplittingResultSchema`
 - **Output:** `{ scenes[], title, frameMapping[] }` — `frameMapping` is an array of `{ sceneId, frameId }` used throughout remaining phases
 
-### Phase 2+3: Extraction + Matching (Parallel Sub-Workflows)
+### Phase 2: Casting Characters & Locations (Parallel Sub-Workflows)
 
 After scene splitting, two sub-workflows run **in parallel** via `Promise.all([context.invoke(...)])`:
 
@@ -241,7 +241,7 @@ flowchart LR
     LM --> Join
 ```
 
-Each sub-workflow handles both extraction (Phase 2) and conditional matching (Phase 3) internally:
+Each sub-workflow handles both extraction and conditional matching within Phase 2:
 
 **Talent Matching Workflow** (`src/lib/workflows/talent-matching-workflow.ts`):
 
@@ -249,7 +249,7 @@ Each sub-workflow handles both extraction (Phase 2) and conditional matching (Ph
    - `durableLLMCall('character-extraction')` with prompt `phase/character-extraction-chat`
    - Input: `{ scenes }` (JSON-serialized)
    - Output: `{ characterBible }` — array of characters with physical descriptions, clothing, consistency tags
-2. **Talent matching** (emits phase 3, "Casting characters…" — skipped if no `suggestedTalentIds`):
+2. **Talent matching** (emits phase 2, "Casting characters…" — skipped if no `suggestedTalentIds`):
    - `get-talent-list` — Loads talent records from DB by IDs
    - `durableLLMCall('talent-matching')` — LLM matches characters to talent
    - `build-matches` — Deduplicates matches (each talent/character used once), emits `generation.talent:matched`
@@ -261,15 +261,15 @@ Each sub-workflow handles both extraction (Phase 2) and conditional matching (Ph
    - `durableLLMCall('location-extraction')` with prompt `phase/location-extraction-chat`
    - Input: `{ scenes }` (JSON-serialized)
    - Output: `{ locationBible }` — array of locations with descriptions, architecture, color palettes
-2. **Location matching** (emits phase 3, "Matching locations…" — skipped if no `suggestedLocationIds`):
+2. **Location matching** (emits phase 2, "Matching locations…" — skipped if no `suggestedLocationIds`):
    - `get-library-locations` — Loads library locations from DB by IDs
    - `durableLLMCall('location-matching')` — LLM matches locations to library entries (requires confidence >= 0.5)
    - `build-location-matches` — Deduplicates matches, emits `generation.location:matched`
 3. **Returns:** `{ locationBible, matches: libraryLocationMatches }`
 
-> **Note:** Both sub-workflows emit phase 2 simultaneously. The client sees two "phase 2" events (one for characters, one for locations) because the workflows run in parallel.
+> **Note:** All sub-workflows in Phase 2 emit phase 2 simultaneously. The client sees multiple "phase 2" events because the workflows run in parallel.
 
-### Phases 3+4: Character Sheets + Location Sheets + Visual Prompts (Parallel Sub-Workflows)
+### Phase 3: References & Prompts (Parallel Sub-Workflows)
 
 Three sub-workflows invoked in parallel via `Promise.all([context.invoke(...)])`:
 
@@ -297,7 +297,7 @@ flowchart LR
 - Generates establishing-shot reference images for each location (parallel)
 - Uses library location reference images when matched
 - Uploads to R2 storage, updates DB
-- Emits `generation.phase:start` (phase 4) and `generation.phase:complete`
+- Emits `generation.phase:start` (phase 3) and `generation.phase:complete`
 
 **Visual Prompt Workflow** (`src/lib/workflows/visual-prompt-workflow.ts`):
 
@@ -305,9 +305,9 @@ flowchart LR
 - Each scene gets an LLM call that generates a `fullPrompt`, `negativePrompt`, and `continuity` data (character tags, environment tag, color palette, lighting, style tag)
 - Merges results back into scene objects
 
-> **Phase number collision:** Character sheets emit phase 3, while location sheets and visual prompts both emit phase 4. This is intentional — they run in parallel, and the client uses the phase name (not number) for display.
+> **Phase number note:** Character sheets, location sheets, and visual prompts all emit phase 3 since they run in parallel. The client uses the backwards-transition guard to handle duplicate events.
 
-### Phase 5: Persist Visual Prompts + Image Generation
+### Phase 4: Persist Visual Prompts + Image Generation
 
 **Step:** `update-frames-after-visual-prompts`
 
@@ -317,13 +317,13 @@ flowchart LR
 **Image generation** (parallel per scene):
 
 - Records analysis duration on the sequence
-- Emits `generation.phase:start` (phase 5, "Generating images…")
+- Emits `generation.phase:start` (phase 4, "Generating images…")
 - Builds per-scene character and location reference maps (for consistency)
 - Invokes `generateImageWorkflow` per scene in parallel:
   - Each gets the visual prompt, image model, image size, and reference images
   - Retries: 3 attempts with exponential backoff
   - Flow control via `getFalFlowControl()`
-- Emits `generation.phase:complete` (phase 5)
+- Emits `generation.phase:complete` (phase 4)
 
 **Image Workflow** (`src/lib/workflows/image-workflow.ts`):
 
@@ -334,7 +334,7 @@ flowchart LR
 5. Updates frame with `thumbnailUrl`, sets `thumbnailStatus` to `'completed'`
 6. Emits `generation.image:progress` with `status: 'completed'`
 
-### Phase 6: Motion Prompt Generation
+### Phase 5: Motion Prompt Generation
 
 **Sub-workflow:** `motionPromptWorkflow` (`src/lib/workflows/motion-prompt-workflow.ts`)
 
@@ -351,7 +351,7 @@ flowchart LR
 - Writes motion prompts and snapped durations to frame records
 - Emits `generation.frame:updated` with `updateType: 'motion-prompt'`
 
-### Phase 7: Music Design (LLM)
+### Phase 6: Music Design (LLM)
 
 A single LLM call that replaces the old two-call pattern (audio design + music prompt). Classifies per-scene music requirements and generates a unified music prompt with tags.
 
@@ -375,7 +375,7 @@ A single LLM call that replaces the old two-call pattern (audio design + music p
 - Writes complete scene data (with `musicDesign`) to frame records
 - Emits `generation.frame:updated` with `updateType: 'music-design'`
 
-### Store Music Prompt + Phase 8: Motion + Music Generation
+### Store Music Prompt + Phase 7: Motion + Music Generation
 
 **Store music prompt** (runs unconditionally if `sequenceId` exists):
 
@@ -387,7 +387,7 @@ A single LLM call that replaces the old two-call pattern (audio design + music p
 
 **Motion generation** (conditional — if `autoGenerateMotion` && `videoModel` && images exist, inside the `scenesWithMusic` guard):
 
-- Emits `generation.phase:start` (phase 8, "Generating motion…")
+- Emits `generation.phase:start` (phase 7, "Generating motion…")
 - Invokes `generateMotionWorkflow` per scene in parallel
 - Each motion workflow submits a job, polls for completion (batched polling, 30s tight loops with checkpoints between batches, up to 15 min timeout — ~10x fewer QStash steps than per-poll steps)
 - Uploads video to R2, updates frame, emits `generation.video:progress`
@@ -412,12 +412,12 @@ Returns the `completeScenes` array.
 ```mermaid
 flowchart TD
     P1["Phase 1: Scene Splitting"] -->|"sceneId, sceneNumber,<br/>originalScript (extract, dialogue),<br/>metadata (title, durationSeconds,<br/>location, timeOfDay, storyBeat)"| P2
-    P2["Phases 2+3: Extraction +<br/>Matching"] -->|"characterBible,<br/>locationBible<br/>(separate arrays)"| P3
-    P3["Phases 3+4: Visual Prompts"] -->|"+ prompts.visual<br/>(fullPrompt, negativePrompt,<br/>components)<br/>+ continuity<br/>(characterTags, environmentTag,<br/>colorPalette, lightingSetup, styleTag)"| P5
-    P5["Phase 5: Images"] -->|"Frames get thumbnailUrl<br/>(Scene object unchanged)"| P6
-    P6["Phase 6: Motion Prompts"] -->|"+ prompts.motion<br/>(fullPrompt, components,<br/>parameters)<br/>+ snapped duration"| P7
-    P7["Phase 7: Music Design"] -->|"+ musicDesign<br/>(presence, style,<br/>mood, atmosphere)"| P8
-    P8["Phase 8: Motion + Music"] -->|"Sequence gets musicUrl,<br/>Frames get videoUrl"| Final["Complete Scene"]
+    P2["Phase 2: Casting Characters<br/>& Locations"] -->|"characterBible,<br/>locationBible<br/>(separate arrays)"| P3
+    P3["Phase 3: References &<br/>Prompts"] -->|"+ prompts.visual<br/>(fullPrompt, negativePrompt,<br/>components)<br/>+ continuity<br/>(characterTags, environmentTag,<br/>colorPalette, lightingSetup, styleTag)"| P4
+    P4["Phase 4: Images"] -->|"Frames get thumbnailUrl<br/>(Scene object unchanged)"| P5
+    P5["Phase 5: Motion Prompts"] -->|"+ prompts.motion<br/>(fullPrompt, components,<br/>parameters)<br/>+ snapped duration"| P6
+    P6["Phase 6: Music Design"] -->|"+ musicDesign<br/>(presence, style,<br/>mood, atmosphere)"| P7
+    P7["Phase 7: Motion + Music"] -->|"Sequence gets musicUrl,<br/>Frames get videoUrl"| Final["Complete Scene"]
 
     style Final fill:#1a472a,color:#fff
 ```
@@ -432,10 +432,10 @@ Each phase enriches the `Scene` object. The frame's `metadata` column is updated
 | `sceneNumber`    | Phase 1    | Required, 1-indexed                                                        |
 | `originalScript` | Phase 1    | `{ extract, dialogue }` (no `lineNumber`)                                  |
 | `metadata`       | Phase 1    | `{ title, durationSeconds, location, timeOfDay, storyBeat }`               |
-| `prompts.visual` | Phases 3+4 | `{ fullPrompt, negativePrompt, components }`                               |
-| `continuity`     | Phases 3+4 | `{ characterTags, environmentTag, colorPalette, lightingSetup, styleTag }` |
-| `prompts.motion` | Phase 6    | `{ fullPrompt, components, parameters }`                                   |
-| `musicDesign`    | Phase 7    | `{ presence, style, mood, atmosphere }`                                    |
+| `prompts.visual` | Phase 3    | `{ fullPrompt, negativePrompt, components }`                               |
+| `continuity`     | Phase 3    | `{ characterTags, environmentTag, colorPalette, lightingSetup, styleTag }` |
+| `prompts.motion` | Phase 5    | `{ fullPrompt, components, parameters }`                                   |
+| `musicDesign`    | Phase 6    | `{ presence, style, mood, atmosphere }`                                    |
 | `sourceImageUrl` | Optional   | URL of generated or uploaded source image                                  |
 | `audioDesign`    | Deprecated | Kept for backward compat with old frames                                   |
 
@@ -450,10 +450,10 @@ Events emitted via Upstash Realtime on a per-sequence channel (`getGenerationCha
 | `generation.scene:new`                | Phase 1 -- progressively as scenes stream in     | `{ sceneId, sceneNumber, title, scriptExtract, durationSeconds }`     |
 | `generation.updated`                  | Phase 1 -- after title detected in stream        | `{ title }`                                                           |
 | `generation.frame:created`            | Phase 1 -- progressively as frames are upserted  | `{ frameId, sceneId, orderIndex }`                                    |
-| `generation.frame:updated`            | Phases 5, 6, 7 -- after prompts written to DB    | `{ frameId, updateType, metadata }`                                   |
-| `generation.talent:matched`           | Phase 3 -- when talent matched to characters     | `{ matches: [{ characterId, characterName, talentId, talentName }] }` |
-| `generation.talent:unmatched`         | Phase 3 -- unused talent after matching          | `{ unusedTalentIds, unusedTalentNames }`                              |
-| `generation.location:matched`         | Phase 3 -- when locations matched to library     | `{ matches: [{ locationId, locationName, libraryLocationId, ... }] }` |
+| `generation.frame:updated`            | Phases 4, 5, 6 -- after prompts written to DB    | `{ frameId, updateType, metadata }`                                   |
+| `generation.talent:matched`           | Phase 2 -- when talent matched to characters     | `{ matches: [{ characterId, characterName, talentId, talentName }] }` |
+| `generation.talent:unmatched`         | Phase 2 -- unused talent after matching          | `{ unusedTalentIds, unusedTalentNames }`                              |
+| `generation.location:matched`         | Phase 2 -- when locations matched to library     | `{ matches: [{ locationId, locationName, libraryLocationId, ... }] }` |
 | `generation.image:progress`           | Image workflow -- generating/completed/failed    | `{ frameId, status, thumbnailUrl? }`                                  |
 | `generation.variant-image:progress`   | Variant workflow -- generating/completed/failed  | `{ frameId, status, variantImageUrl? }`                               |
 | `generation.video:progress`           | Motion workflow -- generating/completed/failed   | `{ frameId, status, videoUrl? }`                                      |
@@ -506,7 +506,7 @@ Sub-workflows (image, motion, music, character bible, location bible, talent mat
 | `src/lib/workflow/client.ts`                           | `triggerWorkflow()` -- QStash integration                 |
 | `src/routes/api/workflows/$.ts`                        | Workflow route registration (`serveMany`)                 |
 | `src/lib/workflows/storyboard-workflow.ts`             | Wrapper: verify, clear, invoke analyze-script             |
-| `src/lib/workflows/analyze-script-workflow.ts`         | Core orchestration (phases 1-8)                           |
+| `src/lib/workflows/analyze-script-workflow.ts`         | Core orchestration (phases 1-7)                           |
 | `src/lib/workflows/llm-call-helper.ts`                 | `durableLLMCall()` + `durableStreamingSceneSplit()`       |
 | `src/lib/workflows/constants.ts`                       | `getFalFlowControl()` — shared Fal.ai concurrency config  |
 | `src/lib/ai/streaming-scene-parser.ts`                 | Incremental JSON parser for streaming scene creation      |

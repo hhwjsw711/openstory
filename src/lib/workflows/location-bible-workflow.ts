@@ -50,7 +50,7 @@ export const locationBibleWorkflow = createScopedWorkflow<
       await getGenerationChannel(input.sequenceId).emit(
         'generation.phase:start',
         {
-          phase: 4,
+          phase: 3,
           phaseName: 'Designing locations…',
         }
       );
@@ -207,7 +207,7 @@ export const locationBibleWorkflow = createScopedWorkflow<
     await context.run('location-bible-complete', async () => {
       await getGenerationChannel(input.sequenceId).emit(
         'generation.phase:complete',
-        { phase: 4 }
+        { phase: 3 }
       );
     });
 
@@ -222,7 +222,7 @@ export const locationBibleWorkflow = createScopedWorkflow<
       if (input.sequenceId) {
         await getGenerationChannel(input.sequenceId).emit(
           'generation.phase:complete',
-          { phase: 4 }
+          { phase: 3 }
         );
       }
 

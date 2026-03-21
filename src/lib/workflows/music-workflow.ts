@@ -60,7 +60,7 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
         context,
         {
           name: 'music-prompt-generation',
-          phase: { number: 8, name: 'Composing music…' },
+          phase: { number: 6, name: 'Composing music…' },
           promptName: 'phase/music-prompt-generation-chat',
           promptVariables: {
             scenes: JSON.stringify(input.scenes),

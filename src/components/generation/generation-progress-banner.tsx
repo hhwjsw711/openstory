@@ -102,7 +102,7 @@ export const GenerationProgressBanner: React.FC<
           )}
 
           <span
-            className="ml-auto text-sm tabular-nums text-muted-foreground"
+            className="ml-auto text-base font-medium tabular-nums text-muted-foreground"
             aria-live="polite"
           >
             {formatTimeRemaining(remaining)}
