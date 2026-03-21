@@ -5,6 +5,7 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
+import { GenerationProgressBanner } from '@/components/generation/generation-progress-banner';
 import { FailureSummaryBanner } from '@/components/sequence/failure-summary-banner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useFramesBySequence } from '@/hooks/use-frames';
@@ -267,6 +268,15 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Generation progress banner */}
+      {(isProcessing || generationState.currentPhase > 0) && (
+        <GenerationProgressBanner
+          generationState={generationState}
+          isProcessing={isProcessing}
+          startedAt={sequence?.updatedAt}
+        />
+      )}
+
       {/* Failure summary with smart retry */}
       {failureSummary?.hasFailed && (
         <FailureSummaryBanner

@@ -1,0 +1,58 @@
+/**
+ * Fixed time estimates for generation phases based on scene count.
+ * Used to show a countdown timer in the generation progress banner.
+ */
+
+const PHASE_BUDGETS = [
+  { base: 15, perScene: 0 }, // 1. Analyzing script
+  { base: 10, perScene: 0 }, // 2. Finding characters
+  { base: 20, perScene: 0 }, // 3. Drawing characters
+  { base: 15, perScene: 0 }, // 4. Designing locations
+  { base: 5, perScene: 3 }, // 5. Writing prompts
+  { base: 5, perScene: 0 }, // 6. Designing sound
+  { base: 10, perScene: 15 }, // 7. Generating images
+] as const;
+
+const DEFAULT_SCENE_COUNT = 6;
+
+function phaseBudget(phaseIndex: number, sceneCount: number): number {
+  const budget = PHASE_BUDGETS[phaseIndex];
+  if (!budget) return 0;
+  return budget.base + budget.perScene * sceneCount;
+}
+
+export function estimateTotalSeconds(sceneCount: number): number {
+  const scenes = sceneCount > 0 ? sceneCount : DEFAULT_SCENE_COUNT;
+  return PHASE_BUDGETS.reduce(
+    (sum, b) => sum + b.base + b.perScene * scenes,
+    0
+  );
+}
+
+export function estimateRemainingSeconds(opts: {
+  sceneCount: number;
+  completedPhases: number[];
+  elapsedSeconds: number;
+}): number {
+  const scenes = opts.sceneCount > 0 ? opts.sceneCount : DEFAULT_SCENE_COUNT;
+  const completedSet = new Set(opts.completedPhases);
+
+  let remaining = 0;
+  for (let i = 0; i < PHASE_BUDGETS.length; i++) {
+    const phaseNumber = i + 1;
+    if (!completedSet.has(phaseNumber)) {
+      remaining += phaseBudget(i, scenes);
+    }
+  }
+
+  return Math.max(0, remaining);
+}
+
+export function formatTimeRemaining(seconds: number): string {
+  if (seconds <= 0) return 'Finishing up\u2026';
+  if (seconds < 60) return `~${seconds}s remaining`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  const paddedSecs = secs.toString().padStart(2, '0');
+  return `~${minutes}:${paddedSecs} remaining`;
+}
