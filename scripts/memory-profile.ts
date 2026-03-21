@@ -9,6 +9,15 @@
  *   bun scripts/memory-profile.ts --clear      # Clear samples
  */
 
+/**
+ * Memory profiling visualizer for workflow execution
+ *
+ * Usage:
+ *   bun scripts/memory-profile.ts              # Fetch samples, generate chart, open in browser
+ *   bun scripts/memory-profile.ts --watch      # Poll every 2s, regenerate chart
+ *   bun scripts/memory-profile.ts --json       # Raw JSON output
+ *   bun scripts/memory-profile.ts --clear      # Clear samples
+ */
 export {};
 
 const BASE_URL = process.env.VITE_APP_URL ?? 'http://localhost:3000';
