@@ -481,24 +481,24 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             }
           }}
           options={[
+            { value: 'scene-variants', label: 'Variants' },
             { value: 'script', label: 'Script' },
             { value: 'cast', label: 'Cast' },
             { value: 'location', label: 'Location' },
             { value: 'image-prompt', label: 'Image' },
             { value: 'motion-prompt', label: 'Motion' },
-            { value: 'scene-variants', label: 'Variants' },
           ]}
         />
       </div>
 
       {/* Desktop: Tab buttons */}
       <TabsList className="hidden md:flex">
+        <TabsTrigger value="scene-variants">Variants</TabsTrigger>
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="cast">Cast</TabsTrigger>
         <TabsTrigger value="location">Location</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
         <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
-        <TabsTrigger value="scene-variants">Variants</TabsTrigger>
       </TabsList>
 
       <TabsContent value="script">

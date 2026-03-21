@@ -76,7 +76,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const navigate = useNavigate();
 
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
-  const [selectedTab, setSelectedTab] = useState<TabValue>('script');
+  const [selectedTab, setSelectedTab] = useState<TabValue>('scene-variants');
 
   const [regeneratingImages, setRegeneratingImages] = useState<Set<string>>(
     () => new Set()
