@@ -32,7 +32,9 @@ function createTalentReadMethods(db: Database, teamId: string) {
           sheetCount: sql<number>`(
             SELECT COUNT(*) FROM talent_sheets
             WHERE talent_sheets.talent_id = ${talent.id}
-          )`.as('sheet_count'),
+          )`
+            .mapWith(Number)
+            .as('sheet_count'),
         })
         .from(talent)
         .where(and(...conditions))
@@ -95,7 +97,9 @@ function createTalentReadMethods(db: Database, teamId: string) {
           sheetCount: sql<number>`(
             SELECT COUNT(*) FROM talent_sheets
             WHERE talent_sheets.talent_id = ${talent.id}
-          )`.as('sheet_count'),
+          )`
+            .mapWith(Number)
+            .as('sheet_count'),
         })
         .from(talent)
         .where(
@@ -259,7 +263,7 @@ export function createTalentMethods(
 
       create: async (data: NewTalentSheet): Promise<TalentSheet> => {
         const existingSheets = await db
-          .select({ count: sql<number>`count(*)` })
+          .select({ count: sql<number>`count(*)`.mapWith(Number) })
           .from(talentSheets)
           .where(eq(talentSheets.talentId, data.talentId));
 
