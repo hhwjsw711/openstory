@@ -201,6 +201,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
           teamId: input.teamId,
           characterBible,
           talentMatches: talentCharacterMatches,
+          imageModel,
         },
         flowControl: getFalFlowControl(),
       }),

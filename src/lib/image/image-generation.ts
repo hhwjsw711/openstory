@@ -429,8 +429,12 @@ function buildFalModelOptions(
         aspect_ratio: imageSizeToAspectRatio(
           params.imageSize ?? DEFAULT_IMAGE_SIZE
         ),
+        resolution: params.resolution ?? '2K',
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 
