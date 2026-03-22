@@ -106,70 +106,7 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
         data.characterId
       );
 
-    // If talent has a completed sheet, use it directly as the character sheet
-    // This avoids content filter issues with re-generating celebrity likenesses
-    const hasTalentSheet = !!defaultSheet?.imageUrl;
-
-    if (hasTalentSheet) {
-      // Use talent sheet directly — no need to regenerate
-      await context.scopedDb.characters.updateSheet(
-        data.characterId,
-        defaultSheet?.imageUrl ?? '',
-        defaultSheet?.imagePath ?? ''
-      );
-
-      await getGenerationChannel(character.sequenceId).emit(
-        'generation.character-sheet:progress',
-        {
-          characterId: data.characterId,
-          status: 'completed',
-          sheetImageUrl: defaultSheet.imageUrl ?? undefined,
-        }
-      );
-
-      // Still regenerate affected frames with the new character reference
-      if (affectedFrameIds.length > 0) {
-        const workflowInput: RecastCharacterWorkflowInput = {
-          characterDbId: data.characterId,
-          characterName: character.name,
-          characterMetadata: {
-            characterId: character.characterId,
-            name: character.name,
-            ...castingAttrs,
-          },
-          sequenceId: character.sequenceId,
-          teamId: context.teamId,
-          userId: context.user.id,
-          referenceImageUrl: defaultSheet.imageUrl ?? undefined,
-          talentMetadata: defaultSheet.metadata ?? undefined,
-          talentDescription:
-            `This character must look exactly like ${talentWithSheets.name}. ${talentWithSheets.description ?? ''}`.trim(),
-          affectedFrameIds,
-          skipSheetGeneration: true,
-        };
-
-        const workflowRunId = await triggerWorkflow(
-          '/recast-character',
-          workflowInput
-        );
-
-        return {
-          character: updatedCharacter,
-          talentId: data.talentId,
-          sheetWorkflowRunId: workflowRunId,
-          affectedFrameIds,
-        };
-      }
-
-      return {
-        character: updatedCharacter,
-        talentId: data.talentId,
-        sheetWorkflowRunId: undefined,
-        affectedFrameIds,
-      };
-    }
-
-    // Fallback: no talent sheet available, generate one
+    // Always generate a character sheet showing the talent in costume
     await context.scopedDb.characters.updateSheetStatus(
       data.characterId,
       'generating'

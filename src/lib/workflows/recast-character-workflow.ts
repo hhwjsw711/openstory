@@ -20,50 +20,40 @@ export const recastCharacterWorkflow =
 
       console.log(
         '[RecastCharacterWorkflow]',
-        `Starting recast for ${input.characterName} with ${input.affectedFrameIds.length} affected frames${input.skipSheetGeneration ? ' (using talent sheet directly)' : ''}`
+        `Starting recast for ${input.characterName} with ${input.affectedFrameIds.length} affected frames`
       );
 
-      let sheetImageUrl: string | undefined;
-
-      if (input.skipSheetGeneration) {
-        // Talent sheet was already applied directly to the character record
-        // by the server function — skip sheet generation
-        sheetImageUrl = input.referenceImageUrl;
-        console.log(
-          '[RecastCharacterWorkflow]',
-          `Using existing talent sheet for ${input.characterName}, regenerating ${input.affectedFrameIds.length} frames`
-        );
-      } else {
-        // Step 1: Generate new character sheet with talent appearance
-        const { body: sheetResult, isFailed: sheetFailed } =
-          await context.invoke('character-sheet', {
-            workflow: characterSheetWorkflow,
-            body: {
-              characterDbId: input.characterDbId,
-              characterName: input.characterName,
-              characterMetadata: input.characterMetadata,
-              sequenceId: input.sequenceId,
-              teamId: input.teamId,
-              userId: input.userId,
-              imageModel: input.imageModel,
-              referenceImageUrl: input.referenceImageUrl,
-              talentMetadata: input.talentMetadata,
-              talentDescription: input.talentDescription,
-            },
-          });
-
-        if (sheetFailed || !sheetResult?.sheetImageUrl) {
-          throw new Error(
-            `Character sheet generation failed for ${input.characterName}`
-          );
+      // Step 1: Generate character sheet showing talent in costume
+      const { body: sheetResult, isFailed: sheetFailed } = await context.invoke(
+        'character-sheet',
+        {
+          workflow: characterSheetWorkflow,
+          body: {
+            characterDbId: input.characterDbId,
+            characterName: input.characterName,
+            characterMetadata: input.characterMetadata,
+            sequenceId: input.sequenceId,
+            teamId: input.teamId,
+            userId: input.userId,
+            imageModel: input.imageModel,
+            referenceImageUrl: input.referenceImageUrl,
+            talentMetadata: input.talentMetadata,
+            talentDescription: input.talentDescription,
+          },
         }
+      );
 
-        sheetImageUrl = sheetResult.sheetImageUrl;
-        console.log(
-          '[RecastCharacterWorkflow]',
-          `Character sheet generated for ${input.characterName}, regenerating ${input.affectedFrameIds.length} frames`
+      if (sheetFailed || !sheetResult?.sheetImageUrl) {
+        throw new Error(
+          `Character sheet generation failed for ${input.characterName}`
         );
       }
+
+      const sheetImageUrl = sheetResult.sheetImageUrl;
+      console.log(
+        '[RecastCharacterWorkflow]',
+        `Character sheet generated for ${input.characterName}, regenerating ${input.affectedFrameIds.length} frames`
+      );
 
       // Step 2: Regenerate frames if there are any affected
       let framesRegenerated = 0;

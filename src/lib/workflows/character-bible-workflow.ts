@@ -67,81 +67,70 @@ export const characterBibleWorkflow = createScopedWorkflow<
               })
             : null;
 
-          // If talent has a completed sheet, use it directly as the character sheet
-          // This avoids content filter issues with re-generating celebrity likenesses
-          const useTalentSheetDirectly = !!(
-            talentMatch?.sheetImageUrl && talentMatch.sheetImageUrl.length > 0
+          // Generate character sheet (with talent appearance as reference)
+          const { prompt, referenceUrls } = talentMatch
+            ? buildCharacterSheetPrompt(character, {
+                sheetMetadata: talentMatch.sheetMetadata,
+                description: `This character must look exactly like ${talentMatch.talentName}`,
+                sheetImageUrl: talentMatch.sheetImageUrl,
+              })
+            : buildCharacterSheetPrompt(character);
+
+          const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
+
+          const imageResult = await generateImageWithProvider(
+            {
+              model,
+              prompt,
+              imageSize: 'landscape_16_9' as const,
+              numImages: 1,
+              resolution: '2K' as const,
+              referenceImageUrls:
+                referenceUrls.length > 0 ? referenceUrls : undefined,
+              traceName: 'character-bible-image',
+            },
+            { scopedDb }
           );
+
+          await deductWorkflowCredits({
+            scopedDb,
+            costMicros: extractImageCost(imageResult.metadata),
+            usedOwnKey: imageResult.metadata.usedOwnKey,
+            description: `Character bible sheet (${model})`,
+            metadata: { model, characterId: character.characterId },
+            workflowName: 'CharacterBibleWorkflow',
+          });
+
+          const generatedUrl = imageResult.imageUrls[0];
+          if (!generatedUrl) {
+            throw new Error('No image URL returned from generation');
+          }
 
           let sheetImageUrl: string;
           let sheetImagePath: string | undefined;
 
-          if (useTalentSheetDirectly) {
-            // Use talent's existing sheet — skip image generation entirely
-            sheetImageUrl = talentMatch.sheetImageUrl;
-            sheetImagePath = undefined;
-          } else {
-            // Generate character sheet (with talent overrides if matched but no sheet)
-            const { prompt, referenceUrls } = talentMatch
-              ? buildCharacterSheetPrompt(character, {
-                  sheetMetadata: talentMatch.sheetMetadata,
-                  description: `This character must look exactly like ${talentMatch.talentName}`,
-                  sheetImageUrl: talentMatch.sheetImageUrl,
-                })
-              : buildCharacterSheetPrompt(character);
-
-            const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
-
-            const imageResult = await generateImageWithProvider(
-              {
-                model,
-                prompt,
-                imageSize: 'landscape_16_9' as const,
-                numImages: 1,
-                resolution: '2K' as const,
-                referenceImageUrls:
-                  referenceUrls.length > 0 ? referenceUrls : undefined,
-                traceName: 'character-bible-image',
-              },
-              { scopedDb }
-            );
-
-            await deductWorkflowCredits({
-              scopedDb,
-              costMicros: extractImageCost(imageResult.metadata),
-              usedOwnKey: imageResult.metadata.usedOwnKey,
-              description: `Character bible sheet (${model})`,
-              metadata: { model, characterId: character.characterId },
-              workflowName: 'CharacterBibleWorkflow',
-            });
-
-            const generatedUrl = imageResult.imageUrls[0];
-            if (!generatedUrl) {
-              throw new Error('No image URL returned from generation');
-            }
-
-            // Upload to R2 if we have storage context
-            if (input.sequenceId && input.userId && input.teamId) {
-              const id = generateId();
-              const storagePath = `${input.teamId}/${input.sequenceId}/${id}.png`;
-              const response = await fetch(generatedUrl);
-              if (!response.ok) {
-                throw new Error(
-                  `Failed to fetch generated image: ${response.status}`
-                );
-              }
-              const imageBlob = await response.blob();
-              const storageResult = await uploadFile(
-                STORAGE_BUCKETS.CHARACTERS,
-                storagePath,
-                imageBlob,
-                { contentType: 'image/png' }
+          // Upload to R2 if we have storage context
+          if (input.sequenceId && input.userId && input.teamId) {
+            const id = generateId();
+            const storagePath = `${input.teamId}/${input.sequenceId}/${id}.png`;
+            const response = await fetch(generatedUrl);
+            if (!response.ok) {
+              throw new Error(
+                `Failed to fetch generated image: ${response.status}`
               );
-              sheetImageUrl = storageResult.publicUrl;
-              sheetImagePath = storageResult.path;
-            } else {
-              sheetImageUrl = generatedUrl;
             }
+            const imageBlob = await response.blob();
+            const storageResult = await uploadFile(
+              STORAGE_BUCKETS.CHARACTERS,
+              storagePath,
+              imageBlob,
+              { contentType: 'image/png' }
+            );
+            sheetImageUrl = storageResult.publicUrl;
+            sheetImagePath = storageResult.path;
+          } else {
+            sheetImageUrl = generatedUrl;
+            sheetImagePath = undefined;
           }
 
           // Generate ULID-based filename

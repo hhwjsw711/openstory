@@ -181,8 +181,6 @@ export interface RecastCharacterWorkflowInput extends SequenceWorkflowContext {
   talentDescription?: string;
   /** Frame IDs to regenerate after sheet generation */
   affectedFrameIds: string[];
-  /** Skip character sheet generation (when talent sheet is used directly) */
-  skipSheetGeneration?: boolean;
 }
 
 /**
