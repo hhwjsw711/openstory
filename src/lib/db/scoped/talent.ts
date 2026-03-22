@@ -31,7 +31,7 @@ function createTalentReadMethods(db: Database, teamId: string) {
           talent: talent,
           sheetCount: sql<number>`(
             SELECT COUNT(*) FROM talent_sheets
-            WHERE talent_sheets.talent_id = ${talent.id}
+            WHERE talent_sheets.talent_id = ${sql.raw(`"talent"."id"`)}
           )`
             .mapWith(Number)
             .as('sheet_count'),
@@ -96,7 +96,7 @@ function createTalentReadMethods(db: Database, teamId: string) {
           talent: talent,
           sheetCount: sql<number>`(
             SELECT COUNT(*) FROM talent_sheets
-            WHERE talent_sheets.talent_id = ${talent.id}
+            WHERE talent_sheets.talent_id = ${sql.raw(`"talent"."id"`)}
           )`
             .mapWith(Number)
             .as('sheet_count'),
