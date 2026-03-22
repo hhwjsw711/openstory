@@ -5,18 +5,12 @@
  * Uses the reference images to create a consistent talent sheet.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
-import {
-  createTalentSheet,
-  getTalentById,
-  updateTalent,
-} from '@/lib/db/helpers/talent';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -27,18 +21,20 @@ import {
   buildTalentHeadshotPrompt,
 } from '@/lib/prompts/character-prompt';
 import { getTalentChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LibraryTalentSheetWorkflowInput,
   LibraryTalentSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const libraryTalentSheetWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<LibraryTalentSheetWorkflowInput>
-  ): Promise<LibraryTalentSheetWorkflowResult> => {
+export const libraryTalentSheetWorkflow = createScopedWorkflow<
+  LibraryTalentSheetWorkflowInput,
+  LibraryTalentSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     // Step 1: Validate input
@@ -48,12 +44,9 @@ export const libraryTalentSheetWorkflow = createWorkflow(
       }
 
       // Verify talent exists and belongs to team
-      const talentRecord = await getTalentById(input.talentId);
+      const talentRecord = await scopedDb.talent.getById(input.talentId);
       if (!talentRecord) {
         throw new WorkflowValidationError('Talent not found');
-      }
-      if (talentRecord.teamId !== input.teamId) {
-        throw new WorkflowValidationError('Talent does not belong to team');
       }
 
       const hasReferenceImages =
@@ -95,7 +88,6 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         numImages: 1,
         resolution: '2K',
         traceName: 'talent-sheet-image',
-        teamId: input.teamId,
       } satisfies ImageGenerationParams;
 
       // Only include referenceImageUrls if provided
@@ -103,16 +95,15 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         generationParams.referenceImageUrls = input.referenceImageUrls;
       }
 
-      return await generateImageWithProvider(generationParams);
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for sheet generation (skip if team used own fal key)
     await context.run('deduct-credits-sheet', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId,
         description: `Talent sheet (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
         metadata: { talentId: input.talentId, type: 'sheet' },
         workflowName: 'LibraryTalentSheetWorkflow',
@@ -160,7 +151,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         `Creating sheet record in database`
       );
 
-      return await createTalentSheet({
+      return await scopedDb.talent.sheets.create({
         id: storageResult.sheetId,
         talentId: input.talentId,
         name: input.sheetName ?? 'Generated Sheet',
@@ -195,7 +186,6 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           imageSize: 'square_hd',
           numImages: 1,
           traceName: 'talent-headshot-image',
-          teamId: input.teamId,
         } satisfies ImageGenerationParams;
 
         // Only include referenceImageUrls if provided
@@ -203,17 +193,16 @@ export const libraryTalentSheetWorkflow = createWorkflow(
           generationParams.referenceImageUrls = input.referenceImageUrls;
         }
 
-        return await generateImageWithProvider(generationParams);
+        return await generateImageWithProvider(generationParams, { scopedDb });
       }
     );
 
     // Deduct credits for headshot generation (skip if team used own fal key)
     await context.run('deduct-credits-headshot', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(headshotResult.metadata),
         usedOwnKey: headshotResult.metadata.usedOwnKey,
-        userId: input.userId,
         description: `Talent headshot (${input.imageModel ?? DEFAULT_IMAGE_MODEL})`,
         metadata: { talentId: input.talentId, type: 'headshot' },
         workflowName: 'LibraryTalentSheetWorkflow',
@@ -267,7 +256,7 @@ export const libraryTalentSheetWorkflow = createWorkflow(
         `Updating talent with headshot`
       );
 
-      await updateTalent(input.talentId, input.teamId, {
+      await scopedDb.talent.update(input.talentId, {
         imageUrl: headshotStorageResult.url,
         imagePath: headshotStorageResult.path,
       });
@@ -300,17 +289,18 @@ export const libraryTalentSheetWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       console.error(
         '[LibraryTalentSheetWorkflow]',
-        `Sheet generation failed for talent ${input.talentName}: ${failResponse}`
+        `Sheet generation failed for talent ${input.talentName}: ${error}`
       );
 
       // Emit failed status
       await getTalentChannel(input.talentId)?.emit('talent.sheet:progress', {
         talentId: input.talentId,
         status: 'failed',
-        error: `Sheet generation failed: ${failResponse}`,
+        error: `Sheet generation failed: ${error}`,
       });
 
       return `Talent sheet generation failed for ${input.talentName}`;

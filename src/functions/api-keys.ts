@@ -9,7 +9,6 @@ import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { teamAdminAccessMiddleware } from './middleware';
-import { apiKeyService } from '@/lib/byok/api-key.service';
 
 const providerSchema = z.enum(['openrouter', 'fal']);
 
@@ -28,7 +27,7 @@ export const listApiKeysFn = createServerFn({ method: 'GET' })
   .middleware([teamAdminAccessMiddleware])
   .inputValidator(zodValidator(listApiKeysInputSchema))
   .handler(async ({ context }) => {
-    return apiKeyService.listKeys(context.teamId);
+    return context.scopedDb.apiKeys.listKeys();
   });
 
 // ============================================================================
@@ -50,7 +49,7 @@ export const saveApiKeyFn = createServerFn({ method: 'POST' })
   .inputValidator(zodValidator(saveApiKeyInputSchema))
   .handler(async ({ data, context }) => {
     // Validate the key first
-    const validation = await apiKeyService.validateKey(
+    const validation = await context.scopedDb.apiKeys.validateKey(
       data.provider,
       data.apiKey
     );
@@ -60,12 +59,10 @@ export const saveApiKeyFn = createServerFn({ method: 'POST' })
       );
     }
 
-    return apiKeyService.saveKey({
-      teamId: context.teamId,
+    return context.scopedDb.apiKeys.saveKey({
       provider: data.provider,
       apiKey: data.apiKey,
       source: 'manual',
-      addedBy: context.user.id,
     });
   });
 
@@ -86,7 +83,7 @@ export const deleteApiKeyFn = createServerFn({ method: 'POST' })
   .middleware([teamAdminAccessMiddleware])
   .inputValidator(zodValidator(deleteApiKeyInputSchema))
   .handler(async ({ data, context }) => {
-    await apiKeyService.deleteKey(context.teamId, data.provider);
+    await context.scopedDb.apiKeys.deleteKey(data.provider);
   });
 
 // ============================================================================
@@ -105,8 +102,8 @@ export const checkApiKeyStatusFn = createServerFn({ method: 'GET' })
   .inputValidator(zodValidator(checkApiKeyStatusInputSchema))
   .handler(async ({ context }) => {
     const [hasOpenRouter, hasFal] = await Promise.all([
-      apiKeyService.hasKey(context.teamId, 'openrouter'),
-      apiKeyService.hasKey(context.teamId, 'fal'),
+      context.scopedDb.apiKeys.hasKey('openrouter'),
+      context.scopedDb.apiKeys.hasKey('fal'),
     ]);
 
     return {

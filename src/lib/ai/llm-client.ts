@@ -73,13 +73,29 @@ export function modelSupportsStructuredOutputs(model: string): boolean {
   return STRUCTURED_OUTPUT_MODELS.has(model);
 }
 
+/**
+ * Recursively strip `~standard` metadata that Zod v4's toJSONSchema() injects.
+ * OpenRouter rejects it: "property '~standard' is not supported".
+ */
+function stripZodMetadata(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(stripZodMetadata);
+  if (obj && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .filter(([key]) => key !== '~standard')
+        .map(([key, value]) => [key, stripZodMetadata(value)])
+    );
+  }
+  return obj;
+}
+
 function buildResponseFormat(schema: z.ZodTypeAny, name: string) {
   return {
     type: 'json_schema' as const,
-    json_schema: {
+    jsonSchema: {
       name,
       strict: true,
-      schema: z.toJSONSchema(schema),
+      schema: stripZodMetadata(z.toJSONSchema(schema)),
     },
   };
 }
@@ -120,7 +136,7 @@ function buildModelOptions(params: LLMRequestParams) {
     frequency_penalty: params.frequency_penalty,
     presence_penalty: params.presence_penalty,
     ...(params.responseSchema && {
-      response_format: buildResponseFormat(
+      responseFormat: buildResponseFormat(
         params.responseSchema,
         params.observationName ?? 'response'
       ),
@@ -172,10 +188,12 @@ export async function callLLM(params: LLMRequestParams): Promise<string> {
 export async function* callLLMStream(
   params: LLMRequestParams
 ): AsyncGenerator<StreamChunk> {
-  if (params.responseSchema) validateStructuredOutputSupport(params.model);
-
   let accumulated = '';
 
+  // NOTE: outputSchema cannot be used here — @tanstack/ai forces stream:false when
+  // outputSchema is set. And modelOptions.response_format is not forwarded by the
+  // OpenRouter adapter. So streaming relies on the system prompt for JSON structure,
+  // with stripCodeFences + schema validation as the safety net.
   const stream = chat({
     ...baseChatOptions(params),
     metadata: buildChatMetadata(params),
@@ -183,6 +201,7 @@ export async function* callLLMStream(
       ...buildModelOptions(params),
       stream_options: { include_usage: true },
     },
+    stream: true,
   });
 
   for await (const event of stream) {

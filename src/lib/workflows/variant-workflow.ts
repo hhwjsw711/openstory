@@ -3,8 +3,10 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { updateFrame } from '@/lib/db/helpers/frames';
+import {
+  DEFAULT_IMAGE_SIZE,
+  getVariantGridConfig,
+} from '@/lib/constants/aspect-ratios';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -17,15 +19,18 @@ import {
 import { getVariantImagePrompt } from '@/lib/prompts/variant-image';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   VariantWorkflowInput,
   VariantWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const generateVariantWorkflow = createWorkflow(
-  async (context: WorkflowContext<VariantWorkflowInput>) => {
+export const generateVariantWorkflow = createScopedWorkflow<
+  VariantWorkflowInput,
+  VariantWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     // Guard against undefined payload (can happen with stale workflow retries)
@@ -52,11 +57,15 @@ export const generateVariantWorkflow = createWorkflow(
         );
 
         const model = input.model || DEFAULT_IMAGE_MODEL;
-        const imageSize = input.imageSize ?? DEFAULT_IMAGE_SIZE;
+        const gridConfig = input.aspectRatio
+          ? getVariantGridConfig(input.aspectRatio)
+          : null;
+        const imageSize =
+          gridConfig?.imageSize ?? input.imageSize ?? DEFAULT_IMAGE_SIZE;
 
         if (input.frameId) {
           // update frame status to generating and store user prompt
-          const frame = await updateFrame(
+          const frame = await scopedDb.frames.update(
             input.frameId,
             {
               variantImageStatus: 'generating',
@@ -83,12 +92,21 @@ export const generateVariantWorkflow = createWorkflow(
           );
         }
 
-        // Combine all references: thumbnail + characters + locations
-        const basePrompt = getVariantImagePrompt(imageSize);
+        // Build prompt with scene context and grid layout
+        const basePrompt = getVariantImagePrompt(
+          imageSize,
+          input.scenePrompt,
+          gridConfig
+            ? { cols: gridConfig.cols, rows: gridConfig.rows }
+            : undefined
+        );
+
+        // ALL references go through buildReferenceImagePrompt so each URL is labeled in the prompt
         const allReferences: ReferenceImageDescription[] = [
           {
             referenceImageUrl: input.thumbnailUrl,
-            description: 'Source image to create variants from',
+            description: `Primary source scene — generate ${gridConfig?.count ?? 9} variant shots from this image`,
+            role: 'primary',
           },
           ...(input.characterReferences ?? []),
           ...(input.locationReferences ?? []),
@@ -106,7 +124,6 @@ export const generateVariantWorkflow = createWorkflow(
           seed: input.seed,
           referenceImageUrls: referenceUrls,
           traceName: 'variant-image',
-          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
@@ -123,18 +140,15 @@ export const generateVariantWorkflow = createWorkflow(
         `Generating variant image ${input.frameId} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider({
-        ...generationParams,
-      });
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId,
         description: `Variant image generation (${generationParams.model})`,
         metadata: {
           model: generationParams.model,
@@ -173,7 +187,7 @@ export const generateVariantWorkflow = createWorkflow(
 
         imageUrl = result.url;
 
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           input.frameId,
           {
             variantImageUrl: result.url, // Store public URL (permanent, not signed)
@@ -218,16 +232,17 @@ export const generateVariantWorkflow = createWorkflow(
     return result;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       // Set frame thumbnail status to 'failed' after all retries exhausted
-      if (input.frameId) {
-        await updateFrame(
+      if (input.frameId && input.teamId) {
+        await scopedDb.frames.update(
           input.frameId,
           {
             thumbnailStatus: 'failed',
-            thumbnailError: failResponse,
+            thumbnailError: error,
           },
           { throwOnMissing: false }
         );
@@ -249,7 +264,7 @@ export const generateVariantWorkflow = createWorkflow(
 
         console.error(
           '[VariantWorkflow]',
-          `Image generation failed for frame ${input.frameId}: ${failResponse}`
+          `Image generation failed for frame ${input.frameId}: ${error}`
         );
       }
 

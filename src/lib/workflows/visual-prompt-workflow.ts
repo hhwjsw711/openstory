@@ -5,17 +5,17 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
-import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
+import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
 import { visualPromptSceneWorkflow } from './visual-prompt-scene-workflow';
 
-export const visualPromptWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<VisualPromptWorkflowInput>
-  ): Promise<Scene[]> => {
+export const visualPromptWorkflow = createScopedWorkflow<
+  VisualPromptWorkflowInput,
+  Scene[]
+>(
+  async (context, _scopedDb) => {
     const input = context.requestPayload;
     const {
       scenes,
@@ -27,8 +27,7 @@ export const visualPromptWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[VisualPromptWorkflow] Starting visual prompt generation input:',
-      input
+      `[VisualPromptWorkflow] Starting visual prompt generation for ${scenes.length} scenes`
     );
     // ============================================================
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)

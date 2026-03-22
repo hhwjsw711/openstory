@@ -1,9 +1,6 @@
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
-import { isBillingEnabled } from '@/lib/billing/constants';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { usdToMicros, microsToUsd } from '@/lib/billing/money';
+import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { DEFAULT_IMAGE_SIZE } from '@/lib/constants/aspect-ratios';
-import { updateFrame } from '@/lib/db/helpers/frames';
 import {
   generateImageWithProvider,
   type ImageGenerationParams,
@@ -12,9 +9,9 @@ import { uploadImageToStorage } from '@/lib/image/image-storage';
 import { buildReferenceImagePrompt } from '@/lib/prompts/reference-image-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { ImageWorkflowInput } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 type ImageWorkflowResult = {
   imageUrl: string;
@@ -22,10 +19,11 @@ type ImageWorkflowResult = {
   sequenceId?: string;
 };
 
-export const generateImageWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<ImageWorkflowInput>
-  ): Promise<ImageWorkflowResult> => {
+export const generateImageWorkflow = createScopedWorkflow<
+  ImageWorkflowInput,
+  ImageWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     const generationParams = await context.run(
@@ -45,7 +43,7 @@ export const generateImageWorkflow = createWorkflow(
         const model = input.model ?? DEFAULT_IMAGE_MODEL;
 
         if (input.frameId) {
-          const frame = await updateFrame(
+          const frame = await scopedDb.frames.update(
             input.frameId,
             {
               thumbnailStatus: 'generating',
@@ -82,7 +80,6 @@ export const generateImageWorkflow = createWorkflow(
           referenceImageUrls:
             input.referenceImages?.map((ref) => ref.referenceImageUrl) ?? [],
           traceName: 'frame-image',
-          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
@@ -100,29 +97,20 @@ export const generateImageWorkflow = createWorkflow(
         '[ImageWorkflow]',
         `Generating image ${input.frameId} with model ${generationParams.model}`
       );
-      return generateImageWithProvider({
-        ...generationParams,
-      });
+      return generateImageWithProvider(generationParams, { scopedDb });
     });
 
-    const imageCostRaw = imageResult.metadata.cost ?? 0;
-    const imageCostMicros = usdToMicros(imageCostRaw);
+    const imageCostMicros = imageResult.metadata.cost ?? ZERO_MICROS;
     const { teamId, frameId, sequenceId } = input;
-    if (
-      isBillingEnabled() &&
-      imageCostMicros > 0 &&
-      teamId &&
-      !imageResult.metadata.usedOwnKey
-    ) {
+    if (imageCostMicros > 0 && teamId && !imageResult.metadata.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        if (!(await hasEnoughCredits(teamId, imageCostMicros))) {
+        if (!(await scopedDb.billing.hasEnoughCredits(imageCostMicros))) {
           console.warn(
             `[ImageWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(imageCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, imageCostMicros, {
-          userId: input.userId,
+        await scopedDb.billing.deductCredits(imageCostMicros, {
           description: `Image generation (${generationParams.model})`,
           metadata: {
             model: generationParams.model,
@@ -148,7 +136,7 @@ export const generateImageWorkflow = createWorkflow(
           throw new Error('Failed to upload image to storage');
         }
 
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
             thumbnailPath: result.path || null,
@@ -191,13 +179,14 @@ export const generateImageWorkflow = createWorkflow(
     return { imageUrl, frameId, sequenceId };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
-      if (input.frameId) {
-        await updateFrame(
+      if (input.frameId && input.teamId) {
+        await scopedDb.frames.update(
           input.frameId,
-          { thumbnailStatus: 'failed', thumbnailError: failResponse },
+          { thumbnailStatus: 'failed', thumbnailError: error },
           { throwOnMissing: false }
         );
 
@@ -214,7 +203,7 @@ export const generateImageWorkflow = createWorkflow(
 
         console.error(
           '[ImageWorkflow]',
-          `Image generation failed for frame ${input.frameId}: ${failResponse}`
+          `Image generation failed for frame ${input.frameId}: ${error}`
         );
       }
 

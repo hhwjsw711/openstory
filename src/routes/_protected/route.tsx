@@ -1,6 +1,6 @@
 import { AppLayout } from '@/components/layout/app-layout';
 import { RouteErrorFallback } from '@/components/error/route-error-fallback';
-import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { redirect } from '@tanstack/react-router';
 import { sessionQueryOptions } from '@/lib/auth/session-query';
 
@@ -24,15 +24,8 @@ export const Route = createFileRoute('/_protected')({
 });
 
 function ProtectedLayout() {
-  const location = useLocation();
-  const isSettingsPage = location.pathname.startsWith('/settings');
-
   return (
-    <AppLayout
-      className={
-        isSettingsPage ? 'overflow-y-auto [scrollbar-gutter:stable]' : undefined
-      }
-    >
+    <AppLayout>
       <Outlet />
     </AppLayout>
   );

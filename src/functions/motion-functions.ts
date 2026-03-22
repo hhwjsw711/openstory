@@ -13,18 +13,19 @@ import {
   safeImageToVideoModel,
 } from '@/lib/ai/models';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
-import { usdToMicros, multiplyMicros } from '@/lib/billing/money';
+import { multiplyMicros, usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
-import { getSequenceFrames } from '@/lib/db/helpers/frames';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
+  MusicWorkflowInput,
 } from '@/lib/workflow/types';
 
 import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
+import { buildSceneSummaries } from './sequences';
 
 // -- Shared helper: resolve motion prompt from frame data -----------------
 
@@ -69,7 +70,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
       data.duration ??
       IMAGE_TO_VIDEO_MODELS[model].capabilities.defaultDuration;
 
-    await requireCredits(teamId, estimateVideoCost(model, duration), {
+    await requireCredits(context.scopedDb, estimateVideoCost(model, duration), {
       errorMessage: 'Insufficient credits for motion generation',
     });
 
@@ -98,7 +99,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
 
 const batchGenerateMotionInputSchema = z.object({
   sequenceId: ulidSchema,
-  frameIds: z.array(ulidSchema).optional(),
+  includeMusic: z.boolean().optional(),
   model: generateMotionSchema.shape.model,
   duration: generateMotionSchema.shape.duration,
   fps: generateMotionSchema.shape.fps,
@@ -120,21 +121,19 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(batchGenerateMotionInputSchema))
   .handler(async ({ data, context }) => {
-    const { sequence, teamId } = context;
+    const { sequence, teamId, user } = context;
 
-    const allFrames = await getSequenceFrames(sequence.id);
-    const filtered = data.frameIds?.length
-      ? allFrames.filter((f) => data.frameIds?.includes(f.id))
-      : allFrames;
+    const allFrames = await context.scopedDb.frames.listBySequence(sequence.id);
+    // Server determines eligible frames: thumbnail done, video pending/failed
+    const eligibleFrames = allFrames.filter(
+      (f) =>
+        f.thumbnailStatus === 'completed' &&
+        f.thumbnailUrl &&
+        (f.videoStatus === 'pending' || f.videoStatus === 'failed')
+    );
 
-    if (filtered.length === 0) {
-      throw new Error('No frames found for sequence');
-    }
-
-    const framesWithThumbnails = filtered.filter((f) => f.thumbnailUrl);
-
-    if (framesWithThumbnails.length === 0) {
-      throw new Error('No frames with thumbnails found');
+    if (eligibleFrames.length === 0) {
+      throw new Error('No eligible frames for motion generation');
     }
 
     const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
@@ -143,25 +142,25 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
 
     await requireCredits(
-      teamId,
+      context.scopedDb,
       multiplyMicros(
         estimateVideoCost(batchModel, batchDuration),
-        framesWithThumbnails.length
+        eligibleFrames.length
       ),
       {
-        errorMessage: `Insufficient credits for batch motion generation (${framesWithThumbnails.length} frames)`,
+        errorMessage: `Insufficient credits for batch motion generation (${eligibleFrames.length} frames)`,
       }
     );
 
     const workflows: BatchMotionWorkflow[] = [];
     const errors: BatchMotionError[] = [];
 
-    for (const frame of framesWithThumbnails) {
+    for (const frame of eligibleFrames) {
       try {
         if (!frame.thumbnailUrl) continue;
 
         const workflowInput: MotionWorkflowInput = {
-          userId: context.user.id,
+          userId: user.id,
           teamId,
           frameId: frame.id,
           sequenceId: sequence.id,
@@ -197,12 +196,51 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       }
     }
 
+    // Optionally trigger music generation
+    let musicTriggered = false;
+    if (data.includeMusic && sequence.musicStatus !== 'generating') {
+      const effectivePrompt = sequence.musicPrompt;
+      const effectiveTags = sequence.musicTags;
+
+      const totalDuration = allFrames.reduce((sum, frame) => {
+        const seconds = frame.durationMs
+          ? frame.durationMs / 1000
+          : (frame.metadata?.metadata?.durationSeconds ?? 10);
+        return sum + seconds;
+      }, 0);
+
+      const baseInput = {
+        userId: context.user.id,
+        teamId: sequence.teamId,
+        sequenceId: sequence.id,
+        duration: totalDuration || 30,
+      };
+
+      const musicInput: MusicWorkflowInput =
+        effectivePrompt && effectiveTags
+          ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
+          : { ...baseInput, scenes: buildSceneSummaries(allFrames) };
+
+      try {
+        await triggerWorkflow('/music', musicInput);
+      } catch (error) {
+        errors.push({
+          frameId: 'music',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Failed to start music generation',
+        });
+      }
+    }
+
     return {
       sequenceId: sequence.id,
-      totalFrames: filtered.length,
-      framesWithThumbnails: framesWithThumbnails.length,
+      totalFrames: allFrames.length,
+      eligibleFrames: eligibleFrames.length,
       workflowsStarted: workflows.length,
       workflows,
+      musicTriggered,
       errors: errors.length > 0 ? errors : undefined,
     };
   });
@@ -219,7 +257,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
   .handler(async ({ context }) => {
     const { sequence, teamId, user } = context;
 
-    const frames = await getSequenceFrames(sequence.id);
+    const frames = await context.scopedDb.frames.listBySequence(sequence.id);
 
     if (frames.length === 0) {
       throw new Error('No frames found in sequence');
@@ -235,7 +273,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
       );
     }
 
-    await requireCredits(teamId, usdToMicros(0.01), {
+    await requireCredits(context.scopedDb, usdToMicros(0.01), {
       errorMessage: 'Insufficient credits for video merge',
     });
 

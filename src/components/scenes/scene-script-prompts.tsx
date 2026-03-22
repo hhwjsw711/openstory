@@ -26,10 +26,7 @@ import {
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
-import {
-  aspectRatioToImageSize,
-  type AspectRatio,
-} from '@/lib/constants/aspect-ratios';
+import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
@@ -177,6 +174,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     needsBillingSetup: falNeedsBillingSetup,
     showGate: showFalGate,
     gateProps: falGateProps,
+    stripeEnabled,
   } = useFalBillingGate();
 
   const handleCopy = useCallback(
@@ -390,21 +388,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         sequenceId: frame.sequenceId,
         frameId: frame.id,
         model: selectedImageModel,
-        imageSize: aspectRatio
-          ? aspectRatioToImageSize(aspectRatio)
-          : undefined,
       });
     } catch (error) {
       console.error('Failed to generate scene variants:', error);
       // Error handling is done by the mutation hook
     }
-  }, [
-    frame,
-    generateVariants,
-    selectedImageModel,
-    aspectRatio,
-    onRegenerateStart,
-  ]);
+  }, [frame, generateVariants, selectedImageModel, onRegenerateStart]);
 
   const handleVariantSelect = useCallback(
     async (index: number) => {
@@ -492,24 +481,24 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             }
           }}
           options={[
+            { value: 'scene-variants', label: 'Variants' },
             { value: 'script', label: 'Script' },
             { value: 'cast', label: 'Cast' },
             { value: 'location', label: 'Location' },
             { value: 'image-prompt', label: 'Image' },
             { value: 'motion-prompt', label: 'Motion' },
-            { value: 'scene-variants', label: 'Variants' },
           ]}
         />
       </div>
 
       {/* Desktop: Tab buttons */}
       <TabsList className="hidden md:flex">
+        <TabsTrigger value="scene-variants">Variants</TabsTrigger>
         <TabsTrigger value="script">Script</TabsTrigger>
         <TabsTrigger value="cast">Cast</TabsTrigger>
         <TabsTrigger value="location">Location</TabsTrigger>
         <TabsTrigger value="image-prompt">Image</TabsTrigger>
         <TabsTrigger value="motion-prompt">Motion</TabsTrigger>
-        <TabsTrigger value="scene-variants">Variants</TabsTrigger>
       </TabsList>
 
       <TabsContent value="script">
@@ -773,7 +762,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
         <SceneLocationTab frame={frame} sequenceId={sequenceId} />
       </TabsContent>
 
-      <BillingGateDialog {...falGateProps} />
+      <BillingGateDialog {...falGateProps} stripeEnabled={stripeEnabled} />
     </Tabs>
   );
 };

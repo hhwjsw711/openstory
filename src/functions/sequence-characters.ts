@@ -5,18 +5,9 @@
 
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { getDb } from '#db-client';
-import {
-  getFrameIdsForCharacter,
-  getSequenceCharactersWithTalent,
-  updateCharacterTalent,
-  updateSheetStatus,
-} from '@/lib/db/helpers/sequence-characters';
-import { getTalentWithRelations } from '@/lib/db/helpers/talent';
-import { characters as charactersTable } from '@/lib/db/schema';
+import { buildCastingAttributes } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -28,7 +19,7 @@ import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
 export const getSequenceCharactersFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .handler(async ({ context }) => {
-    return getSequenceCharactersWithTalent(context.sequence.id);
+    return context.scopedDb.characters.listWithTalent(context.sequence.id);
   });
 
 /** Get frame IDs for all frames containing a specific character */
@@ -36,7 +27,7 @@ export const getFrameIdsForCharacterFn = createServerFn({ method: 'GET' })
   .middleware([sequenceAccessMiddleware])
   .inputValidator(zodValidator(z.object({ characterId: z.string().min(1) })))
   .handler(async ({ context, data }) => {
-    const frameIds = await getFrameIdsForCharacter(
+    const frameIds = await context.scopedDb.characters.getFrameIdsForCharacter(
       context.sequence.id,
       data.characterId
     );
@@ -52,16 +43,16 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
     )
   )
   .handler(async ({ context, data }) => {
-    const [character] = await getDb()
-      .select()
-      .from(charactersTable)
-      .where(eq(charactersTable.id, data.characterId));
-
+    const character = await context.scopedDb.characters.getById(
+      data.characterId
+    );
     if (!character) {
       throw new Error('Character not found');
     }
 
-    const talentWithSheets = await getTalentWithRelations(data.talentId);
+    const talentWithSheets = await context.scopedDb.talent.getWithRelations(
+      data.talentId
+    );
     if (!talentWithSheets) {
       throw new Error('Talent not found');
     }
@@ -73,27 +64,9 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
       talentWithSheets.sheets?.find((s) => s.isDefault) ??
       talentWithSheets.sheets?.[0];
 
-    const updatedCharacter = await updateCharacterTalent(
-      data.characterId,
-      data.talentId
-    );
-
-    await updateSheetStatus(data.characterId, 'generating');
-
-    await getGenerationChannel(character.sequenceId).emit(
-      'generation.character-sheet:progress',
-      { characterId: data.characterId, status: 'generating' }
-    );
-
-    const affectedFrameIds = await getFrameIdsForCharacter(
-      character.sequenceId,
-      data.characterId
-    );
-
-    const workflowInput: RecastCharacterWorkflowInput = {
-      characterDbId: data.characterId,
-      characterName: character.name,
-      characterMetadata: {
+    // Merge talent appearance with character role attributes
+    const castingAttrs = buildCastingAttributes(
+      {
         characterId: character.characterId,
         name: character.name,
         age: character.age,
@@ -104,12 +77,61 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
         distinguishingFeatures: character.distinguishingFeatures ?? '',
         consistencyTag: character.consistencyTag ?? '',
       },
+      {
+        sheetMetadata: defaultSheet?.metadata ?? undefined,
+        talentName: talentWithSheets.name,
+        talentDescription: talentWithSheets.description ?? undefined,
+      }
+    );
+
+    // Update talent assignment AND physical attributes from talent
+    await context.scopedDb.characters.updateTalent(
+      data.characterId,
+      data.talentId
+    );
+    const updatedCharacter = await context.scopedDb.characters.update(
+      data.characterId,
+      {
+        age: castingAttrs.age,
+        gender: castingAttrs.gender,
+        ethnicity: castingAttrs.ethnicity,
+        physicalDescription: castingAttrs.physicalDescription,
+        consistencyTag: castingAttrs.consistencyTag,
+      }
+    );
+
+    const affectedFrameIds =
+      await context.scopedDb.characters.getFrameIdsForCharacter(
+        character.sequenceId,
+        data.characterId
+      );
+
+    // Always generate a character sheet showing the talent in costume
+    await context.scopedDb.characters.updateSheetStatus(
+      data.characterId,
+      'generating'
+    );
+
+    await getGenerationChannel(character.sequenceId).emit(
+      'generation.character-sheet:progress',
+      { characterId: data.characterId, status: 'generating' }
+    );
+
+    const workflowInput: RecastCharacterWorkflowInput = {
+      characterDbId: data.characterId,
+      characterName: character.name,
+      characterMetadata: {
+        characterId: character.characterId,
+        name: character.name,
+        ...castingAttrs,
+      },
       sequenceId: character.sequenceId,
       teamId: context.teamId,
       userId: context.user.id,
       referenceImageUrl: defaultSheet?.imageUrl ?? undefined,
       talentMetadata: defaultSheet?.metadata ?? undefined,
-      talentDescription: talentWithSheets.description ?? undefined,
+      talentDescription:
+        `This character must look exactly like ${talentWithSheets.name}. ${talentWithSheets.description ?? ''}`.trim(),
       affectedFrameIds,
     };
 

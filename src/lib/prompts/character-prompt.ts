@@ -55,6 +55,7 @@ export const buildCharacterReferenceImages = (
     .map((c) => ({
       referenceImageUrl: c.sheetImageUrl ?? '',
       description: buildCharacterDescription(c),
+      role: 'character' as const,
     }));
 };
 
@@ -134,6 +135,75 @@ Hyper-accurate rendering of all fabrics, skin textures, hardware, and micro-deta
 };
 
 /**
+ * Talent appearance data for merging with character role attributes.
+ * Used by buildCastingAttributes to determine which attributes come from talent vs role.
+ */
+type TalentAppearanceData = {
+  /** Talent sheet metadata containing physical appearance data */
+  sheetMetadata?: CharacterBibleEntry;
+  /** Talent name (used for consistencyTag and fallback descriptions) */
+  talentName: string;
+  /** Talent description/notes */
+  talentDescription?: string;
+};
+
+/**
+ * Result of merging talent appearance with character role attributes.
+ * Physical attributes come from the talent, costume/styling from the role.
+ */
+type CastingAttributes = {
+  age: string;
+  gender: string;
+  ethnicity: string;
+  physicalDescription: string;
+  standardClothing: string;
+  distinguishingFeatures: string;
+  consistencyTag: string;
+};
+
+/**
+ * Slugify a name for use in consistencyTag (e.g. "Elvis Presley" → "elvis_presley")
+ */
+const slugify = (name: string): string =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+
+/**
+ * Merge talent appearance with character role attributes for casting.
+ *
+ * Physical appearance (age, gender, ethnicity, physicalDescription) comes from the TALENT.
+ * Costume/styling (standardClothing, distinguishingFeatures) comes from the CHARACTER role.
+ * ConsistencyTag is regenerated from the character ID + talent name.
+ *
+ * @param scriptEntry - The character's script-derived attributes
+ * @param talent - The talent being cast
+ * @returns Merged attributes suitable for DB storage and prompt building
+ */
+export const buildCastingAttributes = (
+  scriptEntry: CharacterBibleEntry,
+  talent: TalentAppearanceData
+): CastingAttributes => {
+  const meta = talent.sheetMetadata;
+
+  return {
+    // Physical attributes: from talent, falling back to script
+    age: meta?.age || scriptEntry.age,
+    gender: meta?.gender || scriptEntry.gender,
+    ethnicity: meta?.ethnicity || scriptEntry.ethnicity,
+    physicalDescription:
+      meta?.physicalDescription ||
+      `Match the real-world appearance of ${talent.talentName} exactly.${talent.talentDescription ? ` ${talent.talentDescription}` : ''}`,
+    // Costume/styling: always from the character role
+    standardClothing: scriptEntry.standardClothing,
+    distinguishingFeatures: scriptEntry.distinguishingFeatures,
+    // Regenerate tag from talent identity
+    consistencyTag: `${scriptEntry.characterId}_${slugify(talent.talentName)}`,
+  };
+};
+
+/**
  * Talent appearance data for character sheet generation
  */
 type TalentOverrides = {
@@ -191,11 +261,14 @@ export const buildCharacterSheetPrompt = (
   // - Makeup can achieve some character traits (scars, aging) but not change fundamentals
 
   // Physical attributes: use talent's if cast, otherwise character's
-  const age = talentMeta?.age ?? entry.age;
-  const gender = talentMeta?.gender ?? entry.gender;
-  const ethnicity = talentMeta?.ethnicity ?? entry.ethnicity;
+  const age = talentMeta?.age || entry.age;
+  const gender = talentMeta?.gender || entry.gender;
+  const ethnicity = talentMeta?.ethnicity || entry.ethnicity;
   const physicalDescription =
-    talentMeta?.physicalDescription ?? entry.physicalDescription;
+    talentMeta?.physicalDescription ||
+    (hasTalent && talentOverrides?.description
+      ? `${talentOverrides.description}. Match this person's real-world appearance exactly.`
+      : entry.physicalDescription);
 
   // Costume/wardrobe: always from the character (the role they're playing)
   const standardClothing = entry.standardClothing;
@@ -226,8 +299,8 @@ ${characterFeatures}`;
       ? `\nTalent notes: ${talentOverrides.description}`
       : '';
     referenceInstruction = `
-IMPORTANT - Actor Reference:
-Match the provided reference image exactly for the actor's face, build, and physical features. The reference shows the talent in neutral attire - dress them in the costume described above and apply any makeup/styling to transform them into the character.${talentNotes}
+CRITICAL - Actor Reference:
+The reference image shows the ACTUAL PERSON who plays this character. Their physical appearance (face, body type, skin tone, hair, age) MUST match the reference image exactly. If any text description conflicts with the reference image, the IMAGE takes priority. Dress this person in the costume described above and apply any character makeup/styling notes, but DO NOT alter their fundamental physical appearance.${talentNotes}
 `;
   }
 

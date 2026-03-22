@@ -1,4 +1,5 @@
 import { calculateImageCost } from '@/lib/ai/fal-cost';
+import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   getEditEndpoint,
   getTextToImageModelId,
@@ -10,16 +11,14 @@ import {
   type ImageSize,
 } from '@/lib/constants/aspect-ratios';
 import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
-import { createImageMedia } from '@/lib/observability/langfuse-media';
 import { startObservation } from '@langfuse/tracing';
 
 import { getEnv } from '#env';
 import { generateImage } from '@tanstack/ai';
 import { falImage } from '@tanstack/ai-fal';
-import { apiKeyService } from '../byok/api-key.service';
+import type { ScopedDb } from '@/lib/db/scoped';
 
 export type ImageGenerationParams = {
-  teamId?: string; // teamId is used to resolve the API key for the image generation with BYOK
   model: TextToImageModel;
   prompt: string;
   imageSize?: ImageSize;
@@ -39,12 +38,6 @@ export type ImageGenerationParams = {
   systemVersion?: number;
   mode?: 'default' | 'sigma';
 
-  onQueueUpdate?: (update: {
-    status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-    logs?: string[];
-    progress?: number;
-  }) => void;
-
   // Model-specific
   style?: string;
   colors?: Array<{ r: number; g: number; b: number }>;
@@ -55,6 +48,16 @@ export type ImageGenerationParams = {
   enablePromptExpansion?: boolean;
   referenceImageUrls?: string[];
   traceName?: string;
+};
+
+/** Non-serializable options passed separately from ImageGenerationParams */
+export type ImageGenerationOptions = {
+  scopedDb?: ScopedDb;
+  onQueueUpdate?: (update: {
+    status: 'IN_QUEUE' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+    logs?: string[];
+    progress?: number;
+  }) => void;
 };
 
 export type ImageGenerationResult = {
@@ -70,7 +73,7 @@ export type ImageGenerationResult = {
     file_sizes: number[];
     seed?: number;
     has_nsfw_concepts?: boolean[];
-    cost?: number;
+    cost?: Microdollars;
     requestId?: string;
     usedOwnKey: boolean;
   };
@@ -112,7 +115,8 @@ function truncatePromptForModel(
 }
 
 export async function generateImageWithProvider(
-  params: ImageGenerationParams
+  params: ImageGenerationParams,
+  options?: ImageGenerationOptions
 ): Promise<ImageGenerationResult> {
   const modelId = getTextToImageModelId(params.model);
 
@@ -132,21 +136,15 @@ export async function generateImageWithProvider(
   );
 
   try {
-    const result = await generateImageInternal(params, modelId);
-
-    // Fetch first image for inline preview in Langfuse
-    const imageMedia = result.imageUrls[0]
-      ? await createImageMedia(result.imageUrls[0])
-      : null;
+    const result = await generateImageInternal(params, modelId, options);
 
     span
       .update({
         output: {
           imageUrls: result.imageUrls,
-          ...(imageMedia && { generatedImage: imageMedia }),
         },
         costDetails: result.metadata.cost
-          ? { total: result.metadata.cost }
+          ? { total: microsToUsd(result.metadata.cost) }
           : undefined,
       })
       .end();
@@ -164,7 +162,8 @@ export async function generateImageWithProvider(
 // @TODO: TB Mar 2026 - this needs to be updated to be typesafe. Especially after the work put in on Tanstack AI to keep it safe
 async function generateImageInternal(
   params: ImageGenerationParams,
-  modelId: string
+  modelId: string,
+  options?: ImageGenerationOptions
 ): Promise<ImageGenerationResult> {
   const prompt = truncatePromptForModel(params.prompt, params.model);
   const startTime = Date.now();
@@ -173,7 +172,9 @@ async function generateImageInternal(
     return generateLetzaiImage(params, prompt);
   }
   // Get the fal API key - byok or global
-  const falApiKeyInfo = await apiKeyService.resolveKey('fal', params.teamId);
+  const falApiKeyInfo = options?.scopedDb
+    ? await options.scopedDb.apiKeys.resolveKey('fal')
+    : { key: getEnv().FAL_KEY, source: 'platform' as const };
 
   const modelOptions = buildFalModelOptions(params);
 
@@ -428,8 +429,12 @@ function buildFalModelOptions(
         aspect_ratio: imageSizeToAspectRatio(
           params.imageSize ?? DEFAULT_IMAGE_SIZE
         ),
+        resolution: params.resolution ?? '2K',
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 

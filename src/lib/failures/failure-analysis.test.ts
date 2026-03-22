@@ -242,7 +242,7 @@ describe('analyzeFailures', () => {
     expect(result.headline).toContain('Motion prompts were not generated');
   });
 
-  test('missing music prompt requires full retry', () => {
+  test('missing music prompt does not require full retry', () => {
     const frames = [makeFrame()];
     const sequence = makeSequence({
       status: 'failed',
@@ -253,11 +253,12 @@ describe('analyzeFailures', () => {
 
     const result = analyzeFailures(frames, sequence);
 
-    expect(result.requiresFullRetry).toBe(true);
+    expect(result.requiresFullRetry).toBe(false);
     const promptGroup = result.groups.find(
       (g) => g.category === 'music-prompt'
     );
     expect(promptGroup).toBeDefined();
+    expect(result.headline).toContain('music prompt generation failed');
   });
 
   test('completed sequence with no failures', () => {

@@ -5,17 +5,12 @@
  * These sheets are later used as reference images when generating scene images.
  */
 
+import { uploadFile } from '#storage';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import {
-  updateCharacterSheet,
-  updateSheetStatus,
-} from '@/lib/db/helpers/sequence-characters';
-import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
-import { uploadFile } from '#storage';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -23,16 +18,20 @@ import {
 } from '@/lib/image/image-generation';
 import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
+import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   CharacterSheetWorkflowInput,
   CharacterSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const characterSheetWorkflow = createWorkflow(
-  async (context: WorkflowContext<CharacterSheetWorkflowInput>) => {
+export const characterSheetWorkflow = createScopedWorkflow<
+  CharacterSheetWorkflowInput,
+  CharacterSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     // Emit realtime event that generation has started
@@ -88,7 +87,6 @@ export const characterSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'character-sheet-image',
-          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
@@ -100,18 +98,15 @@ export const characterSheetWorkflow = createWorkflow(
         `Generating sheet for ${input.characterName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider({
-        ...generationParams,
-      });
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
-        userId: input.userId ?? null,
         description: `Character sheet (${generationParams.model})`,
         metadata: {
           model: generationParams.model,
@@ -173,7 +168,7 @@ export const characterSheetWorkflow = createWorkflow(
           `Updating database for ${input.characterName}`
         );
 
-        await updateCharacterSheet(
+        await scopedDb.characters.updateSheet(
           input.characterDbId,
           storageResult.url,
           storageResult.path
@@ -211,15 +206,16 @@ export const characterSheetWorkflow = createWorkflow(
     return result;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       // Mark character sheet as failed
       if (input.characterDbId) {
-        await updateSheetStatus(
+        await scopedDb.characters.updateSheetStatus(
           input.characterDbId,
           'failed',
-          String(failResponse)
+          error
         );
 
         // Emit failure event for realtime UI update
@@ -229,14 +225,14 @@ export const characterSheetWorkflow = createWorkflow(
             {
               characterId: input.characterDbId,
               status: 'failed',
-              error: String(failResponse),
+              error,
             }
           );
         }
 
         console.error(
           '[CharacterSheetWorkflow]',
-          `Sheet generation failed for character ${input.characterName}: ${failResponse}`
+          `Sheet generation failed for character ${input.characterName}: ${error}`
         );
       }
 

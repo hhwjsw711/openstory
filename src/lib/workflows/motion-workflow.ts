@@ -1,31 +1,42 @@
 /**
  * Motion generation workflow
  * Generates video motion from static frame thumbnails (image-to-video)
+ *
+ * Uses batched polling: each context.run polls in a tight loop for ~30s,
+ * then checkpoints via context.sleep between batches for durability.
+ * This reduces QStash steps by ~10x vs one-step-per-poll.
  */
 
-import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
-import { isBillingEnabled } from '@/lib/billing/constants';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
-import { usdToMicros, microsToUsd } from '@/lib/billing/money';
+import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { micros, microsToUsd } from '@/lib/billing/money';
+import { ensureImageUnderLimit } from '@/lib/image/image-compress';
+import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import {
-  getFrameWithSequence,
-  getSequenceFrames,
-  updateFrame,
-} from '@/lib/db/helpers/frames';
-import { generateMotionForFrame } from '@/lib/motion/motion-generation';
+  calculateMotionMetadata,
+  pollMotionJob,
+  submitMotionJob,
+} from '@/lib/motion/motion-generation';
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const generateMotionWorkflow = createWorkflow(
-  async (context: WorkflowContext<MotionWorkflowInput>) => {
+/** Each batch polls in a tight loop for ~30s, then checkpoints for durability */
+const POLL_BATCH_DURATION_MS = 30_000;
+const POLL_INTERVAL_MS = 3_000;
+/** 30 batches × 30s = 15 minutes total timeout */
+const MAX_BATCHES = 30;
+/** Kling rejects start frame images over 10MB — use 9.5MB safety margin */
+const KLING_MAX_IMAGE_BYTES = 9.5 * 1024 * 1024;
+
+export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const model = input.model || DEFAULT_VIDEO_MODEL;
 
@@ -41,7 +52,7 @@ export const generateMotionWorkflow = createWorkflow(
       async () => {
         if (!input.frameId) return { frameDeleted: false };
 
-        const frame = await updateFrame(
+        const frame = await scopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'generating',
@@ -71,77 +82,150 @@ export const generateMotionWorkflow = createWorkflow(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Step 2: Generate motion/video
-    const videoResult = await context.run('generate-motion', async () => {
-      const result = await generateMotionForFrame({
-        imageUrl: input.imageUrl,
+    // Step 2: Prepare start image — compress if Kling model and image exceeds 10MB
+    const startImageUrl = await context.run('prepare-start-image', async () => {
+      const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
+      if (modelConfig.provider !== 'kling') {
+        return input.imageUrl;
+      }
+
+      const compressed = await ensureImageUnderLimit(
+        input.imageUrl,
+        KLING_MAX_IMAGE_BYTES
+      );
+      if (!compressed) {
+        return input.imageUrl;
+      }
+
+      if (!input.teamId || !input.sequenceId || !input.frameId) {
+        console.warn(
+          '[MotionWorkflow] Missing storage context, using original image URL'
+        );
+        return input.imageUrl;
+      }
+
+      const result = await uploadImageBufferToStorage({
+        imageBuffer: compressed.buffer,
+        teamId: input.teamId,
+        sequenceId: input.sequenceId,
+        frameId: input.frameId,
+        contentType: compressed.contentType,
+      });
+
+      console.log(
+        `[MotionWorkflow] Compressed start image: ${(compressed.originalSizeBytes / 1024 / 1024).toFixed(1)}MB → ${(compressed.compressedSizeBytes / 1024 / 1024).toFixed(1)}MB`
+      );
+
+      return result.url;
+    });
+
+    // Step 3a: Submit the motion generation job
+    const job = await context.run('submit-motion', async () => {
+      return submitMotionJob({
+        imageUrl: startImageUrl,
         prompt: input.prompt,
         model,
         duration: input.duration,
         fps: input.fps,
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
-        traceName: 'frame-motion',
-        teamId: input.teamId,
+        scopedDb,
       });
-
-      if (!result.success || !result.videoUrl) {
-        throw new Error(result.error || 'Motion generation failed');
-      }
-
-      return result;
     });
 
-    const actualDuration =
-      typeof videoResult.metadata?.duration === 'number'
-        ? videoResult.metadata.duration
-        : (input.duration ?? 2);
+    // Step 3b: Batched polling — tight loop inside each context.run, checkpoint between batches
+    let videoUrl = '';
+
+    for (let batch = 0; batch < MAX_BATCHES; batch++) {
+      if (batch > 0) {
+        await context.sleep(`motion-batch-wait-${batch}`, 1);
+      }
+
+      const poll = await context.run(`motion-poll-batch-${batch}`, async () => {
+        const deadline = Date.now() + POLL_BATCH_DURATION_MS;
+
+        while (Date.now() < deadline) {
+          const result = await pollMotionJob(job.jobId, job.modelKey, scopedDb);
+
+          if (result.progress !== undefined) {
+            console.log(`[MotionWorkflow] Progress: ${result.progress}%`);
+          }
+
+          if (result.status === 'completed' && result.videoUrl) {
+            console.log(`[MotionWorkflow] Generation completed`);
+            return result;
+          }
+
+          if (result.status === 'failed') {
+            return result;
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+        }
+
+        return { status: 'pending' as const };
+      });
+
+      if (poll.status === 'completed' && 'videoUrl' in poll && poll.videoUrl) {
+        videoUrl = poll.videoUrl;
+        break;
+      }
+
+      if (poll.status === 'failed') {
+        throw new Error(
+          ('error' in poll && poll.error) || 'Motion generation failed'
+        );
+      }
+    }
+
+    if (!videoUrl) {
+      throw new Error('Motion generation timed out after 15 minutes');
+    }
+
+    // Calculate cost + metadata
+    const motionMeta = calculateMotionMetadata({
+      imageUrl: input.imageUrl,
+      prompt: input.prompt,
+      model,
+      duration: input.duration,
+      fps: input.fps,
+      motionBucket: input.motionBucket,
+      aspectRatio: input.aspectRatio,
+    });
+
+    const actualDuration = motionMeta.duration;
 
     // Deduct credits (skip if team used own fal key)
-    const motionCostRaw =
-      typeof videoResult.metadata?.cost === 'number'
-        ? videoResult.metadata.cost
-        : 0;
-    const motionCostMicros = usdToMicros(motionCostRaw);
+    const motionCostMicros = micros(motionMeta.cost);
     const { teamId } = input;
-    if (
-      isBillingEnabled() &&
-      motionCostMicros > 0 &&
-      teamId &&
-      !videoResult.metadata.usedOwnKey
-    ) {
+    if (motionCostMicros > 0 && teamId && !job.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        const canAfford = await hasEnoughCredits(teamId, motionCostMicros);
+        const canAfford =
+          await scopedDb.billing.hasEnoughCredits(motionCostMicros);
         if (!canAfford) {
           console.warn(
             `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(motionCostMicros).toFixed(4)}), skipping deduction`
           );
           return;
         }
-        await deductCredits(teamId, motionCostMicros, {
-          userId: input.userId,
+        await scopedDb.billing.deductCredits(motionCostMicros, {
           description: `Motion generation (${model})`,
           metadata: {
             model,
             frameId: input.frameId,
             sequenceId: input.sequenceId,
-            duration: videoResult.metadata?.duration,
+            duration: motionMeta.duration,
           },
         });
       });
     }
-
-    if (!videoResult.videoUrl) {
-      throw new Error('Video URL missing from generation result');
-    }
-    let videoUrl = videoResult.videoUrl;
 
     if (input.frameId) {
       const { frameId } = input;
 
       // Step 3: Fetch frame and sequence data for human-readable filename
       const frameData = await context.run('fetch-frame-data', async () => {
-        const frame = await getFrameWithSequence(frameId);
+        const frame = await scopedDb.frames.getWithSequence(frameId);
         if (!frame) throw new Error('Frame not found');
         return {
           sequenceTitle: frame.sequence.title,
@@ -175,7 +259,7 @@ export const generateMotionWorkflow = createWorkflow(
 
       // Step 5: Update frame with video path, URL, and status
       await context.run('update-frame', async () => {
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
             videoPath: storageResult.path,
@@ -208,7 +292,9 @@ export const generateMotionWorkflow = createWorkflow(
       await context.run('check-merge-trigger', async () => {
         if (!input.sequenceId || !input.teamId || !input.userId) return;
 
-        const allFrames = await getSequenceFrames(input.sequenceId);
+        const allFrames = await scopedDb.frames.listBySequence(
+          input.sequenceId
+        );
         if (allFrames.length === 0) return;
         if (!allFrames.every((f) => f.videoStatus === 'completed')) return;
 
@@ -240,14 +326,15 @@ export const generateMotionWorkflow = createWorkflow(
     return { videoUrl, duration: actualDuration };
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
-      if (input.frameId) {
-        await updateFrame(
+      const error = sanitizeFailResponse(failResponse);
+      if (input.frameId && input.teamId) {
+        await scopedDb.frames.update(
           input.frameId,
           {
             videoStatus: 'failed',
-            videoError: failResponse,
+            videoError: error,
           },
           { throwOnMissing: false }
         );
@@ -265,7 +352,7 @@ export const generateMotionWorkflow = createWorkflow(
       }
 
       console.error(
-        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${failResponse}`
+        `[MotionWorkflow] Motion generation failed for frame ${input.frameId}: ${error}`
       );
 
       return `Motion generation failed for frame ${input.frameId}`;

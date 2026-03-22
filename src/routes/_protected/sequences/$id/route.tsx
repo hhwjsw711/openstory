@@ -11,17 +11,37 @@ import {
 } from '@/components/sequence/sequence-tabs';
 import { PageHeader } from '@/components/typography/page-header';
 import { PageHeading } from '@/components/typography/page-heading';
-import { useSequence } from '@/hooks/use-sequences';
+import { getSequenceFn } from '@/functions/sequences';
+import { sequenceKeys, useSequence } from '@/hooks/use-sequences';
 import { useSwipeNavigation } from '@/hooks/use-swipe-navigation';
 import { useUser } from '@/hooks/use-user';
+import { isValidId } from '@/lib/db/id';
 import {
   createFileRoute,
+  isNotFound,
+  notFound,
   Outlet,
   useRouterState,
 } from '@tanstack/react-router';
 
 export const Route = createFileRoute('/_protected/sequences/$id')({
   component: SequenceLayout,
+  loader: async ({ params, context: { queryClient } }) => {
+    if (!isValidId(params.id)) {
+      throw notFound();
+    }
+
+    try {
+      const sequence = await queryClient.ensureQueryData({
+        queryKey: sequenceKeys.detail(params.id),
+        queryFn: () => getSequenceFn({ data: { sequenceId: params.id } }),
+      });
+      if (!sequence) throw notFound();
+    } catch (error) {
+      if (isNotFound(error)) throw error;
+      throw notFound();
+    }
+  },
   errorComponent: (props) => (
     <RouteErrorFallback {...props} heading="Sequence error" />
   ),

@@ -1,3 +1,10 @@
+import {
+  archiveSequenceFn,
+  createSequenceFn,
+  getSequenceFn,
+  getSequencesFn,
+  updateSequenceFn,
+} from '@/functions/sequences';
 import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import {
   type CreateSequenceInput,
@@ -5,14 +12,6 @@ import {
 } from '@/lib/schemas/sequence.schemas';
 import type { Sequence } from '@/types/database';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  getSequencesFn,
-  getSequenceFn,
-  createSequenceFn,
-  updateSequenceFn,
-  deleteSequenceFn,
-  archiveSequenceFn,
-} from '@/functions/sequences';
 
 // Query keys
 export const sequenceKeys = {
@@ -48,6 +47,7 @@ export function useSequence(
       if (!id) throw new Error('sequenceId is required');
       return await getSequenceFn({ data: { sequenceId: id } });
     },
+    throwOnError: true,
     staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
     enabled: !!id,
     // If refetchInterval is explicitly passed, use it; otherwise use smart polling
@@ -162,21 +162,6 @@ export function useArchiveSequence() {
   return useMutation<void, Error, string>({
     mutationFn: async (id: string) => {
       await archiveSequenceFn({ data: { sequenceId: id } });
-    },
-    onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });
-      void queryClient.invalidateQueries({ queryKey: sequenceKeys.lists() });
-    },
-  });
-}
-
-// Hook for deleting sequence
-export function useDeleteSequence() {
-  const queryClient = useQueryClient();
-
-  return useMutation<void, Error, string>({
-    mutationFn: async (id: string) => {
-      await deleteSequenceFn({ data: { sequenceId: id } });
     },
     onSuccess: (_, id) => {
       queryClient.removeQueries({ queryKey: sequenceKeys.detail(id) });

@@ -3,25 +3,16 @@
  * End-to-end type-safe functions for style library operations
  */
 
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { getDb } from '#db-client';
-import { authMiddleware, authWithTeamMiddleware } from './middleware';
+import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
+import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
   createStyleSchema,
   updateStyleSchema,
 } from '@/lib/schemas/style.schemas';
-import { ulidSchema } from '@/lib/schemas/id.schemas';
-import {
-  getStyleById,
-  getPublicStyles,
-  getTeamAndPublicStyles,
-} from '@/lib/db/helpers/queries';
-import { requireTeamManagement } from '@/lib/db/helpers/team-permissions';
-import { styles } from '@/lib/db/schema';
-import type { Style } from '@/lib/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { authWithTeamMiddleware } from './middleware';
 
 // ============================================================================
 // List Styles
@@ -34,17 +25,7 @@ import { and, eq } from 'drizzle-orm';
 export const getStylesFn = createServerFn({ method: 'GET' })
   .middleware([authWithTeamMiddleware])
   .handler(async ({ context }) => {
-    return getTeamAndPublicStyles(context.teamId);
-  });
-
-/**
- * Get public styles only (for unauthenticated users or fallback)
- * @returns Array of public styles
- */
-export const getPublicStylesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .handler(async () => {
-    return getPublicStyles();
+    return context.scopedDb.styles.list();
   });
 
 // ============================================================================
@@ -60,10 +41,11 @@ const getStyleInputSchema = z.object({
  * @returns The style
  */
 export const getStyleFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(getStyleInputSchema))
-  .handler(async ({ data }) => {
-    const style = await getStyleById(data.styleId);
+  .handler(async ({ data, context }) => {
+    // Style lookup doesn't require team scoping (styles can be public)
+    const style = await context.scopedDb.styles.getById(data.styleId);
 
     if (!style) {
       throw new Error('Style not found');
@@ -84,22 +66,15 @@ export const createStyleFn = createServerFn({ method: 'POST' })
   .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(createStyleSchema))
   .handler(async ({ data, context }) => {
-    const result = await getDb()
-      .insert(styles)
-      .values({
-        teamId: context.teamId,
-        name: data.name,
-        description: data.description,
-        config: data.config,
-        category: data.category,
-        tags: data.tags || [],
-        isPublic: data.isPublic,
-        previewUrl: data.previewUrl,
-        createdBy: context.user.id,
-      })
-      .returning();
-
-    return result[0] as Style;
+    return context.scopedDb.styles.create({
+      name: data.name,
+      description: data.description,
+      config: data.config,
+      category: data.category,
+      tags: data.tags,
+      isPublic: data.isPublic,
+      previewUrl: data.previewUrl,
+    });
   });
 
 // ============================================================================
@@ -120,13 +95,7 @@ export const updateStyleFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { styleId, ...updateData } = data;
 
-    const result = await getDb()
-      .update(styles)
-      .set(updateData)
-      .where(and(eq(styles.id, styleId), eq(styles.teamId, context.teamId)))
-      .returning();
-
-    const style = Array.isArray(result) ? result[0] : undefined;
+    const style = await context.scopedDb.styles.update(styleId, updateData);
 
     if (!style) {
       throw new Error(
@@ -134,7 +103,7 @@ export const updateStyleFn = createServerFn({ method: 'POST' })
       );
     }
 
-    return style as Style;
+    return style;
   });
 
 // ============================================================================
@@ -149,21 +118,19 @@ const deleteStyleInputSchema = z.object({
  * Delete a style (requires admin/owner role)
  */
 export const deleteStyleFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([authWithTeamMiddleware])
   .inputValidator(zodValidator(deleteStyleInputSchema))
   .handler(async ({ data, context }) => {
-    const style = await getStyleById(data.styleId);
+    // Style lookup without team scoping (need to discover the team first)
+    const style = await context.scopedDb.styles.getById(data.styleId);
 
     if (!style) {
       throw new Error('Style not found');
     }
 
-    // Check if user has admin/owner role for this team
-    await requireTeamManagement(context.user.id, style.teamId);
+    await requireTeamAdminAccess(context.user.id, style.teamId);
 
-    await getDb()
-      .delete(styles)
-      .where(and(eq(styles.id, data.styleId), eq(styles.teamId, style.teamId)));
+    await context.scopedDb.styles.delete(data.styleId);
 
     return { success: true };
   });

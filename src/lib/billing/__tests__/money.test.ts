@@ -6,12 +6,11 @@ import {
   addMicros,
   subtractMicros,
   multiplyMicros,
+  micros,
   ZERO_MICROS,
-  type Microdollars,
 } from '../money';
 
-/** Shorthand to cast expected number to Microdollars for .toBe() type checks */
-const m = (n: number) => n as Microdollars;
+const m = micros;
 
 describe('usdToMicros', () => {
   test('converts whole dollars', () => {

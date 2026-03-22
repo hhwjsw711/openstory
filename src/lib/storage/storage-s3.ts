@@ -123,6 +123,46 @@ export async function getSignedUrl(
   }
 }
 
+export async function getSignedUploadUrl(
+  bucket: StorageBucket,
+  path: string,
+  contentType: string,
+  expiresIn = 600
+): Promise<{
+  uploadUrl: string;
+  publicUrl: string;
+  path: string;
+  contentType: string;
+}> {
+  if (getEnv().E2E_TEST === 'true') {
+    const params = new URLSearchParams({ bucket, path, contentType });
+    const uploadUrl = `/api/storage/upload?${params}`;
+    const publicUrl = getPublicUrl(bucket, path);
+    return {
+      uploadUrl,
+      publicUrl,
+      path: buildR2Key(bucket, path),
+      contentType,
+    };
+  }
+
+  const client = createR2Client();
+  const bucketName = getR2BucketName();
+  const key = buildR2Key(bucket, path);
+
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000',
+  });
+
+  const uploadUrl = await getS3SignedUrl(client, command, { expiresIn });
+  const publicUrl = getPublicUrl(bucket, path);
+
+  return { uploadUrl, publicUrl, path: key, contentType };
+}
+
 export async function getSignedUrlWithDownload(
   bucket: StorageBucket,
   path: string,

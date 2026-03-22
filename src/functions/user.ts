@@ -6,8 +6,7 @@
 import { createServerFn } from '@tanstack/react-start';
 
 import { authMiddleware } from './middleware';
-import { ensureUserAndTeam } from '@/lib/db/helpers/ensure-user-team';
-import { getUserDefaultTeam } from '@/lib/db/helpers/team-permissions';
+import { ensureUserAndTeam, resolveUserTeam } from '@/lib/db/scoped';
 import type { UserProfile } from '@/types/database';
 
 // ============================================================================
@@ -38,7 +37,7 @@ export const getCurrentUserProfileFn = createServerFn({ method: 'GET' })
     }
 
     // Get complete team info with team name
-    const teamMembership = await getUserDefaultTeam(context.user.id);
+    const teamMembership = await resolveUserTeam(context.user.id);
 
     return {
       user: ensureResult.data,

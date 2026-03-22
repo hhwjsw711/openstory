@@ -13,7 +13,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     <div className="flex flex-col h-screen bg-background">
       <Header />
       <main
-        className={cn('flex flex-col flex-1 overflow-hidden', className)}
+        className={cn(
+          'flex flex-col flex-1 overflow-y-auto [scrollbar-gutter:stable]',
+          className
+        )}
         {...props}
       >
         {children}

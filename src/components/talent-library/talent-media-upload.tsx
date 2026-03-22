@@ -12,6 +12,7 @@ import {
   type FileUploadProps,
 } from '@/components/ui/file-upload';
 import { useUploadTalentMedia, useUploadTempMedia } from '@/hooks/use-talent';
+import { getFileKey } from '@/lib/utils/upload';
 import { Upload, X } from 'lucide-react';
 
 type TalentMediaUploadProps = {
@@ -25,23 +26,6 @@ type TalentMediaUploadProps = {
   onComplete?: () => void;
   disabled?: boolean;
 };
-
-const getFileKey = (file: File) => `${file.name}-${file.lastModified}`;
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to read file'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
   files,
@@ -85,27 +69,22 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
     async (newFiles, { onProgress, onSuccess, onError }) => {
       const uploadPromises = newFiles.map(async (file) => {
         try {
-          onProgress(file, 10);
-
-          const base64 = await fileToBase64(file);
-          onProgress(file, 30);
-
-          const type = file.type.startsWith('video/') ? 'video' : 'image';
+          const type = file.type.startsWith('video/')
+            ? ('video' as const)
+            : ('image' as const);
 
           if (talentId) {
-            // Upload directly to talent
             await uploadTalentMedia.mutateAsync({
               talentId,
-              base64Data: base64,
-              filename: file.name,
+              file,
               type,
+              onProgress: (percent) => onProgress(file, percent),
             });
           } else {
-            // Upload to temp storage
             const result = await uploadTempMedia.mutateAsync({
-              base64Data: base64,
-              filename: file.name,
+              file,
               type,
+              onProgress: (percent) => onProgress(file, percent),
             });
 
             setUploadedUrlsMap((prev) =>
@@ -131,14 +110,11 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
     [talentId, uploadTempMedia, uploadTalentMedia, onComplete]
   );
 
-  const isUploading = uploadTempMedia.isPending || uploadTalentMedia.isPending;
-
   return (
     <FileUpload
       accept="image/*,video/*"
-      maxSize={100 * 1024 * 1024}
       multiple
-      disabled={disabled || isUploading}
+      disabled={disabled}
       value={files}
       onValueChange={handleValueChange}
       onUpload={onUpload}
@@ -157,9 +133,7 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
             Browse files
           </Button>
         </FileUploadTrigger>
-        <p className="text-xs text-muted-foreground">
-          Images and videos up to 100MB
-        </p>
+        <p className="text-xs text-muted-foreground">Images and videos</p>
       </FileUploadDropzone>
 
       <FileUploadList className="grid grid-cols-3 gap-3">

@@ -694,7 +694,7 @@ export type AudioModel = keyof typeof AUDIO_MODELS;
 export type AudioModelConfig = (typeof AUDIO_MODELS)[AudioModel];
 type AudioModelId = AudioModelConfig['id'];
 
-export const DEFAULT_MUSIC_MODEL: AudioModel = 'ace_step';
+export const DEFAULT_MUSIC_MODEL: AudioModel = 'elevenlabs_music';
 
 export const AUDIO_MODEL_KEYS = [
   'ace_step',
@@ -744,9 +744,10 @@ export function safeAudioModel(
  * Map text-to-image models to their edit endpoints (if available)
  * These endpoints accept image_urls for reference-based generation
  */
-const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
+export const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
   nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   nano_banana_2: 'fal-ai/nano-banana-2/edit',
+  grok_imagine_image: 'xai/grok-imagine-image/edit',
 };
 
 /**

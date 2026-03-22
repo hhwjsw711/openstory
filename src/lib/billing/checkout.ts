@@ -3,12 +3,13 @@
  * Creates checkout sessions for credit top-ups
  */
 
-import { getStripeOrThrow } from './stripe';
-import { getBillingSettings, saveStripeCustomerId } from './credit-service';
-import { MIN_TOPUP_AMOUNT_USD } from './constants';
 import { ValidationError } from '@/lib/errors';
+import { MIN_TOPUP_AMOUNT_USD } from './constants';
+import type { ScopedDb } from '@/lib/db/scoped';
+import { getStripeOrThrow } from './stripe';
 
 type CreateCheckoutParams = {
+  scopedDb: ScopedDb;
   teamId: string;
   amountUsd: number;
   userId: string;
@@ -20,8 +21,15 @@ type CreateCheckoutParams = {
 export async function createCheckoutSession(
   params: CreateCheckoutParams
 ): Promise<{ url: string }> {
-  const { teamId, amountUsd, userId, userEmail, successUrl, cancelUrl } =
-    params;
+  const {
+    scopedDb,
+    teamId,
+    amountUsd,
+    userId,
+    userEmail,
+    successUrl,
+    cancelUrl,
+  } = params;
 
   if (amountUsd < MIN_TOPUP_AMOUNT_USD) {
     throw new ValidationError(
@@ -30,17 +38,28 @@ export async function createCheckoutSession(
   }
 
   const stripe = getStripeOrThrow();
-  const settings = await getBillingSettings(teamId);
+  const settings = await scopedDb.billing.getBillingSettings();
 
   // Reuse existing Stripe customer or create new one
   let customerId = settings.stripeCustomerId;
+  if (customerId) {
+    // Verify the customer still exists in Stripe (may differ between environments)
+    try {
+      const existing = await stripe.customers.retrieve(customerId);
+      if (existing.deleted) {
+        customerId = null;
+      }
+    } catch {
+      customerId = null;
+    }
+  }
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: userEmail,
       metadata: { teamId, userId },
     });
     customerId = customer.id;
-    await saveStripeCustomerId(teamId, customerId);
+    await scopedDb.billing.saveStripeCustomerId(customerId);
   }
 
   const amountCents = Math.round(amountUsd * 100);
@@ -71,6 +90,16 @@ export async function createCheckoutSession(
       userId,
       amountUsd: String(amountUsd),
       type: 'credit_top_up',
+    },
+    customer_update: {
+      address: 'auto',
+      name: 'auto',
+    },
+    tax_id_collection: {
+      enabled: true,
+    },
+    automatic_tax: {
+      enabled: true,
     },
     success_url: successUrl,
     cancel_url: cancelUrl,

@@ -4,6 +4,16 @@
  */
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -20,6 +30,11 @@ import {
   PRESET_TOPUP_AMOUNTS_USD,
   MIN_TOPUP_AMOUNT_USD,
 } from '@/lib/billing/constants';
+import {
+  createCheckoutSessionFn,
+  getTransactionsFn,
+  updateAutoTopUpFn,
+} from '@/functions/billing';
 import {
   useBillingBalance,
   BILLING_BALANCE_KEY,
@@ -42,40 +57,6 @@ type BillingSettingsProps = {
   success?: boolean;
   canceled?: boolean;
 };
-
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: { message?: string };
-};
-
-type InvoiceData = {
-  id: string;
-  type: string;
-  amount: number;
-  description: string | null;
-  metadata?: { receiptUrl?: string } | null;
-  createdAt: string;
-};
-
-type InvoiceApiResponse = {
-  success: boolean;
-  data?: { transactions: InvoiceData[]; total: number };
-  error?: { message?: string };
-};
-
-async function fetchInvoices(): Promise<{
-  transactions: InvoiceData[];
-  total: number;
-}> {
-  const res = await fetch(
-    '/api/billing/transactions?type=credit_purchase&limit=10'
-  );
-  const json: InvoiceApiResponse = await res.json();
-  if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch invoices');
-  return json.data;
-}
 
 type SectionHeaderProps = {
   icon: LucideIcon;
@@ -112,7 +93,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState('');
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
   const navigate = useNavigate();
 
@@ -120,7 +101,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   useEffect(() => {
     if (success || canceled) {
       const timer = setTimeout(() => {
-        window.history.replaceState({}, '', '/settings/billing');
+        window.history.replaceState({}, '', '/credits');
       }, 5000);
       return () => clearTimeout(timer);
     }
@@ -173,19 +154,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     }
   }, [success, balanceLoading, balanceData]);
 
-  // When billing is disabled server-side, show a simple message
-  if (!balanceLoading && balanceData?.billingEnabled === false) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Billing</CardTitle>
-          <CardDescription>
-            Billing is not enabled for this instance.
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  const stripeEnabled = balanceData?.stripeEnabled ?? false;
 
   const {
     data: invoiceData,
@@ -193,22 +162,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
     error: invoicesError,
   } = useQuery({
     queryKey: ['billing-invoices'],
-    queryFn: fetchInvoices,
+    queryFn: () =>
+      getTransactionsFn({
+        data: { type: 'credit_purchase', limit: 10, offset: 0 },
+      }),
     staleTime: 5 * 60 * 1000,
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: async (amountUsd: number) => {
-      const res = await fetch('/api/billing/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amountUsd }),
-      });
-      const json: ApiResponse<{ url: string }> = await res.json();
-      if (!json.success || !json.data)
-        throw new Error(json.error?.message ?? 'Checkout failed');
-      return json.data;
-    },
+    mutationFn: (amountUsd: number) =>
+      createCheckoutSessionFn({ data: { amountUsd } }),
     onSuccess: (data) => {
       window.location.href = data.url;
     },
@@ -218,21 +181,11 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   });
 
   const autoTopUpMutation = useMutation({
-    mutationFn: async (body: {
+    mutationFn: (body: {
       enabled: boolean;
       thresholdUsd?: number;
       amountUsd?: number;
-    }) => {
-      const res = await fetch('/api/billing/auto-topup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json: ApiResponse<void> = await res.json();
-      if (!json.success)
-        throw new Error(json.error?.message ?? 'Failed to update');
-      return json;
-    },
+    }) => updateAutoTopUpFn({ data: body }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],
@@ -249,6 +202,8 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const effectiveAmount = selectedAmount ?? parseFloat(customAmount);
   const isValidAmount =
     !isNaN(effectiveAmount) && effectiveAmount >= MIN_TOPUP_AMOUNT_USD;
+  const autoTopUpThreshold =
+    autoTopUpPrompt !== null ? Math.ceil((autoTopUpPrompt * 0.1) / 5) * 5 : 5;
 
   const handleTopUp = () => {
     if (!isValidAmount) {
@@ -281,35 +236,35 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </Alert>
       )}
 
-      {autoTopUpPrompt !== null && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardHeader>
-            <SectionHeader
-              icon={RefreshCw}
-              title="Enable Auto Top-Up?"
-              description={`Automatically add $${autoTopUpPrompt} when your balance drops below $5.`}
-            />
-          </CardHeader>
-          <CardContent className="flex gap-3">
-            <Button
+      <AlertDialog open={autoTopUpPrompt !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enable Auto Top-Up?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Automatically add ${autoTopUpPrompt} when your balance drops below
+              ${autoTopUpThreshold}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAutoTopUpPrompt(null)}>
+              No thanks
+            </AlertDialogCancel>
+            <AlertDialogAction
               onClick={() => {
                 autoTopUpMutation.mutate({
                   enabled: true,
-                  thresholdUsd: 5,
-                  amountUsd: autoTopUpPrompt,
+                  thresholdUsd: autoTopUpThreshold,
+                  amountUsd: autoTopUpPrompt ?? 0,
                 });
                 setAutoTopUpPrompt(null);
               }}
               disabled={autoTopUpMutation.isPending}
             >
               {autoTopUpMutation.isPending ? 'Enabling…' : 'Enable auto top-up'}
-            </Button>
-            <Button variant="ghost" onClick={() => setAutoTopUpPrompt(null)}>
-              No thanks
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {(error || balanceError || invoicesError) && (
         <Alert variant="destructive" className="mb-4">
@@ -339,179 +294,202 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         </CardContent>
       </Card>
 
-      {/* Top Up Card */}
-      <Card>
-        <CardHeader>
-          <SectionHeader
-            icon={DollarSign}
-            title="Add Credits"
-            description="Choose an amount or enter a custom value"
-          />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
-              <Button
-                key={amount}
-                variant={selectedAmount === amount ? 'default' : 'outline'}
-                className="h-12 text-lg font-semibold tabular-nums"
-                onClick={() => {
-                  setSelectedAmount(amount);
-                  setCustomAmount('');
-                  setError(null);
-                }}
-                disabled={checkoutMutation.isPending}
-              >
-                ${amount}
-              </Button>
-            ))}
-          </div>
-
-          <Separator />
-
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              $
-            </span>
-            <Input
-              type="number"
-              min={MIN_TOPUP_AMOUNT_USD}
-              step="1"
-              placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
-              value={customAmount}
-              onChange={(e) => {
-                setCustomAmount(e.target.value);
-                setSelectedAmount(null);
-                setError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTopUp();
-              }}
-              className="pl-7 tabular-nums"
-              autoComplete="off"
-            />
-          </div>
-
-          <Button
-            onClick={handleTopUp}
-            disabled={!isValidAmount || checkoutMutation.isPending}
-            className="w-full"
-          >
-            {checkoutMutation.isPending
-              ? 'Loading…'
-              : isValidAmount
-                ? `Top up $${effectiveAmount}`
-                : 'Top up'}
-          </Button>
-
-          {!balanceLoading && !balanceData?.hasPaymentMethod && (
-            <p className="text-xs text-muted-foreground">
-              Your payment method will be saved. After your first purchase,
-              you'll be able to enable auto top-up.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Auto Top-Up Card */}
-      <Card>
-        <CardHeader>
-          <SectionHeader
-            icon={RefreshCw}
-            title="Auto Top-Up"
-            description="Automatically add credits when your balance is low"
-          />
-        </CardHeader>
-        <CardContent>
-          {balanceLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : !balanceData?.hasPaymentMethod ? (
+      {!stripeEnabled && !balanceLoading && (
+        <Card>
+          <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              Make your first top-up to save a payment method and enable auto
-              top-up.
+              Credits can be added via gift codes.
             </p>
-          ) : (
-            <AutoTopUpForm
-              key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
-              enabled={balanceData.autoTopUp.enabled}
-              thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
-              amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
-              isPending={autoTopUpMutation.isPending}
-              onSave={(settings) => autoTopUpMutation.mutate(settings)}
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Invoices */}
-      <Card>
-        <CardHeader>
-          <SectionHeader
-            icon={CreditCard}
-            title="Invoices"
-            description="Recent purchases"
-          />
-        </CardHeader>
-        <CardContent>
-          {invoicesLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
-              <Skeleton className="h-12 w-full" />
+            <div className="pt-2">
+              <Link
+                to="/credits"
+                search={{ tab: 'transactions' }}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                View all transactions
+              </Link>
             </div>
-          ) : invoiceData?.transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">
-              No purchases yet
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {invoiceData?.transactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {tx.description ?? 'Credit purchase'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <span className="text-sm font-semibold tabular-nums text-green-600 dark:text-green-400">
-                      +${tx.amount.toFixed(2)}
-                    </span>
-                    {tx.metadata?.receiptUrl && (
-                      <a
-                        href={tx.metadata.receiptUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground"
-                        aria-label="View receipt"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    )}
+          </CardContent>
+        </Card>
+      )}
+
+      {stripeEnabled && (
+        <>
+          {/* Top Up Card */}
+          <Card>
+            <CardHeader>
+              <SectionHeader
+                icon={DollarSign}
+                title="Add Credits"
+                description="Choose an amount or enter a custom value"
+              />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-3">
+                {PRESET_TOPUP_AMOUNTS_USD.map((amount) => (
+                  <Button
+                    key={amount}
+                    variant={selectedAmount === amount ? 'default' : 'outline'}
+                    className="h-12 text-lg font-semibold tabular-nums"
+                    onClick={() => {
+                      setSelectedAmount(amount);
+                      setCustomAmount('');
+                      setError(null);
+                    }}
+                    disabled={checkoutMutation.isPending}
+                  >
+                    ${amount}
+                  </Button>
+                ))}
+              </div>
+
+              <Separator />
+
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder={`Custom (${MIN_TOPUP_AMOUNT_USD}+)`}
+                  value={customAmount}
+                  onChange={(e) => {
+                    setCustomAmount(e.target.value.replace(/[^0-9.]/g, ''));
+                    setSelectedAmount(null);
+                    setError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleTopUp();
+                  }}
+                  className="pl-7 tabular-nums"
+                  autoComplete="off"
+                />
+              </div>
+
+              <Button
+                onClick={handleTopUp}
+                disabled={!isValidAmount || checkoutMutation.isPending}
+                className="w-full"
+              >
+                {checkoutMutation.isPending
+                  ? 'Loading…'
+                  : isValidAmount
+                    ? `Top up $${effectiveAmount}`
+                    : 'Top up'}
+              </Button>
+
+              {!balanceLoading && !balanceData?.hasPaymentMethod && (
+                <p className="text-xs text-muted-foreground">
+                  Your payment method will be saved. After your first purchase,
+                  you'll be able to enable auto top-up.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Auto Top-Up Card */}
+          <Card>
+            <CardHeader>
+              <SectionHeader
+                icon={RefreshCw}
+                title="Auto Top-Up"
+                description="Automatically add credits when your balance is low"
+              />
+            </CardHeader>
+            <CardContent>
+              {balanceLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !balanceData?.hasPaymentMethod ? (
+                <p className="text-sm text-muted-foreground">
+                  Make your first top-up to save a payment method and enable
+                  auto top-up.
+                </p>
+              ) : (
+                <AutoTopUpForm
+                  key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
+                  enabled={balanceData.autoTopUp.enabled}
+                  thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
+                  amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
+                  isPending={autoTopUpMutation.isPending}
+                  onSave={(settings) => autoTopUpMutation.mutate(settings)}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Invoices */}
+          <Card>
+            <CardHeader>
+              <SectionHeader
+                icon={CreditCard}
+                title="Invoices"
+                description="Recent purchases"
+              />
+            </CardHeader>
+            <CardContent>
+              {invoicesLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : invoiceData?.transactions.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  No purchases yet
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {invoiceData?.transactions.map((tx) => (
+                    <div
+                      key={tx.id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {tx.description ?? 'Credit purchase'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(tx.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <span className="text-sm font-semibold tabular-nums text-green-600 dark:text-green-400">
+                          +${tx.amount.toFixed(2)}
+                        </span>
+                        {tx.metadata?.receiptUrl && (
+                          <a
+                            href={tx.metadata.receiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="View receipt"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="pt-2 text-center">
+                    <Link
+                      to="/credits"
+                      search={{ tab: 'transactions' }}
+                      className="text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      View all transactions
+                    </Link>
                   </div>
                 </div>
-              ))}
-
-              <div className="pt-2 text-center">
-                <Link
-                  to="/settings/transactions"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  View all transactions
-                </Link>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
@@ -586,11 +564,12 @@ function AutoTopUpForm({
               </span>
               <Input
                 id="threshold"
-                type="number"
-                min="1"
-                step="1"
+                type="text"
+                inputMode="decimal"
                 value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
+                onChange={(e) =>
+                  setThreshold(e.target.value.replace(/[^0-9.]/g, ''))
+                }
                 onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"
@@ -605,11 +584,12 @@ function AutoTopUpForm({
               </span>
               <Input
                 id="recharge"
-                type="number"
-                min={MIN_TOPUP_AMOUNT_USD}
-                step="1"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) =>
+                  setAmount(e.target.value.replace(/[^0-9.]/g, ''))
+                }
                 onBlur={() => save()}
                 className="pl-7 tabular-nums"
                 autoComplete="off"

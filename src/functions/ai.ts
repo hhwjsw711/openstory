@@ -13,6 +13,7 @@ import {
   callLLMStream,
   RECOMMENDED_MODELS,
 } from '@/lib/ai/llm-client';
+import { isValidAnalysisModelId } from '@/lib/ai/models.config';
 import {
   checkForInjectionAttempts,
   sanitizeScriptContent,
@@ -22,12 +23,12 @@ import {
   RateLimiter,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
+import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
+import { StyleConfigSchema } from '@/lib/db/schema/libraries';
 import { getPrompt } from '@/lib/prompts';
-import { isBillingEnabled } from '@/lib/billing/constants';
 import { estimateLLMCost } from '@/lib/billing/cost-estimation';
-import { deductCredits, hasEnoughCredits } from '@/lib/billing/credit-service';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
-import { apiKeyService } from '@/lib/byok/api-key.service';
 import { authWithTeamMiddleware } from './middleware';
 
 const promptShorteningRateLimiter = new RateLimiter(10, 60_000);
@@ -67,16 +68,15 @@ function enforceRateLimit(limiter: RateLimiter, key: string): void {
  * Returns `undefined` when billing is skipped (disabled or team has own key).
  */
 async function prepareBilling(
-  teamId: string,
-  userId: string,
+  scopedDb: ScopedDb,
   description: string,
   metadata?: Record<string, unknown>
 ): Promise<(() => Promise<void>) | undefined> {
-  const teamHasOwnKey = await apiKeyService.hasKey(teamId, 'openrouter');
-  if (!isBillingEnabled() || teamHasOwnKey) return undefined;
+  const teamHasOwnKey = await scopedDb.apiKeys.hasKey('openrouter');
+  if (teamHasOwnKey) return undefined;
 
   const cost = estimateLLMCost(1);
-  const canAfford = await hasEnoughCredits(teamId, cost);
+  const canAfford = await scopedDb.billing.hasEnoughCredits(cost);
   if (!canAfford) {
     throw new InsufficientCreditsError(
       `Insufficient credits for ${description.toLowerCase()}`
@@ -85,7 +85,10 @@ async function prepareBilling(
 
   return async () => {
     if (cost > 0) {
-      await deductCredits(teamId, cost, { userId, description, metadata });
+      await scopedDb.billing.deductCredits(cost, {
+        description,
+        metadata,
+      });
     }
   };
 }
@@ -110,8 +113,7 @@ export const shortenPromptFn = createServerFn({ method: 'POST' })
     }
 
     const deduct = await prepareBilling(
-      context.teamId,
-      context.user.id,
+      context.scopedDb,
       `Prompt shortening (${RECOMMENDED_MODELS.fast})`,
       { model: RECOMMENDED_MODELS.fast }
     );
@@ -154,10 +156,13 @@ const enhanceScriptInputSchema = z.object({
   script: z
     .string()
     .min(10, 'Script must be at least 10 characters')
-    .max(10000, 'Script too long'),
+    .max(50000, 'Script too long'),
   targetDuration: z.number().min(15).max(60).optional(),
   tone: z.enum(['dramatic', 'comedic', 'documentary', 'action']).optional(),
   style: z.string().optional(),
+  styleConfig: StyleConfigSchema.partial().optional(),
+  analysisModel: z.string().optional(),
+  aspectRatio: aspectRatioSchema.optional(),
 });
 
 export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
@@ -166,11 +171,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
   .handler(async function* ({ data, context }) {
     enforceRateLimit(scriptEnhancementRateLimiter, getClientIP());
 
-    const deduct = await prepareBilling(
-      context.teamId,
-      context.user.id,
-      'Script enhancement'
-    );
+    const deduct = await prepareBilling(context.scopedDb, 'Script enhancement');
 
     if (checkForInjectionAttempts(data.script)) {
       console.warn('Script enhancement: Potential injection attempt detected');
@@ -178,12 +179,20 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
 
     const sanitized = sanitizeScriptContent(data.script);
     const { compiled } = await getPrompt('script/enhance');
-    const userPrompt = createUserPrompt(sanitized);
+    const userPrompt = createUserPrompt(sanitized, {
+      styleConfig: data.styleConfig,
+      aspectRatio: data.aspectRatio,
+    });
+
+    const model =
+      data.analysisModel && isValidAnalysisModelId(data.analysisModel)
+        ? data.analysisModel
+        : RECOMMENDED_MODELS.creative;
 
     const systemMessage = `${compiled}\n\nReturn ONLY the enhanced script text. No JSON, no markdown formatting, no explanations.`;
 
     for await (const chunk of callLLMStream({
-      model: RECOMMENDED_MODELS.creative,
+      model,
       messages: [
         { role: 'system' as const, content: systemMessage },
         { role: 'user' as const, content: userPrompt },

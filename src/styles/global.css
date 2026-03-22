@@ -74,6 +74,9 @@
     0px 4px 10px -22px hsl(0 0% 0% / 0.35),
     0px 8px 10px -23px hsl(0 0% 0% / 0.35);
   --shadow-2xl: 0px 4px 10px -22px hsl(0 0% 0% / 0.88);
+  --color-violet: #6d28d9;
+  --color-coral: #f472b6;
+  --color-peach: #e09060;
   --tracking-normal: -0.025em;
   --spacing: 0.25rem;
 }
@@ -122,6 +125,9 @@
     --shadow-blur: 24px;
     --shadow-spread: -12px;
     --shadow-opacity: 0.5;
+    --color-violet: #a770ef;
+    --color-coral: #fb7185;
+    --color-peach: #fdb99b;
     --shadow-color: #0a0a0a;
     --shadow-2xs: 0px 2px 8px -4px hsl(0 0% 2% / 0.2);
     --shadow-xs: 0px 4px 12px -6px hsl(0 0% 2% / 0.3);
@@ -180,9 +186,17 @@
   --color-card-gradient-to: var(--card-gradient-to);
   --color-card-accent: var(--card-accent);
 
+  --color-violet: var(--color-violet);
+  --color-coral: var(--color-coral);
+  --color-peach: var(--color-peach);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
   --font-serif: var(--font-serif);
+  --font-display: 'Space Mono', 'Courier New', monospace;
+  --font-heading: 'Satoshi', -apple-system, sans-serif;
+  --font-body: 'Geist', sans-serif;
+  --font-accent: 'Instrument Serif', 'Georgia', serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -246,6 +260,95 @@ body {
   }
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+#how-it-works {
+  scroll-margin-top: 5rem;
+}
+
+/* Scroll-triggered entrance animation (progressive enhancement) */
+@supports (animation-timeline: view()) {
+  .animate-on-scroll {
+    animation: fade-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hero Ken Burns (slow zoom/pan) — fallback until real video is added */
+@keyframes ken-burns {
+  0% {
+    transform: scale(1) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.08) translate(-1%, -1%);
+  }
+}
+
+/* Hero text reveal on page load */
+@keyframes hero-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-reveal {
+  animation: hero-reveal 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-reveal-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.hero-reveal-delay-2 {
+  animation-delay: 0.25s;
+}
+
+.hero-reveal-delay-3 {
+  animation-delay: 0.4s;
+}
+
+.hero-reveal-delay-4 {
+  animation-delay: 0.55s;
+}
+
+/* Utility: editorial serif italic */
+.text-editorial {
+  font-family: var(--font-accent);
+  font-style: italic;
+}
+
+/* Utility: mono label (Space Mono 11px uppercase tracked) */
+.text-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
 /* Reduced motion: simple fade pulse */
 @media (prefers-reduced-motion: reduce) {
   @keyframes blob-morph {
@@ -265,5 +368,17 @@ body {
     50% {
       opacity: 1;
     }
+  }
+  @keyframes ken-burns {
+    from {
+      transform: none;
+    }
+    to {
+      transform: none;
+    }
+  }
+  .hero-reveal {
+    animation: none;
+    opacity: 1;
   }
 }

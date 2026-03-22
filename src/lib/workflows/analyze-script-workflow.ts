@@ -3,32 +3,15 @@
  * Orchestrates script analysis, frame creation, and thumbnail generation
  */
 
-import { buildLocationMatchingPromptVariables } from '@/lib/ai/location-matching-prompt';
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
 import {
-  audioDesignGenerationResultSchema,
-  characterExtractionResultSchema,
-  locationExtractionResultSchema,
-  locationMatchResponseSchema,
+  musicDesignResultSchema,
   sceneSplittingResultSchema,
-  talentMatchResponseSchema,
 } from '@/lib/ai/response-schemas';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
-import { buildMatchingPromptVariables } from '@/lib/ai/talent-matching-prompt';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { bulkInsertFrames, updateFrame } from '@/lib/db/helpers/frames';
-import { getLibraryLocationsByIds } from '@/lib/db/helpers/location-library';
-import {
-  updateSequenceAnalysisDurationMs,
-  updateSequenceMusicPrompt,
-  updateSequenceStatus,
-  updateSequenceTitle,
-  updateSequenceWorkflow,
-} from '@/lib/db/helpers/sequences';
-import { getTalentByIds } from '@/lib/db/helpers/talent';
 import type {
   CharacterMinimal,
-  NewFrame,
   SequenceLocationMinimal,
 } from '@/lib/db/schema';
 import { recordWorkflowTrace } from '@/lib/observability/langfuse';
@@ -36,16 +19,13 @@ import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   AnalyzeScriptWorkflowInput,
   ImageWorkflowInput,
-  LibraryLocationMatch,
   MotionWorkflowInput,
   MusicWorkflowInput,
-  TalentCharacterMatch,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { snapDuration } from '@/lib/motion/motion-generation';
@@ -54,13 +34,14 @@ import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import { getFalFlowControl } from './constants';
-import { durableLLMCall } from './llm-call-helper';
+import { durableLLMCall, durableStreamingSceneSplit } from './llm-call-helper';
 import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionPromptWorkflow } from './motion-prompt-workflow';
-import {
-  musicPromptSchema,
-  reinforceInstrumentalTags,
-} from './music-prompt.schema';
+import { reinforceInstrumentalTags } from './music-prompt.schema';
+
+import { createScopedWorkflow } from '../workflow/scoped-workflow';
+import { locationMatchingWorkflow } from './location-matching-workflow';
+import { talentMatchingWorkflow } from './talent-matching-workflow';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
 /**
@@ -125,8 +106,11 @@ function matchLocationsToScene(
   });
 }
 
-export const analyzeScriptWorkflow = createWorkflow(
-  async (context: WorkflowContext<AnalyzeScriptWorkflowInput>) => {
+export const analyzeScriptWorkflow = createScopedWorkflow<
+  AnalyzeScriptWorkflowInput,
+  Scene[]
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const {
       sequenceId,
@@ -153,312 +137,59 @@ export const analyzeScriptWorkflow = createWorkflow(
     const llmCallContext = {
       sequenceId,
       userId: input.userId,
-      teamId: input.teamId,
+      scopedDb,
     };
 
-    const {
-      scenes,
-      projectMetadata: { title },
-    } = await durableLLMCall(
+    const { scenes, frameMapping } = await durableStreamingSceneSplit(
       context,
       {
-        name: 'scene-splitting',
-        phase: { number: 1, name: 'Analyzing script…' },
-
         promptName: 'phase/scene-splitting-chat',
         promptVariables: {
           aspectRatio,
           script: sanitizeScriptContent(script),
         },
-
         modelId: analysisModelId,
         responseSchema: sceneSplittingResultSchema,
+        sequenceId,
+        autoGenerateMotion,
       },
       llmCallContext
     );
-
-    const frameMapping: { sceneId: string; frameId: string }[] =
-      await context.run('update-title-and-create-frames', async () => {
-        for (const scene of scenes) {
-          await getGenerationChannel(sequenceId).emit('generation.scene:new', {
-            sceneId: scene.sceneId,
-            sceneNumber: scene.sceneNumber,
-            title: scene.metadata?.title || 'Untitled Scene',
-            scriptExtract: scene.originalScript?.extract || '',
-            durationSeconds: scene.metadata?.durationSeconds || 3,
-          });
-        }
-
-        if (!sequenceId) return [];
-
-        await updateSequenceTitle(sequenceId, title);
-        await getGenerationChannel(sequenceId).emit('generation.updated', {
-          title,
-        });
-        await updateSequenceWorkflow(
-          sequenceId,
-          'analyze-script-shorter-prompts-batch-size-1'
-        );
-
-        const frameInserts = scenes.map(
-          (scene, index) =>
-            ({
-              sequenceId,
-              description: scene.originalScript?.extract || '',
-              orderIndex: index,
-              metadata: scene,
-              durationMs: Math.round(
-                (scene.metadata?.durationSeconds || 3) * 1000
-              ),
-              thumbnailStatus: 'generating',
-              videoStatus: autoGenerateMotion ? 'generating' : 'pending',
-            }) satisfies NewFrame
-        );
-
-        const createdFrames = await bulkInsertFrames(frameInserts);
-        const mapping = createdFrames.map((f) => ({
-          sceneId: f.metadata?.sceneId || '',
-          frameId: f.id,
-        }));
-
-        await updateSequenceStatus(sequenceId, 'completed');
-
-        for (const { sceneId, frameId } of mapping) {
-          const scene = scenes.find((s) => s.sceneId === sceneId);
-          await getGenerationChannel(sequenceId).emit(
-            'generation.frame:created',
-            {
-              frameId,
-              sceneId,
-              orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
-            }
-          );
-        }
-
-        return mapping;
-      });
-
-    // Phase 2: Character and location extraction
-    const { characterBible } = await durableLLMCall(
-      context,
-      {
-        name: 'character-extraction',
-        phase: { number: 2, name: 'Finding characters…' },
-
-        promptName: 'phase/character-extraction-chat',
-        promptVariables: {
-          scenes: JSON.stringify(scenes, null, 2),
-        },
-
-        modelId: analysisModelId,
-        responseSchema: characterExtractionResultSchema,
-      },
-      llmCallContext
+    const [characterMatchingResult, locationMatchingResult] = await Promise.all(
+      [
+        context.invoke('talent-matching', {
+          workflow: talentMatchingWorkflow,
+          body: {
+            sequenceId,
+            userId: input.userId,
+            teamId: input.teamId,
+            scenes,
+            analysisModelId,
+            suggestedTalentIds,
+          },
+        }),
+        context.invoke('location-matching', {
+          workflow: locationMatchingWorkflow,
+          body: {
+            sequenceId,
+            userId: input.userId,
+            teamId: input.teamId,
+            scenes,
+            analysisModelId,
+            suggestedLocationIds,
+          },
+        }),
+      ]
     );
+    if (characterMatchingResult.isFailed || characterMatchingResult.isCanceled)
+      throw new Error('Character sheet generation failed');
+    if (locationMatchingResult.isFailed || locationMatchingResult.isCanceled)
+      throw new Error('Location sheet generation failed');
 
-    const { locationBible } = await durableLLMCall(
-      context,
-      {
-        name: 'location-extraction',
-        phase: { number: 2, name: 'Finding locations…' },
-
-        promptName: 'phase/location-extraction-chat',
-        promptVariables: {
-          scenes: JSON.stringify(scenes, null, 2),
-        },
-
-        modelId: analysisModelId,
-        responseSchema: locationExtractionResultSchema,
-      },
-      llmCallContext
-    );
-
-    // Talent matching (conditional)
-    const { talentList, matchingPromptVariables } = await context.run(
-      'get-talent-list',
-      async () => {
-        if (!suggestedTalentIds?.length || !input.teamId) {
-          return { talentList: [], matchingPromptVariables: {} };
-        }
-        const talentList = await getTalentByIds(
-          suggestedTalentIds,
-          input.teamId
-        );
-        return {
-          talentList,
-          matchingPromptVariables: buildMatchingPromptVariables(
-            characterBible,
-            talentList
-          ),
-        };
-      }
-    );
-
-    const { matches: talentMatches } =
-      talentList.length > 0
-        ? await durableLLMCall(
-            context,
-            {
-              name: 'talent-matching',
-              phase: { number: 3, name: 'Casting characters…' },
-
-              promptName: 'phase/talent-matching-chat',
-              promptVariables: matchingPromptVariables,
-              modelId: analysisModelId,
-              responseSchema: talentMatchResponseSchema,
-            },
-            llmCallContext
-          )
-        : { matches: [] };
-
-    const talentCharacterMatches: TalentCharacterMatch[] = await context.run(
-      'build-matches',
-      async () => {
-        const usedTalentIds = new Set<string>();
-        const usedCharacterIds = new Set<string>();
-        const matches: TalentCharacterMatch[] = [];
-
-        for (const match of talentMatches) {
-          // Ensure each talent and character is only cast once
-          if (usedTalentIds.has(match.talentId)) continue;
-          if (usedCharacterIds.has(match.characterId)) continue;
-
-          const talent = talentList.find((t) => t.id === match.talentId);
-          if (!talent?.imageUrl) continue;
-
-          const character = characterBible.find(
-            (c) => c.characterId === match.characterId
-          );
-          if (!character) continue;
-
-          usedTalentIds.add(match.talentId);
-          usedCharacterIds.add(match.characterId);
-          matches.push({
-            characterId: match.characterId,
-            talentId: match.talentId,
-            talentName: talent.name,
-            sheetImageUrl: talent.defaultSheet?.imageUrl ?? '',
-            sheetMetadata: talent.defaultSheet?.metadata ?? undefined,
-          });
-        }
-
-        if (matches.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.talent:matched',
-            {
-              matches: matches.map((m) => {
-                const char = characterBible.find(
-                  (c) => c.characterId === m.characterId
-                );
-                return {
-                  characterId: m.characterId,
-                  characterName: char?.name ?? m.characterId,
-                  talentId: m.talentId,
-                  talentName: m.talentName,
-                };
-              }),
-            }
-          );
-        }
-
-        return matches;
-      }
-    );
-
-    // Location matching (conditional)
-    const { libraryLocationList, locationMatchingPromptVariables } =
-      await context.run('get-library-locations', async () => {
-        if (!suggestedLocationIds?.length || !input.teamId) {
-          return {
-            libraryLocationList: [],
-            locationMatchingPromptVariables: {},
-          };
-        }
-        const libraryLocationList =
-          await getLibraryLocationsByIds(suggestedLocationIds);
-        return {
-          libraryLocationList,
-          locationMatchingPromptVariables: buildLocationMatchingPromptVariables(
-            locationBible,
-            libraryLocationList
-          ),
-        };
-      });
-
-    const { matches: locationMatches } =
-      libraryLocationList.length > 0
-        ? await durableLLMCall(
-            context,
-            {
-              name: 'location-matching',
-              phase: { number: 3, name: 'Matching locations…' },
-
-              promptName: 'phase/location-matching-chat',
-              promptVariables: locationMatchingPromptVariables,
-              modelId: analysisModelId,
-              responseSchema: locationMatchResponseSchema,
-            },
-            llmCallContext
-          )
-        : { matches: [] };
-
-    const libraryLocationMatches: LibraryLocationMatch[] = await context.run(
-      'build-location-matches',
-      async () => {
-        const usedLibraryIds = new Set<string>();
-        const usedLocationIds = new Set<string>();
-        const matches: LibraryLocationMatch[] = [];
-
-        for (const match of locationMatches) {
-          if (usedLibraryIds.has(match.libraryLocationId)) continue;
-          if (usedLocationIds.has(match.locationId)) continue;
-          if (match.confidence < 0.5) continue;
-
-          const libraryLoc = libraryLocationList.find(
-            (lib) => lib.id === match.libraryLocationId
-          );
-          if (!libraryLoc?.referenceImageUrl) continue;
-
-          const location = locationBible.find(
-            (loc) => loc.locationId === match.locationId
-          );
-          if (!location) continue;
-
-          usedLibraryIds.add(match.libraryLocationId);
-          usedLocationIds.add(match.locationId);
-          matches.push({
-            locationId: match.locationId,
-            libraryLocationId: match.libraryLocationId,
-            libraryLocationName: libraryLoc.name,
-            referenceImageUrl: libraryLoc.referenceImageUrl,
-            description: libraryLoc.description ?? undefined,
-          });
-        }
-
-        if (matches.length > 0) {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.location:matched',
-            {
-              matches: matches.map((m) => {
-                const loc = locationBible.find(
-                  (l) => l.locationId === m.locationId
-                );
-                return {
-                  locationId: m.locationId,
-                  locationName: loc?.name ?? m.locationId,
-                  libraryLocationId: m.libraryLocationId,
-                  libraryLocationName: m.libraryLocationName,
-                  referenceImageUrl: m.referenceImageUrl,
-                  description: m.description ?? undefined,
-                };
-              }),
-            }
-          );
-        }
-
-        return matches;
-      }
-    );
+    const { characterBible, matches: talentCharacterMatches } =
+      characterMatchingResult.body;
+    const { locationBible, matches: libraryLocationMatches } =
+      locationMatchingResult.body;
 
     // Generate character sheets, location sheets, and visual prompts in parallel
     const [charResult, locationResult, visualResult] = await Promise.all([
@@ -470,6 +201,7 @@ export const analyzeScriptWorkflow = createWorkflow(
           teamId: input.teamId,
           characterBible,
           talentMatches: talentCharacterMatches,
+          imageModel,
         },
         flowControl: getFalFlowControl(),
       }),
@@ -487,6 +219,8 @@ export const analyzeScriptWorkflow = createWorkflow(
       context.invoke('visual-prompts', {
         workflow: visualPromptWorkflow,
         body: {
+          userId: input.userId,
+          teamId: input.teamId,
           sequenceId,
           scenes,
           aspectRatio,
@@ -519,7 +253,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, {
+            await scopedDb.frames.update(matched.frameId, {
               metadata: scene,
               imagePrompt: scene.prompts?.visual?.fullPrompt,
             });
@@ -564,7 +298,7 @@ export const analyzeScriptWorkflow = createWorkflow(
 
       await context.run('frame-images-start', async () => {
         if (sequenceId) {
-          await updateSequenceAnalysisDurationMs(
+          await scopedDb.sequences.updateAnalysisDurationMs(
             sequenceId,
             Date.now() - startTime
           );
@@ -637,8 +371,10 @@ export const analyzeScriptWorkflow = createWorkflow(
       {
         workflow: motionPromptWorkflow,
         body: {
+          userId: input.userId,
+          teamId: input.teamId,
           sequenceId,
-          scenes,
+          scenes: scenesWithVisualPrompts,
           aspectRatio,
           characterBible,
           styleConfig,
@@ -695,7 +431,7 @@ export const analyzeScriptWorkflow = createWorkflow(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, {
+            await scopedDb.frames.update(matched.frameId, {
               metadata: scene,
               motionPrompt: scene.prompts?.motion?.fullPrompt,
               durationMs: Math.round(
@@ -715,61 +451,65 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    // Audio design generation
-    const { scenes: scenesWithAudioDesign } = await durableLLMCall(
+    // Music design: classify each scene + generate unified tags/prompt
+    const sceneSummaries = scenesWithMotionPrompts.map((scene) => ({
+      sceneId: scene.sceneId,
+      title: scene.metadata?.title || 'Untitled Scene',
+      storyBeat: scene.metadata?.storyBeat || '',
+      durationSeconds: scene.metadata?.durationSeconds || 5,
+      location: scene.metadata?.location || '',
+      timeOfDay: scene.metadata?.timeOfDay || '',
+      visualSummary: scene.prompts?.visual?.components?.atmosphere || '',
+    }));
+
+    const musicDesignResult = await durableLLMCall(
       context,
       {
-        name: 'audio-design',
-        phase: { number: 7, name: 'Designing sound…' },
-
-        promptName: 'phase/audio-design-chat',
+        name: 'music-design',
+        phase: { number: 7, name: 'Composing music…' },
+        promptName: 'phase/music-design-chat',
         promptVariables: {
-          scenes: JSON.stringify(scenesWithMotionPrompts, null, 2),
+          scenes: JSON.stringify(sceneSummaries, null, 2),
         },
-
         modelId: analysisModelId,
-        responseSchema: audioDesignGenerationResultSchema,
-
-        additionalMetadata: {
-          sceneCount: scenesWithMotionPrompts.length,
-        },
+        responseSchema: musicDesignResultSchema,
       },
       llmCallContext
     );
 
     const completeScenes: Scene[] = await context.run(
-      'merge-audio-design',
+      'merge-music-design',
       () =>
         scenesWithMotionPrompts.map((scene) => {
-          const enrichment = scenesWithAudioDesign.find(
+          const enrichment = musicDesignResult.scenes.find(
             (s) => s.sceneId === scene.sceneId
           );
           if (!enrichment) {
             throw new WorkflowValidationError(
-              `Scene ID mismatch in audio design: expected "${scene.sceneId}"`
+              `Scene ID mismatch in music design: expected "${scene.sceneId}"`
             );
           }
           return {
             ...scene,
-            audioDesign: enrichment.audioDesign,
+            musicDesign: enrichment.musicDesign,
           };
         })
     );
 
     if (sequenceId) {
-      await context.run('update-frames-after-audio-design', async () => {
+      await context.run('update-frames-after-music-design', async () => {
         await Promise.all(
           completeScenes.map(async (scene) => {
             const matched = frameMapping.find(
               (f) => f.sceneId === scene.sceneId
             );
             if (!matched) return;
-            await updateFrame(matched.frameId, { metadata: scene });
+            await scopedDb.frames.update(matched.frameId, { metadata: scene });
             await getGenerationChannel(sequenceId).emit(
               'generation.frame:updated',
               {
                 frameId: matched.frameId,
-                updateType: 'audio-design',
+                updateType: 'music-design',
                 metadata: scene,
               }
             );
@@ -778,68 +518,37 @@ export const analyzeScriptWorkflow = createWorkflow(
       });
     }
 
-    // Music prompt generation + optional audio generation
+    // Store music prompt + generate motion/music if scenes have music
     const scenesWithMusic = completeScenes.filter(
       (scene) =>
-        scene.audioDesign?.music?.presence &&
-        scene.audioDesign.music.presence !== 'none'
+        scene.musicDesign?.presence && scene.musicDesign.presence !== 'none'
     );
 
+    const reinforcedTags = reinforceInstrumentalTags(musicDesignResult.tags);
+
+    if (sequenceId) {
+      await context.run('store-music-prompt', async () => {
+        await scopedDb.sequences.updateMusicPrompt(
+          sequenceId,
+          musicDesignResult.prompt,
+          reinforcedTags
+        );
+      });
+    }
+
     if (scenesWithMusic.length > 0) {
-      await context.run('start-music-prompt-generation', async () => {
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 8,
-          phaseName: 'Composing music…',
-        });
-      });
-
       let totalDuration = 0;
-      const sceneSummaries = scenesWithMusic.map((scene) => {
-        const durationSeconds = scene.metadata?.durationSeconds || 10;
-        totalDuration += durationSeconds;
-        return {
-          title: scene.metadata?.title || 'Untitled Scene',
-          storyBeat: scene.metadata?.storyBeat || '',
-          durationSeconds,
-          musicStyle: scene.audioDesign?.music?.style || '',
-          musicMood: scene.audioDesign?.music?.mood || '',
-          musicPresence: scene.audioDesign?.music?.presence || 'none',
-          atmosphere: scene.audioDesign?.ambient?.atmosphere || undefined,
-        };
-      });
-
-      const musicPrompt = await durableLLMCall(
-        context,
-        {
-          name: 'music-prompt-generation',
-          phase: { number: 8, name: 'Composing music…' },
-          promptName: 'phase/music-prompt-generation-chat',
-          promptVariables: {
-            scenes: JSON.stringify(sceneSummaries),
-          },
-          modelId: analysisModelId,
-          responseSchema: musicPromptSchema,
-        },
-        llmCallContext
-      );
-
-      const reinforcedTags = reinforceInstrumentalTags(musicPrompt.tags);
-      if (sequenceId) {
-        await context.run('store-music-prompt', async () => {
-          await updateSequenceMusicPrompt(
-            sequenceId,
-            musicPrompt.prompt,
-            reinforcedTags
-          );
-        });
+      for (const scene of scenesWithMusic) {
+        totalDuration += scene.metadata?.durationSeconds || 5;
       }
-      // Now generate motion for each scene
+
+      // Generate motion for each scene
       if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
         await context.run('start-motion-generation', async () => {
           await getGenerationChannel(sequenceId).emit(
             'generation.phase:start',
             {
-              phase: 7,
+              phase: 8,
               phaseName: 'Generating motion…',
             }
           );
@@ -878,7 +587,8 @@ export const analyzeScriptWorkflow = createWorkflow(
           })
         );
       }
-      // Now generate music for whole movie
+
+      // Generate music for whole movie
       if (autoGenerateMusic && sequenceId) {
         if (!input.userId || !input.teamId) {
           throw new Error('userId and teamId required for music generation');
@@ -890,7 +600,7 @@ export const analyzeScriptWorkflow = createWorkflow(
             userId: input.userId,
             teamId: input.teamId,
             sequenceId,
-            prompt: musicPrompt.prompt,
+            prompt: musicDesignResult.prompt,
             tags: reinforcedTags,
             duration: totalDuration,
             model: musicModel,
@@ -919,17 +629,18 @@ export const analyzeScriptWorkflow = createWorkflow(
     return completeScenes;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
+    failureFunction: async ({ context, scopedDb, failResponse }) => {
       const { sequenceId } = context.requestPayload;
       if (!sequenceId) return;
 
-      console.error('[AnalyzeScriptWorkflow] Failure:', failResponse);
-      await updateSequenceStatus(sequenceId, 'failed', String(failResponse));
+      const error = sanitizeFailResponse(failResponse);
+      console.error('[AnalyzeScriptWorkflow] Failure:', error);
+      await scopedDb.sequence(sequenceId).updateStatus('failed', error);
       await getGenerationChannel(sequenceId).emit('generation.failed', {
-        message: String(failResponse),
+        message: error,
       });
 
-      return `Analysis workflow failed: ${failResponse}`;
+      return `Analysis workflow failed: ${error}`;
     },
   }
 );

@@ -1,28 +1,28 @@
-import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
-import { apiKeyService } from '../byok/api-key.service';
+import { micros } from '../billing/money';
 import {
   mockGenerateVideo,
   mockGetVideoJobStatus,
 } from './__mocks__/fal-client.mock';
-import { generateMotionForFrame } from './motion-generation';
+
+// Mock DB + env so api-key resolution falls through to platform key
+mock.module('#db-client', () => ({
+  getDb: () => ({
+    select: () => ({ from: () => ({ where: () => ({ limit: () => [] }) }) }),
+  }),
+}));
+
+mock.module('#env', () => ({
+  getEnv: () => ({ FAL_KEY: 'test-fal-key', OPENROUTER_KEY: 'test-or-key' }),
+}));
+
+const { generateMotionForFrame } = await import('./motion-generation');
 
 describe('Motion Service', () => {
-  let resolveKeySpy: ReturnType<typeof spyOn>;
-
   beforeEach(() => {
     mockGenerateVideo.mockClear();
     mockGetVideoJobStatus.mockClear();
-
-    // Mock resolveKey to avoid DB/env lookups in tests
-    resolveKeySpy = spyOn(apiKeyService, 'resolveKey').mockResolvedValue({
-      key: 'test-fal-key',
-      source: 'platform',
-    });
-  });
-
-  afterEach(() => {
-    resolveKeySpy.mockRestore();
   });
 
   describe('generateMotionForFrame', () => {
@@ -40,7 +40,7 @@ describe('Motion Service', () => {
       });
 
       const result = await generateMotionForFrame({
-        teamId: 'test-team-id',
+        // scopedDb not passed — falls through to platform FAL_KEY
         imageUrl: 'https://example.com/image.jpg',
         prompt: 'A person walking',
         model: 'kling_v3_pro',
@@ -56,7 +56,7 @@ describe('Motion Service', () => {
       expect(result.metadata?.provider).toBe('kling');
       expect(result.metadata?.duration).toBe(5);
       expect(result.metadata?.fps).toBe(30);
-      expect(result.metadata?.cost).toBe(840_000); // 140_000 micros/s * 1.2 (audio) * 5s
+      expect(result.metadata?.cost).toBe(micros(840_000)); // 140_000 micros/s * 1.2 (audio) * 5s
 
       expect(mockGenerateVideo).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -85,7 +85,7 @@ describe('Motion Service', () => {
       });
 
       const result = await generateMotionForFrame({
-        teamId: 'test-team-id',
+        // scopedDb not passed — falls through to platform FAL_KEY
         imageUrl: 'https://example.com/image.jpg',
         prompt: 'Dynamic action sequence',
         model: 'seedance_v1_pro',

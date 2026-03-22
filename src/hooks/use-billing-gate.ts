@@ -16,6 +16,7 @@ type BillingGateStatus = {
   hasOpenRouterKey: boolean;
   balance: number;
   hasAutoTopUp: boolean;
+  stripeEnabled: boolean;
 };
 
 export function useBillingGateQuery() {
@@ -72,6 +73,7 @@ export function useBillingGate(mode: 'all' | 'fal' = 'all') {
     hasOpenRouterKey: data?.hasOpenRouterKey ?? false,
     hasCredits: data?.hasCredits ?? true,
     hasAutoTopUp: data?.hasAutoTopUp ?? false,
+    stripeEnabled: data?.stripeEnabled ?? true,
     showGate,
     gateProps: { open, onOpenChange: setOpen },
     isLoading: query.isLoading,

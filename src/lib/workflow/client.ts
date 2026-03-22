@@ -60,9 +60,11 @@ export function getWorkflowClient(): WorkflowClient {
   });
 }
 
-export async function triggerWorkflow(
+export async function triggerWorkflow<
+  T extends { userId: string; teamId: string },
+>(
   urlPath: string,
-  body: object,
+  body: T,
   options?: {
     deduplicationId?: string;
   }

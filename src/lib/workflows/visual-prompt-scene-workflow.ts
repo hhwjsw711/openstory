@@ -5,19 +5,20 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { VisualPromptSceneWorkflowInput } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 import {
   type VisualPromptWithContinuity,
   visualPromptWithContinuitySchema,
 } from '../ai/scene-analysis.schema';
 import { durableLLMCall } from './llm-call-helper';
 
-export const visualPromptSceneWorkflow = createWorkflow(
-  async (
-    context: WorkflowContext<VisualPromptSceneWorkflowInput>
-  ): Promise<{ sceneId: string } & VisualPromptWithContinuity> => {
+export const visualPromptSceneWorkflow = createScopedWorkflow<
+  VisualPromptSceneWorkflowInput,
+  { sceneId: string } & VisualPromptWithContinuity
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
     const {
       scenes,
@@ -30,8 +31,7 @@ export const visualPromptSceneWorkflow = createWorkflow(
     } = input;
 
     console.log(
-      '[VisualPromptWorkflow] Starting visual prompt generation input:',
-      input
+      `[VisualPromptSceneWorkflow] Generating visual prompt for scene ${sceneIndex + 1}/${scenes.length}`
     );
 
     // ============================================================
@@ -78,8 +78,8 @@ export const visualPromptSceneWorkflow = createWorkflow(
         additionalMetadata,
       },
       {
-        // Note don't include the sequenceId as causes the durable call to emit a generation.phase:start event
-        teamId: input.teamId,
+        // Note: don't include sequenceId as it causes the durable call to emit a generation.phase:start event
+        scopedDb,
       }
     );
 
@@ -87,12 +87,13 @@ export const visualPromptSceneWorkflow = createWorkflow(
   },
   {
     failureFunction: async ({ context, failStatus, failResponse }) => {
+      const error = sanitizeFailResponse(failResponse);
       console.error('[VisualPromptWorkflow] Failed', {
         workflowRunId: context.workflowRunId,
         failStatus,
-        failResponse,
+        failResponse: error,
       });
-      return `Visual prompt generation failed: ${failResponse}`;
+      return `Visual prompt generation failed: ${error}`;
     },
   }
 );

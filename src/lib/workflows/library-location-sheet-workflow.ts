@@ -12,7 +12,6 @@ import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
-import { updateLibraryLocationReference } from '@/lib/db/helpers/location-library';
 import { generateId } from '@/lib/db/id';
 import {
   generateImageWithProvider,
@@ -20,15 +19,18 @@ import {
 } from '@/lib/image/image-generation';
 import { buildLibraryLocationSheetPrompt } from '@/lib/prompts/location-prompt';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   LibraryLocationSheetWorkflowInput,
   LibraryLocationSheetWorkflowResult,
 } from '@/lib/workflow/types';
-import { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-export const libraryLocationSheetWorkflow = createWorkflow(
-  async (context: WorkflowContext<LibraryLocationSheetWorkflowInput>) => {
+export const libraryLocationSheetWorkflow = createScopedWorkflow<
+  LibraryLocationSheetWorkflowInput,
+  LibraryLocationSheetWorkflowResult
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
 
     // Step 1: Build the prompt
@@ -57,7 +59,6 @@ export const libraryLocationSheetWorkflow = createWorkflow(
           referenceImageUrls:
             referenceUrls.length > 0 ? referenceUrls : undefined,
           traceName: 'library-location-sheet',
-          teamId: input.teamId,
         } satisfies ImageGenerationParams;
       }
     );
@@ -69,16 +70,13 @@ export const libraryLocationSheetWorkflow = createWorkflow(
         `Generating 3x3 grid sheet for ${input.locationName} with model ${generationParams.model}`
       );
 
-      return await generateImageWithProvider({
-        ...generationParams,
-        teamId: input.teamId,
-      });
+      return await generateImageWithProvider(generationParams, { scopedDb });
     });
 
     // Deduct credits for image generation (skip if team used own fal key)
     await context.run('deduct-credits', async () => {
       await deductWorkflowCredits({
-        teamId: input.teamId,
+        scopedDb,
         costMicros: extractImageCost(imageResult.metadata),
         usedOwnKey: imageResult.metadata.usedOwnKey,
         description: `Library location sheet (${generationParams.model})`,
@@ -136,7 +134,7 @@ export const libraryLocationSheetWorkflow = createWorkflow(
         `Updating database for ${input.locationName}`
       );
 
-      await updateLibraryLocationReference(
+      await scopedDb.locations.updateReference(
         input.locationDbId,
         storageResult.url,
         storageResult.path
@@ -159,10 +157,11 @@ export const libraryLocationSheetWorkflow = createWorkflow(
   {
     failureFunction: async ({ context, failResponse }) => {
       const input = context.requestPayload;
+      const error = sanitizeFailResponse(failResponse);
 
       console.error(
         '[LibraryLocationSheetWorkflow]',
-        `Sheet generation failed for location ${input.locationName}: ${failResponse}`
+        `Sheet generation failed for location ${input.locationName}: ${error}`
       );
 
       return `Library location sheet generation failed for ${input.locationName}`;

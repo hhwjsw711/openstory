@@ -40,7 +40,6 @@ teams
 bun install
 bun setup                          # Auto-configure local dev (SQLite + QStash)
 bun db:setup                       # Migrate + seed database
-bun scripts/setup-r2-buckets.sh    # Setup storage (follow prompts)
 ```
 
 **Daily workflow (2 terminals):**
@@ -205,7 +204,7 @@ frame.metadata = {
     motion: { fullPrompt, components, parameters },
   },
   continuity: { characterTags, environmentTag, colorPalette, lightingSetup },
-  audioDesign: { music, soundEffects, dialogue, ambient },
+  musicDesign: { presence, style, mood, atmosphere },
 };
 ```
 

@@ -1,3 +1,4 @@
+import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
 import { GenerateSequenceIcon } from '@/components/icons/generate-sequence-icon';
 import { LocationSuggestionSelector } from '@/components/location-library/location-suggestion-selector';
 import { GenerationSettings } from '@/components/settings/generation-settings';
@@ -13,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -21,11 +22,11 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
-import { useCreateSequence, useArchiveSequence } from '@/hooks/use-sequences';
+import { enhanceScriptStreamFn } from '@/functions/ai';
+import { useBillingGate } from '@/hooks/use-billing-gate';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequenceDraft } from '@/hooks/use-sequence-draft';
-import { useBillingGate } from '@/hooks/use-billing-gate';
-import { BillingGateDialog } from '@/components/billing/billing-gate-dialog';
+import { useCreateSequence } from '@/hooks/use-sequences';
 import { useStyles } from '@/hooks/use-styles';
 import {
   DEFAULT_IMAGE_MODEL,
@@ -44,12 +45,13 @@ import {
   type AnalysisModelId,
 } from '@/lib/ai/models.config';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
-import { enhanceScriptStreamFn } from '@/functions/ai';
 import { cn } from '@/lib/utils';
 import type { Sequence } from '@/types/database';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Square, Undo2 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { ScriptEditor } from './script-editor';
+
+const SCRIPT_SHORT_THRESHOLD = 1000;
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -153,7 +155,7 @@ export const ScriptView: FC<{
   // Sync draft state when creating new sequences (not editing)
   const hasSyncedDraftRef = React.useRef(false);
   useEffect(() => {
-    if (isEditing) {
+    if (isEditing || loading) {
       hasSyncedDraftRef.current = false;
       return;
     }
@@ -167,7 +169,7 @@ export const ScriptView: FC<{
         setSelectedLocationIds(draft.selectedLocationIds);
       hasSyncedDraftRef.current = true;
     }
-  }, [isEditing, draftLoaded, draft]);
+  }, [isEditing, loading, draftLoaded, draft]);
 
   // Sync state with savedSettings when creating new sequences (not when editing)
   // Use a ref to track if we've already synced to avoid loops
@@ -245,9 +247,10 @@ export const ScriptView: FC<{
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [enhanceError, setEnhanceError] = useState<string | null>(null);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showEnhanceNudge, setShowEnhanceNudge] = useState(false);
+  const [canUndoEnhance, setCanUndoEnhance] = useState(false);
 
   const createSequenceMutation = useCreateSequence();
-  const archiveSequenceMutation = useArchiveSequence();
   const {
     needsBillingSetup,
     showGate,
@@ -255,13 +258,12 @@ export const ScriptView: FC<{
     hasFalKey,
     hasOpenRouterKey,
     hasCredits,
+    stripeEnabled,
   } = useBillingGate();
 
   const handleCancel = onCancel;
 
   const executeRegeneration = () => {
-    const oldSequenceId = sequence?.id;
-
     createSequenceMutation.mutate(
       {
         title: undefined,
@@ -282,11 +284,7 @@ export const ScriptView: FC<{
       },
       {
         onSuccess: (result) => {
-          if (oldSequenceId) {
-            archiveSequenceMutation.mutate(oldSequenceId);
-          } else {
-            clearDraft();
-          }
+          clearDraft();
           if (onSuccess) {
             onSuccess(result.data.map((seq) => seq.id));
           }
@@ -310,10 +308,17 @@ export const ScriptView: FC<{
       return;
     }
 
+    const scriptText = script ?? sequence?.script ?? '';
+    if (scriptText.length < SCRIPT_SHORT_THRESHOLD) {
+      setShowEnhanceNudge(true);
+      return;
+    }
+
     executeRegeneration();
   };
 
   const previousScriptRef = useRef<string>('');
+  const enhanceAbortRef = useRef<AbortController | null>(null);
 
   const handleEnhance = async () => {
     if (needsBillingSetup) {
@@ -326,23 +331,58 @@ export const ScriptView: FC<{
     previousScriptRef.current = scriptValue;
     setScript('');
 
+    const abortController = new AbortController();
+    enhanceAbortRef.current = abortController;
+
     try {
+      const selectedStyle = styles.find((s) => s.id === styleId);
       let accumulated = '';
       for await (const chunk of await enhanceScriptStreamFn({
-        data: { script: scriptValue },
+        data: {
+          script: scriptValue,
+          styleConfig: selectedStyle?.config ?? undefined,
+          analysisModel: analysisModels[0],
+          aspectRatio,
+        },
       })) {
+        if (abortController.signal.aborted) break;
         accumulated += chunk.delta;
         setScript(accumulated);
       }
+      setCanUndoEnhance(true);
     } catch (error) {
-      setEnhanceError(
-        error instanceof Error ? error.message : 'Failed to enhance script'
-      );
-      setScript(previousScriptRef.current);
+      if (!abortController.signal.aborted) {
+        setEnhanceError(
+          error instanceof Error ? error.message : 'Failed to enhance script'
+        );
+        setScript(previousScriptRef.current);
+      }
     } finally {
+      enhanceAbortRef.current = null;
       setIsEnhancing(false);
     }
   };
+
+  const handleStopEnhance = () => {
+    enhanceAbortRef.current?.abort();
+  };
+
+  const handleUndoEnhance = () => {
+    setScript(previousScriptRef.current);
+    setCanUndoEnhance(false);
+  };
+
+  useEffect(() => {
+    if (!isEnhancing) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || (e.metaKey && e.key === '.')) {
+        e.preventDefault();
+        handleStopEnhance();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isEnhancing]);
 
   const isFormValid =
     (script || sequence?.script) &&
@@ -351,7 +391,8 @@ export const ScriptView: FC<{
 
   const isSubmitting = createSequenceMutation.isPending;
   const isProcessing = sequence?.status === 'processing';
-  const isDisabled = !isFormValid || isSubmitting || isProcessing;
+  const isDisabled =
+    !isFormValid || isSubmitting || isProcessing || isEnhancing;
 
   const scriptValue = script ?? sequence?.script ?? '';
 
@@ -401,34 +442,62 @@ export const ScriptView: FC<{
           <div className="relative min-h-0 flex flex-col">
             <ScriptEditor
               value={scriptValue}
-              onValueChange={setScript}
+              onValueChange={(val) => {
+                setScript(val);
+                if (canUndoEnhance) setCanUndoEnhance(false);
+              }}
               maxLength={50000}
               placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
               disabled={loading}
               autoFocus={autoFocus}
               showCharacterCount={false}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute bottom-2 right-2 gap-1.5 text-muted-foreground"
-              disabled={
-                !scriptValue ||
-                scriptValue.length < 10 ||
-                isEnhancing ||
-                isSubmitting ||
-                isProcessing
-              }
-              onClick={() => void handleEnhance()}
-            >
-              {isEnhancing ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Sparkles className="size-3.5" />
+            <div className="absolute bottom-2 right-2 flex items-center gap-1">
+              {canUndoEnhance && !isEnhancing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={handleUndoEnhance}
+                >
+                  <Undo2 className="size-3.5" />
+                  Undo
+                </Button>
               )}
-              {isEnhancing ? 'Enhancing…' : 'Enhance'}
-            </Button>
+              {isEnhancing ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground"
+                  onClick={handleStopEnhance}
+                >
+                  <span className="relative size-5">
+                    <Loader2 className="absolute inset-0 size-5 animate-spin" />
+                    <Square className="absolute inset-[5px] size-[10px] fill-current" />
+                  </span>
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-muted-foreground"
+                  disabled={
+                    !scriptValue ||
+                    scriptValue.length < 10 ||
+                    isSubmitting ||
+                    isProcessing
+                  }
+                  onClick={() => void handleEnhance()}
+                >
+                  <Sparkles className="size-3.5" />
+                  Enhance Script
+                </Button>
+              )}
+            </div>
           </div>
           {enhanceError && (
             <p className="text-sm text-destructive">{enhanceError}</p>
@@ -496,6 +565,7 @@ export const ScriptView: FC<{
         hasFalKey={hasFalKey}
         hasOpenRouterKey={hasOpenRouterKey}
         hasCredits={hasCredits}
+        stripeEnabled={stripeEnabled}
       />
       <AlertDialog
         open={showRegenerateConfirm}
@@ -505,8 +575,7 @@ export const ScriptView: FC<{
           <AlertDialogHeader>
             <AlertDialogTitle>Regenerate sequence?</AlertDialogTitle>
             <AlertDialogDescription>
-              A new sequence will be created from this script. The current
-              sequence will be archived.
+              A new sequence will be created from this script.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -518,6 +587,43 @@ export const ScriptView: FC<{
               }}
             >
               Regenerate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={showEnhanceNudge} onOpenChange={setShowEnhanceNudge}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Your script is just a starting point
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Short scripts produce simpler sequences. Enhance your script to
+              create a detailed screenplay with visual descriptions, camera
+              directions, and scene breakdowns — tailored to your selected
+              style.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <div className="flex-1" />
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'secondary' })}
+              onClick={() => {
+                setShowEnhanceNudge(false);
+                executeRegeneration();
+              }}
+            >
+              Generate As-Is
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                setShowEnhanceNudge(false);
+                void handleEnhance();
+              }}
+            >
+              <Sparkles className="size-3.5" />
+              Enhance Script
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

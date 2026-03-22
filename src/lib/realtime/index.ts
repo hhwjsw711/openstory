@@ -51,7 +51,12 @@ export const realtimeSchema = {
     // Frame updated with prompts (visual, motion, audio)
     'frame:updated': z.object({
       frameId: z.string(),
-      updateType: z.enum(['visual-prompt', 'motion-prompt', 'audio-design']),
+      updateType: z.enum([
+        'visual-prompt',
+        'motion-prompt',
+        'audio-design',
+        'music-design',
+      ]),
       metadata: z.unknown(), // Full Scene object with prompts
     }),
 

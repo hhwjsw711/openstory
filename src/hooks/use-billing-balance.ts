@@ -6,40 +6,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { useSession } from '@/lib/auth/client';
 import { LOW_BALANCE_THRESHOLD_USD } from '@/lib/billing/constants';
+import { getBillingBalanceFn } from '@/functions/billing';
 
 export const BILLING_BALANCE_KEY = ['billing-balance'] as const;
-
-type BalanceData = {
-  billingEnabled?: boolean;
-  balance: number;
-  autoTopUp: {
-    enabled: boolean;
-    thresholdUsd: number | null;
-    amountUsd: number | null;
-  };
-  hasPaymentMethod: boolean;
-};
-
-type ApiResponse<T> = {
-  success: boolean;
-  data?: T;
-  error?: { message?: string };
-};
-
-async function fetchBalance(): Promise<BalanceData> {
-  const res = await fetch('/api/billing/balance');
-  const json: ApiResponse<BalanceData> = await res.json();
-  if (!json.success || !json.data)
-    throw new Error(json.error?.message ?? 'Failed to fetch balance');
-  return json.data;
-}
 
 export function useBillingBalance() {
   const { data: session } = useSession();
 
   const query = useQuery({
     queryKey: [...BILLING_BALANCE_KEY],
-    queryFn: fetchBalance,
+    queryFn: () => getBillingBalanceFn(),
     staleTime: 30_000,
     enabled: !!session,
   });
@@ -54,6 +30,7 @@ export function useBillingBalance() {
   return {
     ...query,
     balance,
+    stripeEnabled: query.data?.stripeEnabled ?? false,
     isLowBalance:
       balance !== null && balance > 0 && balance <= lowBalanceThreshold,
     isZeroBalance: balance !== null && balance <= 0,

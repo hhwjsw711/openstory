@@ -17,7 +17,23 @@
     "typescript/await-thenable": "error",
     "typescript/no-unnecessary-condition": "warn",
     "unicorn/prefer-optional-catch-binding": "error",
-    "react/no-unstable-nested-components": "error"
+    "react/no-unstable-nested-components": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "#db-client",
+            "message": "Only db/scoped.ts and auth/config.ts may import #db-client"
+          },
+          {
+            "name": "@/lib/db/scoped",
+            "importNames": ["createScopedDb"],
+            "message": "createScopedDb only allowed in middleware.ts, scoped-workflow.ts, and authorized route handlers. Use context.scopedDb."
+          }
+        ]
+      }
+    ]
   },
   "overrides": [
     {
@@ -26,6 +42,19 @@
         "typescript/no-explicit-any": "warn",
         "typescript/no-floating-promises": "off",
         "typescript/no-unsafe-type-assertion": "warn"
+      }
+    },
+    {
+      "files": [
+        "**/db/scoped.ts",
+        "**/db/client.ts",
+        "**/auth/config.ts",
+        "**/functions/middleware.ts",
+        "**/workflow/scoped-workflow.ts",
+        "**/openrouter/callback.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
       }
     }
   ]

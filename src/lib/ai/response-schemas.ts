@@ -9,6 +9,7 @@ import {
   continuitySchema,
   locationBibleEntrySchema,
   motionPromptSchema,
+  musicDesignSchema,
   projectMetadataSchema,
   sceneAnalysisSchema,
   sceneSchema,
@@ -155,21 +156,26 @@ export const motionPromptGenerationResultSchema = z.object({
 });
 
 /**
- * Phase 5: Audio Design
+ * Music Design + Prompt Generation (combined Phase 7)
+ * Classifies each scene's music attributes and synthesizes unified tags + prompt.
  */
-export const audioDesignGenerationResultSchema = z.object({
-  status: z
-    .enum(['success', 'error', 'rejected'])
-    .catch('success')
-    .meta({ description: 'Processing status: success, error, or rejected' }),
+export const musicDesignResultSchema = z.object({
   scenes: z
     .array(
-      sceneSchema
-        .pick({
-          sceneId: true,
-          audioDesign: true,
-        })
-        .required()
+      z.object({
+        sceneId: z.string().meta({ description: 'Scene identifier' }),
+        musicDesign: musicDesignSchema.meta({
+          description: 'Music classification for this scene',
+        }),
+      })
     )
-    .meta({ description: 'Array of scenes with audio design' }),
+    .meta({ description: 'Per-scene music design classifications' }),
+  tags: z.string().meta({
+    description:
+      'Comma-separated music tags for ACE-Step (must start with "instrumental")',
+  }),
+  prompt: z.string().meta({
+    description:
+      '1-2 sentence music prompt describing the overall mood and progression',
+  }),
 });
