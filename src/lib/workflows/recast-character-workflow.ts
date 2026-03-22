@@ -23,7 +23,7 @@ export const recastCharacterWorkflow =
         `Starting recast for ${input.characterName} with ${input.affectedFrameIds.length} affected frames`
       );
 
-      // Step 1: Generate new character sheet with talent appearance
+      // Step 1: Generate character sheet showing talent in costume
       const { body: sheetResult, isFailed: sheetFailed } = await context.invoke(
         'character-sheet',
         {
@@ -49,6 +49,7 @@ export const recastCharacterWorkflow =
         );
       }
 
+      const sheetImageUrl = sheetResult.sheetImageUrl;
       console.log(
         '[RecastCharacterWorkflow]',
         `Character sheet generated for ${input.characterName}, regenerating ${input.affectedFrameIds.length} frames`
@@ -88,7 +89,7 @@ export const recastCharacterWorkflow =
       }
 
       return {
-        sheetImageUrl: sheetResult.sheetImageUrl,
+        sheetImageUrl,
         framesRegenerated,
         framesFailed,
       };

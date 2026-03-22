@@ -17,7 +17,10 @@ import {
 import { generateId } from '@/lib/db/id';
 import type { CharacterMinimal } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
-import { buildCharacterSheetPrompt } from '@/lib/prompts/character-prompt';
+import {
+  buildCastingAttributes,
+  buildCharacterSheetPrompt,
+} from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
@@ -56,17 +59,23 @@ export const characterBibleWorkflow = createScopedWorkflow<
           // Check if character has a talent match
           const talentMatch = matchMap.get(character.characterId);
 
-          // Build character sheet prompt (with talent overrides if matched)
-          // Include talent name as description so AI can leverage its knowledge of famous people
+          // When talent is matched, merge attributes: physical from talent, costume from role
+          const castingAttrs = talentMatch
+            ? buildCastingAttributes(character, {
+                sheetMetadata: talentMatch.sheetMetadata,
+                talentName: talentMatch.talentName,
+              })
+            : null;
+
+          // Generate character sheet (with talent appearance as reference)
           const { prompt, referenceUrls } = talentMatch
             ? buildCharacterSheetPrompt(character, {
                 sheetMetadata: talentMatch.sheetMetadata,
-                description: `This character should look like ${talentMatch.talentName}`,
+                description: `This character must look exactly like ${talentMatch.talentName}`,
                 sheetImageUrl: talentMatch.sheetImageUrl,
               })
             : buildCharacterSheetPrompt(character);
 
-          // Generate character sheet image
           const model = input.imageModel ?? DEFAULT_IMAGE_MODEL;
 
           const imageResult = await generateImageWithProvider(
@@ -83,7 +92,6 @@ export const characterBibleWorkflow = createScopedWorkflow<
             { scopedDb }
           );
 
-          // Deduct credits (skip if team used own fal key)
           await deductWorkflowCredits({
             scopedDb,
             costMicros: extractImageCost(imageResult.metadata),
@@ -93,57 +101,65 @@ export const characterBibleWorkflow = createScopedWorkflow<
             workflowName: 'CharacterBibleWorkflow',
           });
 
-          const imageUrl = imageResult.imageUrls[0];
-          if (!imageUrl) {
+          const generatedUrl = imageResult.imageUrls[0];
+          if (!generatedUrl) {
             throw new Error('No image URL returned from generation');
           }
-          // Generate ULID-based filename
-          const id = generateId();
-          // Save to R2 and DB if sequenceId, userId, and teamId are provided
-          if (input.sequenceId && input.userId && input.teamId) {
-            // Storage path
-            const storagePath = `${input.teamId}/${input.sequenceId}/${id}.png`;
 
-            // Fetch the image
-            const response = await fetch(imageUrl);
+          let sheetImageUrl: string;
+          let sheetImagePath: string | undefined;
+
+          // Upload to R2 if we have storage context
+          if (input.sequenceId && input.userId && input.teamId) {
+            const id = generateId();
+            const storagePath = `${input.teamId}/${input.sequenceId}/${id}.png`;
+            const response = await fetch(generatedUrl);
             if (!response.ok) {
               throw new Error(
                 `Failed to fetch generated image: ${response.status}`
               );
             }
             const imageBlob = await response.blob();
-
-            // Save the character sheet image to R2 storage
             const storageResult = await uploadFile(
               STORAGE_BUCKETS.CHARACTERS,
               storagePath,
               imageBlob,
               { contentType: 'image/png' }
             );
+            sheetImageUrl = storageResult.publicUrl;
+            sheetImagePath = storageResult.path;
+          } else {
+            sheetImageUrl = generatedUrl;
+            sheetImagePath = undefined;
+          }
 
-            // Create the characters record with flattened fields
+          // Generate ULID-based filename
+          const id = generateId();
+
+          // Save to DB if sequenceId, userId, and teamId are provided
+          if (input.sequenceId && input.userId && input.teamId) {
             const created = await scopedDb.characters.create({
               id,
               sequenceId: input.sequenceId,
               characterId: character.characterId,
               name: character.name,
-              // Flattened character bible fields
-              age: character.age ?? '',
-              gender: character.gender ?? null,
-              ethnicity: character.ethnicity ?? null,
-              physicalDescription: character.physicalDescription,
+              // Use talent's physical attributes when cast, otherwise script's
+              age: castingAttrs?.age ?? character.age ?? '',
+              gender: castingAttrs?.gender ?? character.gender ?? null,
+              ethnicity: castingAttrs?.ethnicity ?? character.ethnicity ?? null,
+              physicalDescription:
+                castingAttrs?.physicalDescription ??
+                character.physicalDescription,
               standardClothing: character.standardClothing,
               distinguishingFeatures: character.distinguishingFeatures ?? null,
-              consistencyTag: character.consistencyTag,
-              // First mention - no longer collected from AI
+              consistencyTag:
+                castingAttrs?.consistencyTag ?? character.consistencyTag,
               firstMentionSceneId: null,
               firstMentionText: null,
               firstMentionLine: null,
-              // Sheet image
-              sheetImageUrl: storageResult.publicUrl,
-              sheetImagePath: storageResult.path,
+              sheetImageUrl,
+              sheetImagePath: sheetImagePath ?? null,
               sheetStatus: 'completed' as const,
-              // Talent link (if matched)
               talentId: talentMatch?.talentId || null,
             });
             return {
@@ -160,10 +176,13 @@ export const characterBibleWorkflow = createScopedWorkflow<
             id,
             characterId: character.characterId,
             name: character.name,
-            sheetImageUrl: imageUrl,
+            sheetImageUrl,
             sheetStatus: 'completed' as const,
-            physicalDescription: character.physicalDescription,
-            consistencyTag: character.consistencyTag,
+            physicalDescription:
+              castingAttrs?.physicalDescription ??
+              character.physicalDescription,
+            consistencyTag:
+              castingAttrs?.consistencyTag ?? character.consistencyTag,
           };
         });
       })

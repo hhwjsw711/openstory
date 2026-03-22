@@ -747,6 +747,7 @@ export function safeAudioModel(
 export const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
   nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   nano_banana_2: 'fal-ai/nano-banana-2/edit',
+  grok_imagine_image: 'xai/grok-imagine-image/edit',
 };
 
 /**
