@@ -112,9 +112,9 @@ export function AuthForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sign In</CardTitle>
+        <CardTitle>Welcome to OpenStory</CardTitle>
         <CardDescription>
-          Enter your email to receive a sign-in code
+          Sign in or create an account to get started
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -191,9 +191,13 @@ export function AuthForm({
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? 'Sending…' : 'Send code'}
+            {isLoading ? 'Sending…' : 'Continue with email'}
           </Button>
         </form>
+
+        <p className="text-center text-xs text-muted-foreground">
+          No password needed — we'll send you a code.
+        </p>
 
         <p className="text-center text-xs text-muted-foreground">
           By signing in, you agree to our{' '}
