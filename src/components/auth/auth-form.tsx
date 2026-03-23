@@ -112,10 +112,8 @@ export function AuthForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Welcome to OpenStory</CardTitle>
-        <CardDescription>
-          Sign in or create an account to get started
-        </CardDescription>
+        <CardTitle>Welcome</CardTitle>
+        <CardDescription>Sign in or create an account</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (
