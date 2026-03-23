@@ -291,7 +291,7 @@ export const motionPromptComponentsSchema = z.object({
   durationSeconds: z
     .number()
     .catch(3)
-    .meta({ description: 'Shot duration in seconds (typically 3-10)' }),
+    .meta({ description: 'Shot duration in seconds (typically 3-15)' }),
   speed: z
     .string()
     .catch('medium')
@@ -352,9 +352,43 @@ export const motionPromptParametersSchema = z
     cameraControl: { pan: 0, tilt: 0, zoom: 0, movement: '' },
   });
 
+export const dialogueLineSchema = z.object({
+  character: z.string().catch('').meta({
+    description: 'Character name speaking the line, or empty for narrator',
+  }),
+  line: z.string().catch('').meta({ description: 'The spoken dialogue text' }),
+  tone: z.string().catch('').meta({
+    description:
+      'Voice tone and emotion for delivery (e.g., "calm serious", "trembling frustrated", "whispered urgent")',
+  }),
+});
+
+export const dialogueSchema = z.object({
+  presence: z
+    .boolean()
+    .catch(false)
+    .meta({ description: 'Whether dialogue is present in scene' }),
+  lines: z
+    .array(dialogueLineSchema)
+    .catch([])
+    .meta({ description: 'Array of dialogue lines in the scene' }),
+});
+
+export const motionAudioSchema = z.object({
+  ambientSound: z.string().catch('').meta({
+    description:
+      'Background ambient sound (e.g., "quiet office hum", "rain against windows", "bustling street")',
+  }),
+  soundEffects: z.array(z.string()).catch([]).meta({
+    description:
+      'Specific sound effects timed to actions (e.g., "door slam", "glass clinking", "footsteps on gravel")',
+  }),
+});
+
 export const motionPromptSchema = z.object({
   fullPrompt: z.string().meta({
-    description: 'Complete motion prompt describing camera movement and action',
+    description:
+      'Complete motion prompt describing camera movement, action, and dialogue performance',
   }),
   components: motionPromptComponentsSchema
     .catch({
@@ -371,6 +405,20 @@ export const motionPromptSchema = z.object({
   parameters: motionPromptParametersSchema.meta({
     description: 'Technical parameters for motion generation',
   }),
+  dialogue: dialogueSchema
+    .catch({ presence: false, lines: [] })
+    .optional()
+    .meta({
+      description:
+        'Dialogue lines from the scene to inform audio/motion models',
+    }),
+  audio: motionAudioSchema
+    .catch({ ambientSound: '', soundEffects: [] })
+    .optional()
+    .meta({
+      description:
+        'Audio direction for models that generate sound alongside video',
+    }),
 });
 
 export const promptsSchema = z.object({
@@ -449,24 +497,6 @@ export const soundEffectSchema = z.object({
     .string()
     .catch('center')
     .meta({ description: 'Audio positioning: left, center, right, surround' }),
-});
-
-export const dialogueLineSchema = z.object({
-  character: z.string().catch('').meta({
-    description: 'Character name speaking the line, or null for narrator',
-  }),
-  line: z.string().catch('').meta({ description: 'The spoken dialogue text' }),
-});
-
-export const dialogueSchema = z.object({
-  presence: z
-    .boolean()
-    .catch(false)
-    .meta({ description: 'Whether dialogue is present in scene' }),
-  lines: z
-    .array(dialogueLineSchema)
-    .catch([])
-    .meta({ description: 'Array of dialogue lines in the scene' }),
 });
 
 export const ambientSchema = z.object({
@@ -558,7 +588,7 @@ export const sceneMetadataSchema = z.object({
     .catch('Untitled Scene')
     .meta({ description: 'Short descriptive scene title' }),
   durationSeconds: z.number().catch(3).meta({
-    description: 'Estimated scene duration in seconds (typically 3-10)',
+    description: 'Estimated scene duration in seconds (typically 3-15)',
   }),
   location: z
     .string()
@@ -649,6 +679,8 @@ export type VisualPromptWithContinuity = z.infer<
   typeof visualPromptWithContinuitySchema
 >;
 export type MotionPrompt = z.infer<typeof motionPromptSchema>;
+export type MotionAudio = z.infer<typeof motionAudioSchema>;
+export type DialogueLine = z.infer<typeof dialogueLineSchema>;
 export type MusicDesign = z.infer<typeof musicDesignSchema>;
 export type AudioDesign = z.infer<typeof audioDesignSchema>;
 export type Continuity = z.infer<typeof continuitySchema>;

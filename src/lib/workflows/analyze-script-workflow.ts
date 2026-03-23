@@ -28,6 +28,7 @@ import type {
 } from '@/lib/workflow/types';
 
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { assembleMotionPrompt } from '@/lib/motion/assemble-motion-prompt';
 import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
@@ -569,8 +570,8 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
 
         await Promise.all(
           completeScenes.map(async (scene, index) => {
-            const motionPrompt = scene.prompts?.motion?.fullPrompt;
-            if (!motionPrompt) {
+            const motionPromptData = scene.prompts?.motion;
+            if (!motionPromptData?.fullPrompt) {
               throw new WorkflowValidationError(
                 `Scene ${scene.sceneId} has no motion prompt`
               );
@@ -580,6 +581,12 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
               (f) => f.sceneId === scene.sceneId
             );
 
+            const videoModelConfig = IMAGE_TO_VIDEO_MODELS[videoModel];
+            const prompt = assembleMotionPrompt({
+              motionPrompt: motionPromptData,
+              modelConfig: videoModelConfig,
+            });
+
             await context.invoke('motion', {
               workflow: generateMotionWorkflow,
               body: {
@@ -588,7 +595,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
                 frameId: matchedFrame?.frameId,
                 sequenceId,
                 imageUrl: imageUrls[index],
-                prompt: motionPrompt,
+                prompt,
                 model: videoModel,
                 aspectRatio,
                 duration: scene.metadata?.durationSeconds || 3,

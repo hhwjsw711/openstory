@@ -54,6 +54,7 @@ export const sceneAnalysisExample: SceneAnalysis = {
           {
             character: 'CHARACTER NAME or null if unknown',
             line: 'Exact dialogue text from user script',
+            tone: '',
           },
         ],
       },

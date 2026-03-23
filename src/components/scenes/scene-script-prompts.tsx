@@ -20,17 +20,19 @@ import {
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  IMAGE_TO_VIDEO_MODELS,
   getCompatibleModel,
   safeImageToVideoModel,
   safeTextToImageModel,
   type ImageToVideoModel,
   type TextToImageModel,
 } from '@/lib/ai/models';
+import { assembleMotionPrompt } from '@/lib/motion/assemble-motion-prompt';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SceneCastTab } from './scene-cast-tab';
 import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';
@@ -427,8 +429,19 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     setSelectedImageModel(currentModel);
   }, [frame?.imageModel]);
 
-  const motionPrompt =
-    frame?.motionPrompt || frame?.metadata?.prompts?.motion?.fullPrompt;
+  const motionPromptData = frame?.metadata?.prompts?.motion;
+  const motionPrompt = useMemo(() => {
+    if (frame?.motionPrompt) return frame.motionPrompt;
+    if (motionPromptData) {
+      const modelConfig =
+        IMAGE_TO_VIDEO_MODELS[selectedMotionModel || DEFAULT_VIDEO_MODEL];
+      return assembleMotionPrompt({
+        motionPrompt: motionPromptData,
+        modelConfig,
+      });
+    }
+    return undefined;
+  }, [frame?.motionPrompt, motionPromptData, selectedMotionModel]);
 
   // Update local state when frame motion prompt changes
   useEffect(() => {
