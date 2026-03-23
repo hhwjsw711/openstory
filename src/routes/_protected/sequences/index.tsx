@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SequencesList } from '@/components/sequence/sequences-list';
 import { useBillingGate } from '@/hooks/use-billing-gate';
-import { useSequences } from '@/hooks/use-sequences';
+import { sequenceKeys, useSequences } from '@/hooks/use-sequences';
+import { getSequencesFn } from '@/functions/sequences';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 
 const BILLING_PROMPT_KEY = 'openstory:billing-prompt-dismissed';
 const BILLING_PROMPT_EXPIRY_DAYS = 1;
@@ -35,6 +36,17 @@ function dismissBillingPrompt() {
 
 export const Route = createFileRoute('/_protected/sequences/')({
   component: SequencesPage,
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const sequences = await queryClient.ensureQueryData({
+      queryKey: sequenceKeys.list(),
+      queryFn: () => getSequencesFn(),
+      staleTime: 5 * 60 * 1000,
+    });
+
+    if (sequences.length === 0) {
+      throw redirect({ to: '/sequences/new' });
+    }
+  },
 });
 
 function SequencesPage() {
