@@ -12,12 +12,14 @@ import { batchGenerateMotionFn } from '@/functions/motion-functions';
 import { smartRetryFn } from '@/functions/smart-retry';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useFramesBySequence } from '@/hooks/use-frames';
+import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequence } from '@/hooks/use-sequences';
 import {
   DEFAULT_ASPECT_RATIO,
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
+import type { GenerationPhaseConfig } from '@/lib/realtime/generation-stream.reducer';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -95,9 +97,22 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const aspectRatio = sequence?.aspectRatio || DEFAULT_ASPECT_RATIO;
   const isProcessing = sequence?.status === 'processing';
 
+  // Read generation settings to determine which phases to show
+  const { settings: generationSettings } = useGenerationSettings();
+  const phaseConfig = useMemo<GenerationPhaseConfig>(
+    () => ({
+      autoGenerateMotion: generationSettings.autoGenerateMotion,
+      autoGenerateMusic: generationSettings.autoGenerateMusic,
+    }),
+    [
+      generationSettings.autoGenerateMotion,
+      generationSettings.autoGenerateMusic,
+    ]
+  );
+
   // Subscribe to real-time generation events when sequence is processing
   const { state: generationState, status: realtimeStatus } =
-    useGenerationStream(sequenceId);
+    useGenerationStream(sequenceId, phaseConfig);
 
   // Hybrid polling: only poll when processing AND realtime has failed
   // - 'connecting' → wait for connection, don't poll

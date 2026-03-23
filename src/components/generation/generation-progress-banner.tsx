@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -15,16 +16,6 @@ import type { GenerationStreamState } from '@/lib/realtime/generation-stream.red
 import { cn } from '@/lib/utils';
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-
-const SHORT_PHASE_NAMES = [
-  'Script',
-  'Casting',
-  'Prompts',
-  'Images',
-  'Motion',
-  'Music',
-  'Video',
-] as const;
 
 type GenerationProgressBannerProps = {
   generationState: GenerationStreamState;
@@ -82,7 +73,11 @@ export const GenerationProgressBanner: React.FC<
   const estimatedSceneCount = script ? estimateSceneCount(script) : undefined;
   const remaining = Math.max(
     0,
-    estimateTotalSeconds(sceneCount, estimatedSceneCount) - elapsedSeconds
+    estimateTotalSeconds(
+      sceneCount,
+      estimatedSceneCount,
+      generationState.phases.length
+    ) - elapsedSeconds
   );
 
   const activePhase = generationState.phases.find((p) => p.status === 'active');
@@ -113,14 +108,17 @@ export const GenerationProgressBanner: React.FC<
           {/* Header row */}
           <div className="flex items-center gap-3">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-            <span className="text-label">Generating&nbsp;sequence</span>
+            <span className="text-sm font-medium">
+              Generating&nbsp;sequence
+            </span>
 
-            <span
-              className="ml-auto tabular-nums text-muted-foreground"
+            <Badge
+              variant="secondary"
+              className="ml-auto tabular-nums"
               aria-live="polite"
             >
               {formatTimeRemaining(remaining)}
-            </span>
+            </Badge>
 
             <CollapsibleTrigger asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -142,7 +140,7 @@ export const GenerationProgressBanner: React.FC<
             role="progressbar"
             aria-valuenow={progressValue}
             aria-valuemin={0}
-            aria-valuemax={7}
+            aria-valuemax={generationState.phases.length}
             aria-label={
               activePhase
                 ? `Generation progress: ${activePhase.phaseName}`
@@ -169,8 +167,8 @@ export const GenerationProgressBanner: React.FC<
         <CollapsibleContent>
           <CardContent className="flex flex-col gap-3 border-t py-3">
             {/* Phase labels aligned to segments — hidden on mobile */}
-            <div className="hidden gap-0.5 sm:flex">
-              {generationState.phases.map((phase, i) => (
+            <div className="hidden gap-4 sm:flex">
+              {generationState.phases.map((phase) => (
                 <span
                   key={phase.phase}
                   className={cn(
@@ -180,7 +178,7 @@ export const GenerationProgressBanner: React.FC<
                     phase.status === 'pending' && 'text-muted-foreground/40'
                   )}
                 >
-                  {SHORT_PHASE_NAMES[i]}
+                  {phase.shortName}
                 </span>
               ))}
             </div>

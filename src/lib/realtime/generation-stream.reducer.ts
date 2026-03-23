@@ -46,6 +46,7 @@ type UnusedTalent = {
 export type GenerationPhase = {
   phase: number;
   phaseName: string;
+  shortName: string;
   status: 'pending' | 'active' | 'completed';
 };
 
@@ -102,31 +103,72 @@ export type GenerationStreamAction =
   | { type: 'LOCATION_MATCHED'; payload: { matches: LocationMatch[] } }
   | { type: 'RESET' };
 
-const PHASE_NAMES = [
-  'Analyzing script…',
-  'Casting characters & locations…',
-  'Generating references & prompts…',
-  'Generating images…',
-  'Writing motion prompts…',
-  'Composing music…',
-  'Generating motion…',
-];
+const PHASES = [
+  { name: 'Analyzing script…', shortName: 'Script' },
+  { name: 'Casting characters & locations…', shortName: 'Casting' },
+  { name: 'Generating references & prompts…', shortName: 'Visual Prompts' },
+  { name: 'Generating images…', shortName: 'Images' },
+  { name: 'Writing motion prompts…', shortName: 'Motion Prompts' },
+  { name: 'Composing music…', shortName: 'Music Prompts' },
+] as const;
 
-export const initialGenerationStreamState: GenerationStreamState = {
-  currentPhase: 0,
-  phases: PHASE_NAMES.map((name, i) => ({
-    phase: i + 1,
-    phaseName: name,
-    status: 'pending',
-  })),
-  scenes: [],
-  frames: new Map(),
-  isComplete: false,
-  isFailed: false,
-  talentMatches: [],
-  locationMatches: [],
-  unusedTalent: null,
+export type GenerationPhaseConfig = {
+  autoGenerateMotion: boolean;
+  autoGenerateMusic: boolean;
 };
+
+function getPhase7Label(config: GenerationPhaseConfig): {
+  name: string;
+  shortName: string;
+} {
+  const { autoGenerateMotion, autoGenerateMusic } = config;
+  if (autoGenerateMotion && autoGenerateMusic) {
+    return { name: 'Generating motion & music…', shortName: 'Music & Motion' };
+  }
+  if (autoGenerateMotion) {
+    return { name: 'Generating motion…', shortName: 'Motion' };
+  }
+  return { name: 'Generating music…', shortName: 'Music' };
+}
+
+export function createInitialState(
+  config?: GenerationPhaseConfig
+): GenerationStreamState {
+  const includePhase7 = config?.autoGenerateMotion || config?.autoGenerateMusic;
+  const basePhaseDefs = PHASES;
+
+  const phases: GenerationPhase[] = basePhaseDefs.map((p, i) => ({
+    phase: i + 1,
+    phaseName: p.name,
+    shortName: p.shortName,
+    status: 'pending' as const,
+  }));
+
+  if (includePhase7 && config) {
+    const label = getPhase7Label(config);
+    phases.push({
+      phase: 7,
+      phaseName: label.name,
+      shortName: label.shortName,
+      status: 'pending',
+    });
+  }
+
+  return {
+    currentPhase: 0,
+    phases,
+    scenes: [],
+    frames: new Map(),
+    isComplete: false,
+    isFailed: false,
+    talentMatches: [],
+    locationMatches: [],
+    unusedTalent: null,
+  };
+}
+
+export const initialGenerationStreamState: GenerationStreamState =
+  createInitialState();
 
 export function generationStreamReducer(
   state: GenerationStreamState,
@@ -231,7 +273,7 @@ export function generationStreamReducer(
       return {
         ...state,
         isComplete: true,
-        currentPhase: 8, // > 7 so all phases marked complete
+        currentPhase: state.phases.length + 1, // Beyond last phase so all marked complete
         phases: state.phases.map((p) => ({ ...p, status: 'completed' })),
       };
 

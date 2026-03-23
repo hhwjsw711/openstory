@@ -2,8 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useReducer } from 'react';
 import { useRealtime } from './client';
 import {
+  createInitialState,
   generationStreamReducer,
-  initialGenerationStreamState,
+  type GenerationPhaseConfig,
   type GenerationStreamAction,
 } from './generation-stream.reducer';
 import { updateQueryCacheFromEvent } from './query-cache-updater';
@@ -203,11 +204,15 @@ function mapEventToAction(
  * ))}
  * ```
  */
-export function useGenerationStream(sequenceId?: string) {
+export function useGenerationStream(
+  sequenceId?: string,
+  phaseConfig?: GenerationPhaseConfig
+) {
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(
     generationStreamReducer,
-    initialGenerationStreamState
+    phaseConfig,
+    createInitialState
   );
 
   // Handle incoming events

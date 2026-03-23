@@ -32,14 +32,18 @@ function phaseBudget(phaseIndex: number, sceneCount: number): number {
 
 export function estimateTotalSeconds(
   sceneCount: number,
-  estimatedSceneCount?: number
+  estimatedSceneCount?: number,
+  phaseCount: number = PHASE_BUDGETS.length
 ): number {
   const fallback = estimatedSceneCount ?? DEFAULT_SCENE_COUNT;
   const scenes = sceneCount > 0 ? sceneCount : fallback;
-  return PHASE_BUDGETS.reduce(
-    (sum, b) => sum + b.base + b.perScene * scenes,
-    0
-  );
+  let total = 0;
+  for (let i = 0; i < Math.min(phaseCount, PHASE_BUDGETS.length); i++) {
+    const b = PHASE_BUDGETS[i];
+    if (!b) continue;
+    total += b.base + b.perScene * scenes;
+  }
+  return total;
 }
 
 export function estimateRemainingSeconds(opts: {
@@ -65,9 +69,9 @@ export function estimateRemainingSeconds(opts: {
 
 export function formatTimeRemaining(seconds: number): string {
   if (seconds <= 0) return 'Finishing up\u2026';
-  if (seconds < 60) return `~${seconds}s remaining`;
+  if (seconds < 60) return `${seconds}s remaining`;
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
   const paddedSecs = secs.toString().padStart(2, '0');
-  return `~${minutes}:${paddedSecs} remaining`;
+  return `${minutes}:${paddedSecs} remaining`;
 }
