@@ -447,7 +447,7 @@ export const ScriptView: FC<{
                 if (canUndoEnhance) setCanUndoEnhance(false);
               }}
               maxLength={50000}
-              placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+              placeholder="A one-liner or website URL is all you need — click Enhance Script to do the rest.\nOr paste a full screenplay and generate directly."
               disabled={loading}
               autoFocus={autoFocus}
               showCharacterCount={false}
