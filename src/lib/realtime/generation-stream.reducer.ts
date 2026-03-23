@@ -46,6 +46,7 @@ type UnusedTalent = {
 export type GenerationPhase = {
   phase: number;
   phaseName: string;
+  shortName: string;
   status: 'pending' | 'active' | 'completed';
 };
 
@@ -79,6 +80,7 @@ export type GenerationStreamAction =
     }
   | { type: 'PHASE_COMPLETE'; payload: { phase: number } }
   | { type: 'SCENE_NEW'; payload: StreamingScene }
+  | { type: 'SCENE_UPDATED'; payload: StreamingScene }
   | {
       type: 'FRAME_CREATED';
       payload: { frameId: string; sceneId: string; orderIndex: number };
@@ -102,31 +104,72 @@ export type GenerationStreamAction =
   | { type: 'LOCATION_MATCHED'; payload: { matches: LocationMatch[] } }
   | { type: 'RESET' };
 
-const PHASE_NAMES = [
-  'Analyzing script…',
-  'Finding characters…',
-  'Drawing characters…',
-  'Designing locations…',
-  'Writing prompts…',
-  'Designing sound…',
-  'Generating images…',
-];
+const PHASES = [
+  { name: 'Analyzing script…', shortName: 'Script' },
+  { name: 'Casting characters & locations…', shortName: 'Casting' },
+  { name: 'Generating references & prompts…', shortName: 'Visual Prompts' },
+  { name: 'Generating images…', shortName: 'Images' },
+  { name: 'Writing motion prompts…', shortName: 'Motion Prompts' },
+  { name: 'Composing music…', shortName: 'Music Prompts' },
+] as const;
 
-export const initialGenerationStreamState: GenerationStreamState = {
-  currentPhase: 0,
-  phases: PHASE_NAMES.map((name, i) => ({
-    phase: i + 1,
-    phaseName: name,
-    status: 'pending',
-  })),
-  scenes: [],
-  frames: new Map(),
-  isComplete: false,
-  isFailed: false,
-  talentMatches: [],
-  locationMatches: [],
-  unusedTalent: null,
+export type GenerationPhaseConfig = {
+  autoGenerateMotion: boolean;
+  autoGenerateMusic: boolean;
 };
+
+function getPhase7Label(config: GenerationPhaseConfig): {
+  name: string;
+  shortName: string;
+} {
+  const { autoGenerateMotion, autoGenerateMusic } = config;
+  if (autoGenerateMotion && autoGenerateMusic) {
+    return { name: 'Generating motion & music…', shortName: 'Music & Motion' };
+  }
+  if (autoGenerateMotion) {
+    return { name: 'Generating motion…', shortName: 'Motion' };
+  }
+  return { name: 'Generating music…', shortName: 'Music' };
+}
+
+export function createInitialState(
+  config?: GenerationPhaseConfig
+): GenerationStreamState {
+  const includePhase7 = config?.autoGenerateMotion || config?.autoGenerateMusic;
+  const basePhaseDefs = PHASES;
+
+  const phases: GenerationPhase[] = basePhaseDefs.map((p, i) => ({
+    phase: i + 1,
+    phaseName: p.name,
+    shortName: p.shortName,
+    status: 'pending' as const,
+  }));
+
+  if (includePhase7 && config) {
+    const label = getPhase7Label(config);
+    phases.push({
+      phase: 7,
+      phaseName: label.name,
+      shortName: label.shortName,
+      status: 'pending',
+    });
+  }
+
+  return {
+    currentPhase: 0,
+    phases,
+    scenes: [],
+    frames: new Map(),
+    isComplete: false,
+    isFailed: false,
+    talentMatches: [],
+    locationMatches: [],
+    unusedTalent: null,
+  };
+}
+
+export const initialGenerationStreamState: GenerationStreamState =
+  createInitialState();
 
 export function generationStreamReducer(
   state: GenerationStreamState,
@@ -175,6 +218,16 @@ export function generationStreamReducer(
         ...state,
         scenes: [...state.scenes, action.payload],
       };
+    }
+
+    case 'SCENE_UPDATED': {
+      const idx = state.scenes.findIndex(
+        (s) => s.sceneId === action.payload.sceneId
+      );
+      if (idx === -1) return state;
+      const updated = [...state.scenes];
+      updated[idx] = action.payload;
+      return { ...state, scenes: updated };
     }
 
     case 'FRAME_CREATED': {
@@ -231,7 +284,7 @@ export function generationStreamReducer(
       return {
         ...state,
         isComplete: true,
-        currentPhase: 8,
+        currentPhase: state.phases.length + 1, // Beyond last phase so all marked complete
         phases: state.phases.map((p) => ({ ...p, status: 'completed' })),
       };
 

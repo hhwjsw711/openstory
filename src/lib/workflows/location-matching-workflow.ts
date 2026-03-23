@@ -71,7 +71,7 @@ export const locationMatchingWorkflow = createScopedWorkflow<
             context,
             {
               name: 'location-matching',
-              phase: { number: 3, name: 'Matching locations…' },
+              phase: { number: 2, name: 'Matching locations…' },
 
               promptName: 'phase/location-matching-chat',
               promptVariables: locationMatchingPromptVariables,

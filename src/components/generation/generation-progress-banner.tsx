@@ -1,0 +1,89 @@
+import {
+  type BannerPhase,
+  ProgressBanner,
+} from '@/components/generation/progress-banner';
+import { PHASE_DESCRIPTIONS } from '@/lib/generation/phase-descriptions';
+import {
+  estimateSceneCount,
+  estimateTotalSeconds,
+} from '@/lib/generation/time-estimate';
+import type { GenerationStreamState } from '@/lib/realtime/generation-stream.reducer';
+import { useEffect, useRef, useState } from 'react';
+
+type GenerationProgressBannerProps = {
+  generationState: GenerationStreamState;
+  isProcessing: boolean;
+  startedAt?: Date;
+  script?: string;
+};
+
+export const GenerationProgressBanner: React.FC<
+  GenerationProgressBannerProps
+> = ({ generationState, isProcessing, startedAt, script }) => {
+  const [isOpen, setIsOpen] = useState(true);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    if (startedAt) {
+      return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000));
+    }
+    return 0;
+  });
+  const startTimeRef = useRef(startedAt?.getTime() ?? Date.now());
+  const hasAutoCollapsedRef = useRef(false);
+
+  // Tick elapsed time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-collapse when first image arrives
+  useEffect(() => {
+    if (hasAutoCollapsedRef.current) return;
+    for (const frame of generationState.frames.values()) {
+      if (frame.imageStatus === 'completed') {
+        hasAutoCollapsedRef.current = true;
+        setIsOpen(false);
+        return;
+      }
+    }
+  }, [generationState.frames]);
+
+  // Don't render before generation starts or after exit
+  if (!isProcessing && generationState.currentPhase === 0) return null;
+
+  const phase1Completed = generationState.phases[0]?.status === 'completed';
+  const sceneCount = phase1Completed ? generationState.scenes.length : 0;
+  const estimatedSceneCount = script ? estimateSceneCount(script) : undefined;
+  const remaining = Math.max(
+    0,
+    estimateTotalSeconds(
+      sceneCount,
+      estimatedSceneCount,
+      generationState.phases.length
+    ) - elapsedSeconds
+  );
+
+  const bannerPhases: BannerPhase[] = generationState.phases.map((phase) => ({
+    key: String(phase.phase),
+    name: phase.phaseName,
+    shortName: phase.shortName,
+    status: phase.status,
+    description:
+      phase.status === 'active' ? PHASE_DESCRIPTIONS[phase.phase] : undefined,
+  }));
+
+  return (
+    <ProgressBanner
+      phases={bannerPhases}
+      remaining={remaining}
+      isComplete={generationState.isComplete}
+      defaultLabel="Generating&#xa0;sequence"
+      ariaPrefix="Generation"
+      exitDelayMs={0}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+    />
+  );
+};

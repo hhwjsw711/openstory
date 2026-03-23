@@ -304,7 +304,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
           );
         }
         await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 5,
+          phase: 4,
           phaseName: 'Generating images…',
         });
       });
@@ -361,11 +361,17 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
 
     await context.run('frame-images-complete', async () => {
       await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
-        phase: 5,
+        phase: 4,
       });
     });
 
-    // Motion prompt generation
+    // Motion prompt generation — emit phase 5 start
+    await context.run('motion-prompts-start', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 5,
+        phaseName: 'Writing motion prompts…',
+      });
+    });
     const partialScenesWithMotionPrompts = await context.invoke(
       'motion-prompts',
       {
@@ -423,6 +429,13 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       }
     );
 
+    // Emit phase 5 complete after motion prompts are merged
+    await context.run('motion-prompts-complete', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:complete', {
+        phase: 5,
+      });
+    });
+
     if (sequenceId) {
       await context.run('update-frames-after-motion-prompts', async () => {
         await Promise.all(
@@ -466,7 +479,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       context,
       {
         name: 'music-design',
-        phase: { number: 7, name: 'Composing music…' },
+        phase: { number: 6, name: 'Composing music…' },
         promptName: 'phase/music-design-chat',
         promptVariables: {
           scenes: JSON.stringify(sceneSummaries, null, 2),
@@ -548,7 +561,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
           await getGenerationChannel(sequenceId).emit(
             'generation.phase:start',
             {
-              phase: 8,
+              phase: 7,
               phaseName: 'Generating motion…',
             }
           );

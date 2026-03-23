@@ -2,8 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useReducer } from 'react';
 import { useRealtime } from './client';
 import {
+  createInitialState,
   generationStreamReducer,
-  initialGenerationStreamState,
+  type GenerationPhaseConfig,
   type GenerationStreamAction,
 } from './generation-stream.reducer';
 import { updateQueryCacheFromEvent } from './query-cache-updater';
@@ -71,6 +72,18 @@ function mapEventToAction(
     case 'generation.scene:new':
       return {
         type: 'SCENE_NEW',
+        payload: {
+          sceneId: asString(data.sceneId),
+          sceneNumber: asNumber(data.sceneNumber),
+          title: asString(data.title),
+          scriptExtract: asString(data.scriptExtract),
+          durationSeconds: asNumber(data.durationSeconds),
+        },
+      };
+
+    case 'generation.scene:updated':
+      return {
+        type: 'SCENE_UPDATED',
         payload: {
           sceneId: asString(data.sceneId),
           sceneNumber: asNumber(data.sceneNumber),
@@ -203,11 +216,15 @@ function mapEventToAction(
  * ))}
  * ```
  */
-export function useGenerationStream(sequenceId?: string) {
+export function useGenerationStream(
+  sequenceId?: string,
+  phaseConfig?: GenerationPhaseConfig
+) {
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(
     generationStreamReducer,
-    initialGenerationStreamState
+    phaseConfig,
+    createInitialState
   );
 
   // Handle incoming events
@@ -237,6 +254,7 @@ export function useGenerationStream(sequenceId?: string) {
       'generation.phase:start',
       'generation.phase:complete',
       'generation.scene:new',
+      'generation.scene:updated',
       'generation.frame:created',
       'generation.frame:updated',
       'generation.image:progress',

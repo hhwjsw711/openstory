@@ -41,6 +41,15 @@ export const realtimeSchema = {
       durationSeconds: z.number(),
     }),
 
+    // Scene updated (progressive title correction during streaming)
+    'scene:updated': z.object({
+      sceneId: z.string(),
+      sceneNumber: z.number(),
+      title: z.string(),
+      scriptExtract: z.string(),
+      durationSeconds: z.number(),
+    }),
+
     // Frame events (after DB write)
     'frame:created': z.object({
       frameId: z.string(),
@@ -86,6 +95,13 @@ export const realtimeSchema = {
       frameId: z.string().optional(),
       status: z.enum(['pending', 'generating', 'completed', 'failed']),
       audioUrl: z.string().optional(),
+    }),
+
+    // Merge progress (video stitching + audio-video muxing)
+    'merge:progress': z.object({
+      step: z.enum(['video', 'audio-video']),
+      status: z.enum(['merging', 'completed', 'failed']),
+      mergedVideoUrl: z.string().optional(),
     }),
 
     // Character sheet generation progress (during recasting)

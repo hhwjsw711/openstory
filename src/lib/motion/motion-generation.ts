@@ -15,6 +15,7 @@ import {
 import { startObservation } from '@langfuse/tracing';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
+import { WorkflowNonRetryableError } from '@upstash/workflow';
 import { z } from 'zod';
 import type { ScopedDb } from '@/lib/db/scoped';
 
@@ -390,11 +391,21 @@ export async function submitMotionJob(
     apiKey: falApiKeyInfo.key,
   });
 
-  const job = await generateVideo({
-    adapter,
-    prompt: options.prompt,
-    modelOptions,
-  });
+  let job;
+  try {
+    job = await generateVideo({
+      adapter,
+      prompt: options.prompt,
+      modelOptions,
+    });
+  } catch (error) {
+    if (error instanceof Error && 'status' in error && error.status === 422) {
+      throw new WorkflowNonRetryableError(
+        `Motion job submission rejected (422): ${error.message}`
+      );
+    }
+    throw error;
+  }
 
   console.log(`[Motion Service] Job submitted: ${job.jobId}`);
 
@@ -429,19 +440,33 @@ export async function pollMotionJob(
     apiKey: falApiKeyInfo.key,
   });
 
-  const status = await getVideoJobStatus({
-    adapter,
-    jobId,
-  });
+  let status;
+  try {
+    status = await getVideoJobStatus({
+      adapter,
+      jobId,
+    });
+  } catch (error) {
+    if (error instanceof Error && 'status' in error && error.status === 422) {
+      throw new WorkflowNonRetryableError(
+        `Motion job polling failed (422): ${error.message}`
+      );
+    }
+    throw error;
+  }
 
   if (status.status === 'completed' && status.url) {
     return { status: 'completed', videoUrl: status.url };
   }
+  if (status.status === 'completed' && !status.url) {
+    throw new WorkflowNonRetryableError(
+      `Motion generation failed: ${status.error || 'No video URL returned'}`
+    );
+  }
   if (status.status === 'failed') {
-    return {
-      status: 'failed',
-      error: status.error || 'Motion generation failed',
-    };
+    throw new WorkflowNonRetryableError(
+      `Motion generation failed: ${status.error || 'Unknown error'}`
+    );
   }
   return { status: status.status, progress: status.progress };
 }

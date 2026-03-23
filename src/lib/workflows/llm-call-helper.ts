@@ -310,6 +310,38 @@ export async function durableStreamingSceneSplit<TInput>(
           );
         }
 
+        if (event.type === 'scene:updated') {
+          console.log(
+            `[Stream:${logName}] 🔄 Scene ${event.index + 1} title updated: "${event.scene.metadata?.title}" (chunk #${chunkCount})`
+          );
+
+          // Update frame in DB so refetches get correct data
+          if (config.sequenceId && callContext.scopedDb) {
+            await callContext.scopedDb.frames.upsert({
+              sequenceId: config.sequenceId,
+              description: event.scene.originalScript?.extract || '',
+              orderIndex: event.index,
+              metadata: event.scene,
+              durationMs: Math.round(
+                (event.scene.metadata?.durationSeconds || 3) * 1000
+              ),
+              thumbnailStatus: 'generating',
+              videoStatus: config.autoGenerateMotion ? 'generating' : 'pending',
+            } satisfies NewFrame);
+          }
+
+          await getGenerationChannel(config.sequenceId).emit(
+            'generation.scene:updated',
+            {
+              sceneId: event.scene.sceneId,
+              sceneNumber: event.scene.sceneNumber,
+              title: event.scene.metadata?.title || 'Untitled Scene',
+              scriptExtract: event.scene.originalScript?.extract || '',
+              durationSeconds: event.scene.metadata?.durationSeconds || 3,
+            }
+          );
+        }
+
         if (event.type === 'scene') {
           console.log(
             `[Stream:${logName}] 🎬 Scene ${event.index + 1} complete: "${event.scene.metadata?.title}" (chunk #${chunkCount}, ${finalText.length} chars)`

@@ -15,7 +15,12 @@ export const Route = createFileRoute('/_protected/sequences/$id/music')({
 function MusicPage() {
   const { id: sequenceId } = Route.useParams();
 
-  const { data: sequence, isLoading } = useSequence(sequenceId);
+  const { data: sequence, isLoading } = useSequence(sequenceId, {
+    refetchInterval: (query) => {
+      if (query.state.data?.mergedVideoStatus === 'merging') return 2000;
+      return false;
+    },
+  });
   const { data: frames } = useFramesBySequence(sequenceId, {
     refetchInterval: false,
   });
