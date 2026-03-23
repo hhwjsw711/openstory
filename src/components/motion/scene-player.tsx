@@ -163,8 +163,13 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     );
   }
 
-  // Get scene title for alt text
-  const title = currentFrame.metadata?.metadata?.title;
+  // Get scene title for alt text — match scene-list-item fallback
+  const sceneNumber =
+    currentFrame.metadata?.sceneNumber ??
+    (currentFrameIndex >= 0 ? currentFrameIndex + 1 : undefined);
+  const title =
+    currentFrame.metadata?.metadata?.title ??
+    (sceneNumber ? `Scene ${sceneNumber}` : undefined);
 
   return (
     <>
