@@ -1,3 +1,4 @@
+import { GenerationProgressBanner } from '@/components/generation/generation-progress-banner';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
@@ -5,9 +6,11 @@ import {
   SceneScriptPrompts,
   type TabValue,
 } from '@/components/scenes/scene-script-prompts';
-import { GenerationProgressBanner } from '@/components/generation/generation-progress-banner';
 import { FailureSummaryBanner } from '@/components/sequence/failure-summary-banner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { batchGenerateMotionFn } from '@/functions/motion-functions';
+import { smartRetryFn } from '@/functions/smart-retry';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import {
@@ -16,13 +19,10 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
-import { batchGenerateMotionFn } from '@/functions/motion-functions';
-import { smartRetryFn } from '@/functions/smart-retry';
-import { toast } from 'sonner';
-import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 type ScenesViewProps = {
   sequenceId?: string;
@@ -270,11 +270,14 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     <div className="flex h-full flex-col">
       {/* Generation progress banner */}
       {(isProcessing || generationState.currentPhase > 0) && (
-        <GenerationProgressBanner
-          generationState={generationState}
-          isProcessing={isProcessing}
-          startedAt={sequence?.updatedAt}
-        />
+        <div className="pl-4 pr-4 pt-4 md:pr-8">
+          <GenerationProgressBanner
+            generationState={generationState}
+            isProcessing={isProcessing}
+            startedAt={sequence?.updatedAt}
+            script={sequence?.script ?? undefined}
+          />
+        </div>
       )}
 
       {/* Failure summary with smart retry */}
@@ -317,7 +320,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         </div>
 
         {/* Main content area */}
-        <ScrollArea className="flex-1 px-4 md:px-8 gap-8 flex flex-col pb-20 md:pb-0">
+        <ScrollArea className="flex-1 px-4 md:px-8 gap-8 flex flex-col pb-20 md:pb-0 pt-4">
           <div className="flex flex-1 min-h-0 justify-center pb-8">
             <ScenePlayer
               frames={frames}

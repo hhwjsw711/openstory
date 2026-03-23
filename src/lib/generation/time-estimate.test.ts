@@ -1,9 +1,32 @@
 import { describe, expect, test } from 'bun:test';
 import {
   estimateRemainingSeconds,
+  estimateSceneCount,
   estimateTotalSeconds,
   formatTimeRemaining,
 } from './time-estimate';
+
+describe('estimateSceneCount', () => {
+  test('short script estimates 1 scene', () => {
+    const script = 'A man walks into a bar and orders a drink.';
+    expect(estimateSceneCount(script)).toBe(1);
+  });
+
+  test('medium script estimates proportionally', () => {
+    // ~240 words → ~2 scenes
+    const script = Array(240).fill('word').join(' ');
+    expect(estimateSceneCount(script)).toBe(2);
+  });
+
+  test('long script clamps to 30', () => {
+    const script = Array(5000).fill('word').join(' ');
+    expect(estimateSceneCount(script)).toBe(30);
+  });
+
+  test('empty script returns 1', () => {
+    expect(estimateSceneCount('')).toBe(1);
+  });
+});
 
 describe('estimateTotalSeconds', () => {
   test('returns reasonable values for different scene counts', () => {
@@ -18,6 +41,14 @@ describe('estimateTotalSeconds', () => {
 
   test('uses default scene count for 0', () => {
     expect(estimateTotalSeconds(0)).toBe(estimateTotalSeconds(6));
+  });
+
+  test('uses estimatedSceneCount as fallback when sceneCount is 0', () => {
+    expect(estimateTotalSeconds(0, 10)).toBe(estimateTotalSeconds(10));
+  });
+
+  test('ignores estimatedSceneCount when sceneCount > 0', () => {
+    expect(estimateTotalSeconds(5, 10)).toBe(estimateTotalSeconds(5));
   });
 });
 

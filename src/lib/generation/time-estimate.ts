@@ -13,7 +13,16 @@ const PHASE_BUDGETS = [
   { base: 30, perScene: 15 }, // 7. Generating motion
 ] as const;
 
+const WORDS_PER_SCENE = 120;
+const MIN_SCENES = 1;
+const MAX_SCENES = 30;
 const DEFAULT_SCENE_COUNT = 6;
+
+export function estimateSceneCount(script: string): number {
+  const wordCount = script.trim().split(/\s+/).filter(Boolean).length;
+  const estimated = Math.round(wordCount / WORDS_PER_SCENE);
+  return Math.max(MIN_SCENES, Math.min(MAX_SCENES, estimated));
+}
 
 function phaseBudget(phaseIndex: number, sceneCount: number): number {
   const budget = PHASE_BUDGETS[phaseIndex];
@@ -21,8 +30,12 @@ function phaseBudget(phaseIndex: number, sceneCount: number): number {
   return budget.base + budget.perScene * sceneCount;
 }
 
-export function estimateTotalSeconds(sceneCount: number): number {
-  const scenes = sceneCount > 0 ? sceneCount : DEFAULT_SCENE_COUNT;
+export function estimateTotalSeconds(
+  sceneCount: number,
+  estimatedSceneCount?: number
+): number {
+  const fallback = estimatedSceneCount ?? DEFAULT_SCENE_COUNT;
+  const scenes = sceneCount > 0 ? sceneCount : fallback;
   return PHASE_BUDGETS.reduce(
     (sum, b) => sum + b.base + b.perScene * scenes,
     0
@@ -33,8 +46,10 @@ export function estimateRemainingSeconds(opts: {
   sceneCount: number;
   completedPhases: number[];
   elapsedSeconds: number;
+  estimatedSceneCount?: number;
 }): number {
-  const scenes = opts.sceneCount > 0 ? opts.sceneCount : DEFAULT_SCENE_COUNT;
+  const fallback = opts.estimatedSceneCount ?? DEFAULT_SCENE_COUNT;
+  const scenes = opts.sceneCount > 0 ? opts.sceneCount : fallback;
   const completedSet = new Set(opts.completedPhases);
 
   let remaining = 0;

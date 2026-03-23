@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/collapsible';
 import { PHASE_DESCRIPTIONS } from '@/lib/generation/phase-descriptions';
 import {
+  estimateSceneCount,
   estimateTotalSeconds,
   formatTimeRemaining,
 } from '@/lib/generation/time-estimate';
@@ -29,11 +30,12 @@ type GenerationProgressBannerProps = {
   generationState: GenerationStreamState;
   isProcessing: boolean;
   startedAt?: Date;
+  script?: string;
 };
 
 export const GenerationProgressBanner: React.FC<
   GenerationProgressBannerProps
-> = ({ generationState, isProcessing, startedAt }) => {
+> = ({ generationState, isProcessing, startedAt, script }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(() => {
     if (startedAt) {
@@ -75,10 +77,12 @@ export const GenerationProgressBanner: React.FC<
   if (isExiting && !isProcessing) return null;
   if (!isProcessing && generationState.currentPhase === 0) return null;
 
-  const sceneCount = generationState.scenes.length;
+  const phase1Completed = generationState.phases[0]?.status === 'completed';
+  const sceneCount = phase1Completed ? generationState.scenes.length : 0;
+  const estimatedSceneCount = script ? estimateSceneCount(script) : undefined;
   const remaining = Math.max(
     0,
-    estimateTotalSeconds(sceneCount) - elapsedSeconds
+    estimateTotalSeconds(sceneCount, estimatedSceneCount) - elapsedSeconds
   );
 
   const activePhase = generationState.phases.find((p) => p.status === 'active');
@@ -99,7 +103,7 @@ export const GenerationProgressBanner: React.FC<
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card
         className={cn(
-          'mx-4 mt-3 gap-0 py-0 transition-all duration-500',
+          'gap-0 py-0 transition-all duration-500',
           isExiting && !prefersReducedMotion && 'translate-y-[-100%] opacity-0',
           isExiting && prefersReducedMotion && 'opacity-0'
         )}
@@ -197,7 +201,7 @@ export const GenerationProgressBanner: React.FC<
 
             {/* "You can leave" message */}
             <p className="text-xs text-muted-foreground/50">
-              You can leave — we&rsquo;ll keep working
+              Click around or create something else while you&rsquo;re waiting
             </p>
           </CardContent>
         </CollapsibleContent>
