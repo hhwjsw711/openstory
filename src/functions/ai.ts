@@ -199,6 +199,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
       ],
       max_tokens: 4000,
       temperature: 0.7,
+      plugins: [{ id: 'web' }],
     })) {
       if (chunk.delta) {
         yield { delta: chunk.delta };
