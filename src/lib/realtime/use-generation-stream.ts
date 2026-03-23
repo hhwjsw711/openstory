@@ -81,6 +81,18 @@ function mapEventToAction(
         },
       };
 
+    case 'generation.scene:updated':
+      return {
+        type: 'SCENE_UPDATED',
+        payload: {
+          sceneId: asString(data.sceneId),
+          sceneNumber: asNumber(data.sceneNumber),
+          title: asString(data.title),
+          scriptExtract: asString(data.scriptExtract),
+          durationSeconds: asNumber(data.durationSeconds),
+        },
+      };
+
     case 'generation.frame:created':
       return {
         type: 'FRAME_CREATED',
@@ -242,6 +254,7 @@ export function useGenerationStream(
       'generation.phase:start',
       'generation.phase:complete',
       'generation.scene:new',
+      'generation.scene:updated',
       'generation.frame:created',
       'generation.frame:updated',
       'generation.image:progress',

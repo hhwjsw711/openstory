@@ -172,7 +172,7 @@ export const GenerationProgressBanner: React.FC<
                 <span
                   key={phase.phase}
                   className={cn(
-                    'flex-1 text-center text-[11px] uppercase tracking-wide',
+                    'flex-1 text-center text-[11px] tracking-wide',
                     phase.status === 'completed' && 'text-muted-foreground',
                     phase.status === 'active' && 'font-medium text-foreground',
                     phase.status === 'pending' && 'text-muted-foreground/40'

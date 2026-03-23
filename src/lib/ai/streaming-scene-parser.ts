@@ -28,7 +28,8 @@ type SceneSplittingScene = z.infer<typeof sceneSplittingSceneSchema>;
 
 export type StreamedSceneEvent =
   | { type: 'title'; title: string }
-  | { type: 'scene'; scene: SceneSplittingScene; index: number };
+  | { type: 'scene'; scene: SceneSplittingScene; index: number }
+  | { type: 'scene:updated'; scene: SceneSplittingScene; index: number };
 
 /**
  * Strip markdown code fences that some models wrap around JSON output.
@@ -45,6 +46,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 export function createStreamingSceneParser() {
   let lastEmittedSceneCount = 0;
   let titleEmitted = false;
+  let emittedTitles: Map<number, string> = new Map();
 
   return {
     /**
@@ -80,9 +82,26 @@ export function createStreamingSceneParser() {
       const scenes = raw.scenes;
       if (!Array.isArray(scenes)) return events;
 
+      // Check for updates to previously emitted scenes
+      for (let i = 0; i < lastEmittedSceneCount && i < scenes.length; i++) {
+        const result = sceneSplittingSceneSchema.safeParse(scenes[i]);
+        if (result.success) {
+          const currentTitle = result.data.metadata?.title || '';
+          if (currentTitle !== emittedTitles.get(i)) {
+            emittedTitles.set(i, currentTitle);
+            events.push({
+              type: 'scene:updated',
+              scene: result.data,
+              index: i,
+            });
+          }
+        }
+      }
+
       for (let i = lastEmittedSceneCount; i < scenes.length; i++) {
         const result = sceneSplittingSceneSchema.safeParse(scenes[i]);
         if (result.success) {
+          emittedTitles.set(i, result.data.metadata?.title || '');
           events.push({ type: 'scene', scene: result.data, index: i });
           lastEmittedSceneCount = i + 1;
         } else {
@@ -98,6 +117,7 @@ export function createStreamingSceneParser() {
     reset() {
       lastEmittedSceneCount = 0;
       titleEmitted = false;
+      emittedTitles = new Map();
     },
   };
 }

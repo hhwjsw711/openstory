@@ -41,6 +41,15 @@ export const realtimeSchema = {
       durationSeconds: z.number(),
     }),
 
+    // Scene updated (progressive title correction during streaming)
+    'scene:updated': z.object({
+      sceneId: z.string(),
+      sceneNumber: z.number(),
+      title: z.string(),
+      scriptExtract: z.string(),
+      durationSeconds: z.number(),
+    }),
+
     // Frame events (after DB write)
     'frame:created': z.object({
       frameId: z.string(),

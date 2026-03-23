@@ -10,7 +10,12 @@ export const Route = createFileRoute('/_protected/sequences/$id/theatre')({
 function TheatrePage() {
   const { id: sequenceId } = Route.useParams();
 
-  const { data: sequence, isLoading } = useSequence(sequenceId);
+  const { data: sequence, isLoading } = useSequence(sequenceId, {
+    refetchInterval: (query) => {
+      if (query.state.data?.mergedVideoStatus === 'merging') return 2000;
+      return false;
+    },
+  });
 
   if (isLoading || !sequence) {
     return (

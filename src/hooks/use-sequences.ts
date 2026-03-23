@@ -37,7 +37,10 @@ export function useSequences(teamId?: string) {
 export function useSequence(
   id?: string,
   options?: {
-    refetchInterval?: number | false;
+    refetchInterval?:
+      | number
+      | false
+      | ((query: { state: { data: Sequence | undefined } }) => number | false);
     staleTime?: number;
   }
 ) {
@@ -48,40 +51,11 @@ export function useSequence(
       return await getSequenceFn({ data: { sequenceId: id } });
     },
     throwOnError: true,
-    staleTime: options?.staleTime ?? 1000, // Default to 1 second for better responsiveness
+    staleTime: options?.staleTime ?? 1000,
     enabled: !!id,
-    // If refetchInterval is explicitly passed, use it; otherwise use smart polling
-    refetchInterval:
-      options?.refetchInterval !== undefined
-        ? options.refetchInterval
-        : (query) => {
-            if (!query.state.data) return false;
-
-            const sequence = query.state.data;
-
-            // Poll for draft sequences (may be generating frames)
-            if (
-              sequence?.status === 'draft' ||
-              sequence?.status === 'processing'
-            ) {
-              return 1000; // 1 second
-            }
-
-            // Poll while merged video is being generated
-            if (sequence?.mergedVideoStatus === 'merging') {
-              return 2000; // 2 seconds
-            }
-
-            // Poll while music is being generated
-            if (sequence?.musicStatus === 'generating') {
-              return 2000; // 2 seconds
-            }
-
-            // Stop polling for completed/archived sequences
-            return false;
-          },
-    refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchInterval: options?.refetchInterval ?? false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -80,6 +80,7 @@ export type GenerationStreamAction =
     }
   | { type: 'PHASE_COMPLETE'; payload: { phase: number } }
   | { type: 'SCENE_NEW'; payload: StreamingScene }
+  | { type: 'SCENE_UPDATED'; payload: StreamingScene }
   | {
       type: 'FRAME_CREATED';
       payload: { frameId: string; sceneId: string; orderIndex: number };
@@ -217,6 +218,16 @@ export function generationStreamReducer(
         ...state,
         scenes: [...state.scenes, action.payload],
       };
+    }
+
+    case 'SCENE_UPDATED': {
+      const idx = state.scenes.findIndex(
+        (s) => s.sceneId === action.payload.sceneId
+      );
+      if (idx === -1) return state;
+      const updated = [...state.scenes];
+      updated[idx] = action.payload;
+      return { ...state, scenes: updated };
     }
 
     case 'FRAME_CREATED': {
