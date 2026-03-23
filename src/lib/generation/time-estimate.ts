@@ -4,13 +4,13 @@
  */
 
 const PHASE_BUDGETS = [
-  { base: 120, perScene: 0 }, // 1. Script analysis (~65s observed + startup)
-  { base: 180, perScene: 0 }, // 2. Casting (~161s observed, parallel talent+location)
-  { base: 380, perScene: 0 }, // 3. Visual prompts (~301s observed, parallel sheets+prompts, flat)
-  { base: 150, perScene: 0 }, // 4. Images (~144s observed, parallel per scene, flat)
-  { base: 10, perScene: 0 }, // 5. Motion prompts (<1s observed, instant batch)
-  { base: 60, perScene: 0 }, // 6. Music design (~45s observed)
-  { base: 120, perScene: 0 }, // 7. Motion/music generation (parallel, flat)
+  { base: 30, perScene: 5 }, // 1. Script analysis (scales with script length)
+  { base: 200, perScene: 5 }, // 2. Casting (scales with scene count, parallel character+location)
+  { base: 85, perScene: 0 }, // 3. Sheets + visual prompts (parallel, flat)
+  { base: 115, perScene: 0 }, // 4. Images (parallel per scene, flat)
+  { base: 45, perScene: 0 }, // 5. Motion prompts (parallel, flat)
+  { base: 10, perScene: 3 }, // 6. Music design (scales with scene count)
+  { base: 120, perScene: 0 }, // 7. Motion/music generation (no data, keep as-is)
 ] as const;
 
 const WORDS_PER_SCENE = 120;

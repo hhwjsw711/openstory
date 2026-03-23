@@ -108,8 +108,8 @@ export const GenerationProgressBanner: React.FC<
           {/* Header row */}
           <div className="flex items-center gap-3">
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-            <span className="text-sm font-medium">
-              Generating&nbsp;sequence
+            <span className="text-sm font-medium truncate">
+              {activePhase ? activePhase.phaseName : 'Generating\u00a0sequence'}
             </span>
 
             <Badge
@@ -183,18 +183,11 @@ export const GenerationProgressBanner: React.FC<
               ))}
             </div>
 
-            {/* Active phase name + description */}
-            {activePhase && (
-              <div className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium">
-                  {activePhase.phaseName}
-                </span>
-                {phaseDescription && (
-                  <p className="text-sm text-muted-foreground">
-                    {phaseDescription}
-                  </p>
-                )}
-              </div>
+            {/* Active phase description */}
+            {phaseDescription && (
+              <p className="text-sm text-muted-foreground">
+                {phaseDescription}
+              </p>
             )}
 
             {/* "You can leave" message */}
