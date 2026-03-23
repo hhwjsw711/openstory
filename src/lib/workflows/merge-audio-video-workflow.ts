@@ -4,6 +4,7 @@
  */
 
 import { composeAudioVideo } from '@/lib/audio/compose-audio-video';
+import { getGenerationChannel } from '@/lib/realtime';
 import { usdToMicros } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { generateId } from '@/lib/db/id';
@@ -41,6 +42,11 @@ export const mergeAudioVideoWorkflow = createScopedWorkflow<
       await seq.updateMergedVideoFields({
         mergedVideoStatus: 'merging',
         mergedVideoError: null,
+      });
+
+      void getGenerationChannel(sequenceId).emit('generation.merge:progress', {
+        step: 'audio-video',
+        status: 'merging',
       });
     });
 
@@ -105,6 +111,12 @@ export const mergeAudioVideoWorkflow = createScopedWorkflow<
         mergedVideoGeneratedAt: new Date(),
         mergedVideoError: null,
       });
+
+      void getGenerationChannel(sequenceId).emit('generation.merge:progress', {
+        step: 'audio-video',
+        status: 'completed',
+        mergedVideoUrl: storageResult.url,
+      });
     });
 
     console.log(
@@ -127,6 +139,11 @@ export const mergeAudioVideoWorkflow = createScopedWorkflow<
           mergedVideoStatus: 'failed',
           mergedVideoError: error,
         });
+
+        void getGenerationChannel(input.sequenceId).emit(
+          'generation.merge:progress',
+          { step: 'audio-video', status: 'failed' }
+        );
       }
       console.error(
         `[MergeAudioVideoWorkflow] Failed to mux sequence ${input.sequenceId}: ${error}`

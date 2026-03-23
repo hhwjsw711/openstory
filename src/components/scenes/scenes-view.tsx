@@ -1,4 +1,5 @@
 import { GenerationProgressBanner } from '@/components/generation/generation-progress-banner';
+import { MotionProgressBanner } from '@/components/generation/motion-progress-banner';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
@@ -90,9 +91,13 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     Set<string>
   >(() => new Set());
 
-  // Initial fetch to determine sequence status - disable default polling
+  const [motionStartedAt, setMotionStartedAt] = useState<number | null>(null);
+  const [motionIncludesMusic, setMotionIncludesMusic] = useState(false);
+  const handleMotionComplete = useCallback(() => setMotionStartedAt(null), []);
+
+  // Initial fetch to determine sequence status - poll during motion generation
   const { data: sequence } = useSequence(sequenceId, {
-    refetchInterval: false,
+    refetchInterval: motionStartedAt !== null ? 2000 : false,
   });
   const aspectRatio = sequence?.aspectRatio || DEFAULT_ASPECT_RATIO;
   const isProcessing = sequence?.status === 'processing';
@@ -120,12 +125,14 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   // - 'disconnected'/'error' → poll as fallback
   const realtimeFailed = realtimeStatus === 'error';
   const shouldPoll = isProcessing && realtimeFailed;
-  const pollInterval = shouldPoll ? 2000 : false;
 
-  // Fetch sequence and frames with hybrid polling
-  const { data: frames } = useFramesBySequence(sequenceId, {
-    refetchInterval: pollInterval,
-  });
+  // Fetch frames — only override refetchInterval when we need explicit polling
+  // (realtime failed during image generation). Otherwise let useFramesBySequence's
+  // smart polling handle it (auto-polls at 2s when any frame has generating status).
+  const { data: frames } = useFramesBySequence(
+    sequenceId,
+    shouldPoll ? { refetchInterval: 2000 } : undefined
+  );
 
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
   const selectedFrame = useMemo(
@@ -248,6 +255,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         .map((f) => f.id);
 
       setRegeneratingMotion((prev) => addAllToSet(prev, eligibleFrameIds));
+      setMotionStartedAt(Date.now());
+      setMotionIncludesMusic(includeMusic);
 
       try {
         await batchGenerateMotionFn({
@@ -257,6 +266,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         setRegeneratingMotion((prev) =>
           removeAllFromSet(prev, eligibleFrameIds)
         );
+        setMotionStartedAt(null);
 
         if (isInsufficientCreditsError(error)) {
           toast.error('Insufficient credits', {
@@ -291,6 +301,19 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
             isProcessing={isProcessing}
             startedAt={sequence?.updatedAt}
             script={sequence?.script ?? undefined}
+          />
+        </div>
+      )}
+
+      {/* Motion generation progress banner */}
+      {motionStartedAt !== null && sequence && frames && (
+        <div className="pl-4 pr-4 pt-4 md:pr-8">
+          <MotionProgressBanner
+            frames={frames}
+            sequence={sequence}
+            includeMusic={motionIncludesMusic}
+            startedAt={motionStartedAt}
+            onComplete={handleMotionComplete}
           />
         </div>
       )}

@@ -4,6 +4,7 @@
  */
 
 import { usdToMicros } from '@/lib/billing/money';
+import { getGenerationChannel } from '@/lib/realtime';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { generateId } from '@/lib/db/id';
 import type { ScopedDb } from '@/lib/db/scoped';
@@ -79,6 +80,11 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
           mergedVideoGeneratedAt: new Date(),
           mergedVideoError: null,
         });
+
+        void getGenerationChannel(input.sequenceId).emit(
+          'generation.merge:progress',
+          { step: 'video', status: 'completed', mergedVideoUrl: singleUrl }
+        );
       });
 
       await context.run('check-mux-trigger-single', async () => {
@@ -93,6 +99,11 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
         mergedVideoStatus: 'merging',
         mergedVideoError: null,
       });
+
+      void getGenerationChannel(input.sequenceId).emit(
+        'generation.merge:progress',
+        { step: 'video', status: 'merging' }
+      );
     });
 
     const mergeResult = await context.run('merge-videos', async () => {
@@ -146,6 +157,15 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
         mergedVideoGeneratedAt: new Date(),
         mergedVideoError: null,
       });
+
+      void getGenerationChannel(input.sequenceId).emit(
+        'generation.merge:progress',
+        {
+          step: 'video',
+          status: 'completed',
+          mergedVideoUrl: storageResult.url,
+        }
+      );
     });
 
     await context.run('check-mux-trigger', async () => {
@@ -172,6 +192,11 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
           mergedVideoStatus: 'failed',
           mergedVideoError: error,
         });
+
+        void getGenerationChannel(input.sequenceId).emit(
+          'generation.merge:progress',
+          { step: 'video', status: 'failed' }
+        );
       }
       console.error(
         `[MergeVideoWorkflow] Failed to merge sequence ${input.sequenceId}: ${error}`

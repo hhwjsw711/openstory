@@ -97,6 +97,13 @@ export const realtimeSchema = {
       audioUrl: z.string().optional(),
     }),
 
+    // Merge progress (video stitching + audio-video muxing)
+    'merge:progress': z.object({
+      step: z.enum(['video', 'audio-video']),
+      status: z.enum(['merging', 'completed', 'failed']),
+      mergedVideoUrl: z.string().optional(),
+    }),
+
     // Character sheet generation progress (during recasting)
     'character-sheet:progress': z.object({
       characterId: z.string(),
