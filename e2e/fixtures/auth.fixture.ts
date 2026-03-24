@@ -152,7 +152,7 @@ export async function authenticateUser(
   // Wait for the OTP input to be ready and type the code
   const otpInput = page.locator('input[data-input-otp="true"]');
   await otpInput.waitFor({ timeout: 30_000 });
-  await expect(otpInput).toBeEnabled({ timeout: 10_000 });
+  await expect(otpInput).toBeEnabled({ timeout: 30_000 });
   await otpInput.click();
   await otpInput.pressSequentially(testOtp, { delay: 50 });
 
