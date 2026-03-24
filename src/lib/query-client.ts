@@ -11,7 +11,10 @@ export function makeQueryClient() {
         });
       },
       onError: (error) => {
-        console.error('[MUTATION ERROR]', error);
+        console.error(
+          '[MUTATION ERROR]',
+          error instanceof Error ? error.message : error
+        );
         toast.error(error.message);
       },
     }),

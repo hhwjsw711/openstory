@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -83,6 +84,9 @@ export const TalentPickerDialog: React.FC<TalentPickerDialogProps> = ({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Select Talent</DialogTitle>
+          <DialogDescription>
+            Choose talent from your library to assign to this role.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Search input */}

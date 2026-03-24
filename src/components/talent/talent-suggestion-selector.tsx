@@ -8,6 +8,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -203,12 +204,11 @@ export const TalentSuggestionSelector: React.FC<
                 </span>
               )}
             </DialogTitle>
+            <DialogDescription>
+              Select talent from your library. The AI will match them to
+              character roles based on physical descriptions.
+            </DialogDescription>
           </DialogHeader>
-
-          <p className="text-sm text-muted-foreground">
-            Select talent from your library. The AI will match them to character
-            roles based on physical descriptions.
-          </p>
 
           {/* Search input */}
           <div className="relative">
