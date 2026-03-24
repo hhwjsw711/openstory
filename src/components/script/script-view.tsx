@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { enhanceScriptStreamFn } from '@/functions/ai';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { useBillingGate } from '@/hooks/use-billing-gate';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequenceDraft } from '@/hooks/use-sequence-draft';
@@ -395,6 +396,10 @@ export const ScriptView: FC<{
     !isFormValid || isSubmitting || isProcessing || isEnhancing;
 
   const scriptValue = script ?? sequence?.script ?? '';
+  const { ref: textareaRef } = useAutoScroll({
+    enabled: isEnhancing,
+    content: scriptValue,
+  });
 
   return (
     <Card
@@ -441,6 +446,7 @@ export const ScriptView: FC<{
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
           <div className="relative min-h-0 flex flex-col">
             <ScriptEditor
+              ref={textareaRef}
               value={scriptValue}
               onValueChange={(val) => {
                 setScript(val);
@@ -592,7 +598,16 @@ export const ScriptView: FC<{
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={showEnhanceNudge} onOpenChange={setShowEnhanceNudge}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowEnhanceNudge(false);
+              void handleEnhance();
+            }
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               Your script is just a starting point
