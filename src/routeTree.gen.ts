@@ -32,6 +32,7 @@ import { Route as ProtectedSettingsIndexRouteImport } from './routes/_protected/
 import { Route as ProtectedSequencesIndexRouteImport } from './routes/_protected/sequences/index'
 import { Route as ProtectedLocationsIndexRouteImport } from './routes/_protected/locations/index'
 import { Route as ApiWorkflowsSplatRouteImport } from './routes/api/workflows/$'
+import { Route as ApiTestImageRouteImport } from './routes/api/test/image'
 import { Route as ApiStorageUploadRouteImport } from './routes/api/storage/upload'
 import { Route as ApiOpenrouterCallbackRouteImport } from './routes/api/openrouter/callback'
 import { Route as ApiDevMemoryRouteImport } from './routes/api/dev/memory'
@@ -162,6 +163,11 @@ const ProtectedLocationsIndexRoute = ProtectedLocationsIndexRouteImport.update({
 const ApiWorkflowsSplatRoute = ApiWorkflowsSplatRouteImport.update({
   id: '/api/workflows/$',
   path: '/api/workflows/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTestImageRoute = ApiTestImageRouteImport.update({
+  id: '/api/test/image',
+  path: '/api/test/image',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiStorageUploadRoute = ApiStorageUploadRouteImport.update({
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/storage/upload': typeof ApiStorageUploadRoute
+  '/api/test/image': typeof ApiTestImageRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations/': typeof ProtectedLocationsIndexRoute
   '/sequences/': typeof ProtectedSequencesIndexRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/storage/upload': typeof ApiStorageUploadRoute
+  '/api/test/image': typeof ApiTestImageRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/locations': typeof ProtectedLocationsIndexRoute
   '/sequences': typeof ProtectedSequencesIndexRoute
@@ -384,6 +392,7 @@ export interface FileRoutesById {
   '/api/dev/memory': typeof ApiDevMemoryRoute
   '/api/openrouter/callback': typeof ApiOpenrouterCallbackRoute
   '/api/storage/upload': typeof ApiStorageUploadRoute
+  '/api/test/image': typeof ApiTestImageRoute
   '/api/workflows/$': typeof ApiWorkflowsSplatRoute
   '/_protected/locations/': typeof ProtectedLocationsIndexRoute
   '/_protected/sequences/': typeof ProtectedSequencesIndexRoute
@@ -427,6 +436,7 @@ export interface FileRouteTypes {
     | '/api/dev/memory'
     | '/api/openrouter/callback'
     | '/api/storage/upload'
+    | '/api/test/image'
     | '/api/workflows/$'
     | '/locations/'
     | '/sequences/'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/api/dev/memory'
     | '/api/openrouter/callback'
     | '/api/storage/upload'
+    | '/api/test/image'
     | '/api/workflows/$'
     | '/locations'
     | '/sequences'
@@ -511,6 +522,7 @@ export interface FileRouteTypes {
     | '/api/dev/memory'
     | '/api/openrouter/callback'
     | '/api/storage/upload'
+    | '/api/test/image'
     | '/api/workflows/$'
     | '/_protected/locations/'
     | '/_protected/sequences/'
@@ -542,6 +554,7 @@ export interface RootRouteChildren {
   ApiDevMemoryRoute: typeof ApiDevMemoryRoute
   ApiOpenrouterCallbackRoute: typeof ApiOpenrouterCallbackRoute
   ApiStorageUploadRoute: typeof ApiStorageUploadRoute
+  ApiTestImageRoute: typeof ApiTestImageRoute
   ApiWorkflowsSplatRoute: typeof ApiWorkflowsSplatRoute
 }
 
@@ -706,6 +719,13 @@ declare module '@tanstack/react-router' {
       path: '/api/workflows/$'
       fullPath: '/api/workflows/$'
       preLoaderRoute: typeof ApiWorkflowsSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/test/image': {
+      id: '/api/test/image'
+      path: '/api/test/image'
+      fullPath: '/api/test/image'
+      preLoaderRoute: typeof ApiTestImageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/storage/upload': {
@@ -969,6 +989,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDevMemoryRoute: ApiDevMemoryRoute,
   ApiOpenrouterCallbackRoute: ApiOpenrouterCallbackRoute,
   ApiStorageUploadRoute: ApiStorageUploadRoute,
+  ApiTestImageRoute: ApiTestImageRoute,
   ApiWorkflowsSplatRoute: ApiWorkflowsSplatRoute,
 }
 export const routeTree = rootRouteImport

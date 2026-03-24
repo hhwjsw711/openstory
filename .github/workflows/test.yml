@@ -58,10 +58,7 @@ jobs:
         run: bunx playwright install --with-deps chromium
 
       - name: Setup test database
-        run: |
-          bun test:e2e:setup
-          # Enable WAL mode for concurrent access from fixtures and dev server
-          sqlite3 test.db "PRAGMA journal_mode=WAL;"
+        run: bun test:e2e:setup
 
       - name: Run E2E tests
         run: bun test:e2e

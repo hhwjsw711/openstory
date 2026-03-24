@@ -24,7 +24,7 @@ export async function createTestLibraryLocation(
 ): Promise<TestLibraryLocation> {
   const locationId = ulid();
   const now = new Date();
-  const referenceImageUrl = `https://picsum.photos/seed/${locationId}/1024/576`;
+  const referenceImageUrl = `http://localhost:3001/api/test/image?w=1024&h=576&label=location`;
 
   await testDb.insert(locationLibrary).values({
     id: locationId,
