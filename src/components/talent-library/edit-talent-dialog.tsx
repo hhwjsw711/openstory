@@ -123,6 +123,7 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
                         <video
                           src={media.url}
                           className="size-full object-cover"
+                          muted
                         />
                       ) : (
                         <img

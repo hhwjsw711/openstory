@@ -130,7 +130,7 @@ export function VariantSelector({
                   : 'border-transparent hover:border-primary/50'
               )}
               aria-label={`Select variant ${index + 1}`}
-              aria-selected={selectedVariantIndex === index}
+              aria-pressed={selectedVariantIndex === index}
             >
               <div
                 className="absolute inset-0"

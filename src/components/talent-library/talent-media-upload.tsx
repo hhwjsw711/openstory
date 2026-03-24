@@ -150,6 +150,7 @@ export const TalentMediaUpload: React.FC<TalentMediaUploadProps> = ({
                   <video
                     src={URL.createObjectURL(file)}
                     className="size-full object-cover"
+                    muted
                   />
                 ) : (
                   fallback()

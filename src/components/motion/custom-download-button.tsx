@@ -27,7 +27,6 @@ export const CustomDownloadButton: React.FC<CustomDownloadButtonProps> = ({
     <Tooltip.Root>
       <Tooltip.Trigger asChild>
         <a
-          role="button"
           className="vds-download-button vds-button"
           aria-label={downloadText}
           href={downloadUrl}

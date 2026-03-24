@@ -179,6 +179,7 @@ function TalentDetailPage() {
                       <video
                         src={media.url}
                         className="w-full h-full object-cover"
+                        muted
                       />
                     )}
                   </div>
