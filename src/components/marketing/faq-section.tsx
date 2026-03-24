@@ -17,7 +17,11 @@ export function FaqSection() {
 
       <Accordion type="single" collapsible>
         {FAQ_ITEMS.map((item, i) => (
-          <AccordionItem key={i} value={`faq-${i}`} className="border-border">
+          <AccordionItem
+            key={item.question}
+            value={`faq-${i}`}
+            className="border-border"
+          >
             <AccordionTrigger className="font-heading text-base font-medium text-foreground hover:no-underline">
               {item.question}
             </AccordionTrigger>

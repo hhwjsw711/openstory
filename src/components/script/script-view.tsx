@@ -61,16 +61,7 @@ export const ScriptView: FC<{
   loading?: boolean;
   onSuccess?: (sequenceIds: string[]) => void;
   onCancel?: () => void;
-  autoFocus?: boolean;
-}> = ({
-  teamId,
-  sequence,
-  loading = false,
-  onSuccess,
-  flat,
-  onCancel,
-  autoFocus = false,
-}) => {
+}> = ({ teamId, sequence, loading = false, onSuccess, flat, onCancel }) => {
   // Local state - undefined until user makes an edit
   const [script, setScript] = useState<string | null | undefined>(
     sequence?.script
@@ -455,7 +446,6 @@ export const ScriptView: FC<{
               maxLength={50000}
               placeholder="A one-liner or website URL is all you need — click Enhance Script to do the rest.\nOr paste a full screenplay and generate directly."
               disabled={loading}
-              autoFocus={autoFocus}
               showCharacterCount={false}
             />
             <div className="absolute bottom-2 right-2 flex items-center gap-1">

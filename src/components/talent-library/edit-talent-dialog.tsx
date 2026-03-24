@@ -95,7 +95,6 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
                 defaultValue={talent.name}
                 placeholder="Talent name…"
                 autoComplete="off"
-                autoFocus
                 required
               />
             </div>

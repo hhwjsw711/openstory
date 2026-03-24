@@ -31,7 +31,7 @@ function NewSequencePage() {
   return (
     <div className="h-full">
       <PageContainer maxWidth="narrow" fullHeight>
-        <ScriptView loading={false} onSuccess={handleSuccess} autoFocus />
+        <ScriptView loading={false} onSuccess={handleSuccess} />
       </PageContainer>
     </div>
   );

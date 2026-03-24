@@ -74,7 +74,7 @@ export const EvalMatrix: React.FC<EvalMatrixProps> = ({
           </div>
           {Array.from({ length: maxSceneCount }, (_, i) => (
             <div
-              key={i}
+              key={`header-${i}`}
               className="p-4 text-center font-medium text-sm shrink-0"
               style={{ width: CELL_WIDTH }}
             >

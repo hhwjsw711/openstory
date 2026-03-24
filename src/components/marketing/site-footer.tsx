@@ -64,7 +64,7 @@ export function SiteFooter() {
         >
           {duplicatedFilmstrip.map((src, i) => (
             <Image
-              key={i}
+              key={`film-${i}-${src}`}
               src={src}
               alt=""
               width={228}

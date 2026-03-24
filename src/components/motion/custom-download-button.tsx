@@ -1,5 +1,4 @@
 import { useDefaultLayoutContext } from '@vidstack/react/player/layouts/default';
-import type { DefaultLayoutTranslations } from '@vidstack/react/player/layouts/default';
 import { Tooltip } from '@vidstack/react';
 
 type CustomDownloadButtonProps = {
@@ -16,15 +15,9 @@ export const CustomDownloadButton: React.FC<CustomDownloadButtonProps> = ({
   downloadUrl,
   downloadFilename,
 }) => {
-  const { icons: Icons } = useDefaultLayoutContext();
+  const { icons: Icons, translations } = useDefaultLayoutContext();
 
-  // Helper to get translation (simplified version of useDefaultLayoutWord)
-  const getWord = (word: keyof DefaultLayoutTranslations) => {
-    const { translations } = useDefaultLayoutContext();
-    return translations?.[word] ?? word;
-  };
-
-  const downloadText = getWord('Download');
+  const downloadText = translations?.['Download'] ?? 'Download';
 
   if (!downloadUrl || !downloadFilename) {
     return null;

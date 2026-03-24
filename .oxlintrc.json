@@ -1,5 +1,13 @@
 {
-  "plugins": ["eslint", "typescript", "unicorn", "react", "react-perf", "oxc"],
+  "plugins": [
+    "eslint",
+    "typescript",
+    "unicorn",
+    "react",
+    "react-perf",
+    "jsx-a11y",
+    "oxc"
+  ],
   "extends": ["recommended"],
   "ignorePatterns": [
     "**/mockServiceWorker.js",
@@ -17,6 +25,7 @@
     "typescript/await-thenable": "error",
     "typescript/no-unnecessary-condition": "warn",
     "unicorn/prefer-optional-catch-binding": "error",
+    "react/rules-of-hooks": "error",
     "react/no-unstable-nested-components": "error",
     "no-restricted-imports": [
       "error",
@@ -42,6 +51,12 @@
         "typescript/no-explicit-any": "warn",
         "typescript/no-floating-promises": "off",
         "typescript/no-unsafe-type-assertion": "warn"
+      }
+    },
+    {
+      "files": ["e2e/**/*.ts"],
+      "rules": {
+        "react/rules-of-hooks": "off"
       }
     },
     {

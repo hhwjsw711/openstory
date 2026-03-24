@@ -141,12 +141,17 @@ export const MusicView: React.FC<MusicViewProps> = ({
   } = sequence;
 
   const [editPrompt, setEditPrompt] = useState(musicPrompt ?? '');
-  const [editModel, setEditModel] = useState<AudioModel>(
+  const [editModel, setEditModel] = useState<AudioModel>(() =>
     safeAudioModel(musicModel, DEFAULT_MUSIC_MODEL)
   );
   const [editDuration, setEditDuration] = useState<number | undefined>(
     videoDuration
   );
+  const [prevVideoDuration, setPrevVideoDuration] = useState(videoDuration);
+  if (videoDuration !== prevVideoDuration) {
+    setPrevVideoDuration(videoDuration);
+    setEditDuration(videoDuration);
+  }
 
   const durationLimits = getAudioModelDurationLimits(editModel);
   const effectiveDuration =

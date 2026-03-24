@@ -86,8 +86,16 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
     return (
       <>
         <div
+          role="button"
+          tabIndex={0}
           className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden"
           onClick={handleClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
         >
           <div className="flex-1 flex items-center min-h-0">
             <Image
@@ -129,8 +137,16 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
     return (
       <>
         <div
+          role="button"
+          tabIndex={0}
           className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden"
           onClick={handleClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClick();
+            }
+          }}
         >
           <ScrollArea className="flex-1 w-full min-h-0">
             <p className="text-xs leading-relaxed whitespace-pre-wrap pr-2">
@@ -166,8 +182,16 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
   return (
     <>
       <div
+        role="button"
+        tabIndex={0}
         className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0"
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
       >
         <ScrollArea className="flex-1 w-full min-h-0">
           <p className="text-xs leading-relaxed whitespace-pre-wrap pr-2">

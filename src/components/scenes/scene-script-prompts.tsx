@@ -30,7 +30,7 @@ import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { SceneCastTab } from './scene-cast-tab';
 import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';
@@ -166,6 +166,14 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const [selectedMotionModel, setSelectedMotionModel] = useState<
     ImageToVideoModel | undefined
   >(undefined);
+
+  // Previous value tracking for prop-to-state sync (React-recommended pattern)
+  const [prevImagePrompt, setPrevImagePrompt] = useState<string | undefined>();
+  const [prevImageModel, setPrevImageModel] = useState<string | undefined>();
+  const [prevMotionPrompt, setPrevMotionPrompt] = useState<
+    string | undefined
+  >();
+  const [prevMotionModelKey, setPrevMotionModelKey] = useState<string>('');
 
   const queryClient = useQueryClient();
   const generateVariants = useGenerateVariants();
@@ -416,31 +424,30 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     [frame, selectVariant]
   );
 
-  // Update local state when frame image prompt changes
-  useEffect(() => {
-    setEditedImagePrompt(imagePrompt || '');
-  }, [imagePrompt]);
-
-  // Update local state when frame image model changes
-  useEffect(() => {
-    const currentModel = safeTextToImageModel(
-      frame?.imageModel,
-      DEFAULT_IMAGE_MODEL
-    );
-    setSelectedImageModel(currentModel);
-  }, [frame?.imageModel]);
-
   const motionPrompt =
     frame?.motionPrompt || frame?.metadata?.prompts?.motion?.fullPrompt;
 
-  // Update local state when frame motion prompt changes
-  useEffect(() => {
-    setEditedMotionPrompt(motionPrompt || '');
-  }, [motionPrompt]);
+  // Sync local state when props change (React-recommended prev-value pattern)
+  if (imagePrompt !== prevImagePrompt) {
+    setPrevImagePrompt(imagePrompt);
+    setEditedImagePrompt(imagePrompt || '');
+  }
 
-  // Update local motion model state when frame or aspect ratio changes
-  // Ensure the model is compatible with the aspect ratio
-  useEffect(() => {
+  if (frame?.imageModel !== prevImageModel) {
+    setPrevImageModel(frame?.imageModel);
+    setSelectedImageModel(
+      safeTextToImageModel(frame?.imageModel, DEFAULT_IMAGE_MODEL)
+    );
+  }
+
+  if (motionPrompt !== prevMotionPrompt) {
+    setPrevMotionPrompt(motionPrompt);
+    setEditedMotionPrompt(motionPrompt || '');
+  }
+
+  const motionModelKey = `${frame?.motionModel ?? ''}:${aspectRatio ?? ''}`;
+  if (motionModelKey !== prevMotionModelKey) {
+    setPrevMotionModelKey(motionModelKey);
     const currentModel = frame?.motionModel
       ? safeImageToVideoModel(frame.motionModel)
       : DEFAULT_VIDEO_MODEL;
@@ -448,7 +455,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       ? getCompatibleModel(currentModel, aspectRatio)
       : currentModel;
     setSelectedMotionModel(compatibleModel);
-  }, [frame?.motionModel, aspectRatio]);
+  }
 
   // Check if image is currently generating
   const isGenerating =
@@ -532,12 +539,18 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           {/* Editable prompt */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Prompt</label>
+              <label
+                htmlFor="image-prompt-input"
+                className="text-sm font-medium"
+              >
+                Prompt
+              </label>
               <span className="text-xs text-muted-foreground">
                 {(editedImagePrompt || imagePrompt || '').length} characters
               </span>
             </div>
             <Textarea
+              id="image-prompt-input"
               value={editedImagePrompt || imagePrompt || ''}
               onChange={(e) => setEditedImagePrompt(e.target.value)}
               placeholder={
@@ -552,7 +565,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Model selector */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Model</label>
+            <span className="text-sm font-medium">Model</span>
             <ImageModelSelector
               selectedModel={selectedImageModel || imageModel}
               onModelChange={setSelectedImageModel}
@@ -624,12 +637,18 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           {/* Editable motion prompt */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Prompt</label>
+              <label
+                htmlFor="motion-prompt-input"
+                className="text-sm font-medium"
+              >
+                Prompt
+              </label>
               <span className="text-xs text-muted-foreground">
                 {(editedMotionPrompt || motionPrompt || '').length} characters
               </span>
             </div>
             <Textarea
+              id="motion-prompt-input"
               value={editedMotionPrompt || motionPrompt || ''}
               onChange={(e) => setEditedMotionPrompt(e.target.value)}
               placeholder={
@@ -644,7 +663,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Model selector */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Model</label>
+            <span className="text-sm font-medium">Model</span>
             <MotionModelSelector
               selectedModel={selectedMotionModel || DEFAULT_VIDEO_MODEL}
               onModelChange={setSelectedMotionModel}
@@ -720,7 +739,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
           {/* Model selector */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Model</label>
+            <span className="text-sm font-medium">Model</span>
             <ImageModelSelector
               selectedModel={selectedImageModel || imageModel}
               onModelChange={setSelectedImageModel}
