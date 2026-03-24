@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
-import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
 import { micros } from '../billing/money';
 import {
   mockGenerateVideo,
@@ -55,7 +54,6 @@ describe('Motion Service', () => {
       );
       expect(result.metadata?.provider).toBe('kling');
       expect(result.metadata?.duration).toBe(5);
-      expect(result.metadata?.fps).toBe(30);
       expect(result.metadata?.cost).toBe(micros(840_000)); // 140_000 micros/s * 1.2 (audio) * 5s
 
       expect(mockGenerateVideo).toHaveBeenCalledWith(
@@ -179,54 +177,6 @@ describe('Motion Service', () => {
           }),
         })
       );
-    });
-  });
-
-  describe('Model configurations', () => {
-    it('should have correct model configurations', () => {
-      expect(IMAGE_TO_VIDEO_MODELS.kling_v3_pro).toMatchObject({
-        id: 'fal-ai/kling-video/v3/pro/image-to-video',
-        name: 'Kling v3 Pro',
-        provider: 'kling',
-        capabilities: {
-          supportsPrompt: true,
-          supportsAudio: true,
-          maxDuration: 15,
-          defaultDuration: 5,
-          requiresStringDuration: true,
-        },
-        performance: {
-          estimatedGenerationTime: 20,
-          quality: 'best',
-        },
-      });
-
-      expect(IMAGE_TO_VIDEO_MODELS.seedance_v1_pro).toMatchObject({
-        id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
-        provider: 'seedance',
-        capabilities: {
-          defaultDuration: 5,
-        },
-        performance: {
-          quality: 'best',
-        },
-      });
-
-      expect(IMAGE_TO_VIDEO_MODELS.kling_o1).toMatchObject({
-        id: 'fal-ai/kling-video/o1/image-to-video',
-        name: 'Kling O1 (Omni)',
-        provider: 'kling',
-        capabilities: {
-          supportsPrompt: true,
-          supportsAudio: false,
-          maxDuration: 10,
-          defaultDuration: 10,
-          requiresStringDuration: true,
-        },
-        performance: {
-          quality: 'best',
-        },
-      });
     });
   });
 });

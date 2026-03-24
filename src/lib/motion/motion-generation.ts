@@ -1,23 +1,24 @@
+import { getEnv } from '#env';
 import { calculateVideoCost } from '@/lib/ai/fal-cost';
-import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   DEFAULT_VIDEO_MODEL,
   IMAGE_TO_VIDEO_MODEL_KEYS,
   IMAGE_TO_VIDEO_MODELS,
   type ImageToVideoModel,
   type ImageToVideoModelConfig,
+  videoModelSupportsAudio,
 } from '@/lib/ai/models';
-import { getEnv } from '#env';
+import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   type AspectRatio,
   aspectRatioSchema,
 } from '@/lib/constants/aspect-ratios';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { startObservation } from '@langfuse/tracing';
 import { generateVideo, getVideoJobStatus } from '@tanstack/ai';
 import { falVideo } from '@tanstack/ai-fal';
 import { WorkflowNonRetryableError } from '@upstash/workflow';
 import { z } from 'zod';
-import type { ScopedDb } from '@/lib/db/scoped';
 
 export const generationMotionOptionsSchema = z.object({
   imageUrl: z.url(),
@@ -52,9 +53,6 @@ export type MotionResult = {
     model: string;
     provider: string;
     duration: number;
-    fps: number;
-    motionBucket?: number;
-    totalFrames: number;
     cost: Microdollars;
     generatedAt: string;
     usedOwnKey: boolean;
@@ -63,31 +61,27 @@ export type MotionResult = {
   requestId?: string;
 };
 
-/**
- * Snap a requested duration to the nearest supported value for a model.
- * Falls back to capping at maxDuration if no discrete durations are defined.
- */
+import { buildModelInput } from './build-model-input';
+
+/** Snap a requested duration to the nearest valid value for a model.
+ *  Uses buildModelInput (the Zod transform) to determine the snapped value. */
 export function snapDuration(
   requested: number | undefined,
-  capabilities: ImageToVideoModelConfig['capabilities']
+  modelKey: ImageToVideoModel
 ): number {
-  const duration = requested ?? capabilities.defaultDuration;
-  const supported =
-    'supportedDurations' in capabilities
-      ? capabilities.supportedDurations
-      : undefined;
-
-  if (supported && supported.length > 0) {
-    return supported.reduce((prev, curr) =>
-      Math.abs(curr - duration) < Math.abs(prev - duration) ? curr : prev
-    );
+  const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
+  const result = buildModelInput(
+    { prompt: 'x', imageUrl: 'https://x', duration: requested },
+    modelConfig,
+    modelKey
+  );
+  if ('duration' in result && result.duration != null) {
+    return typeof result.duration === 'number'
+      ? result.duration
+      : parseFloat(String(result.duration));
   }
-
-  return Math.min(duration, capabilities.maxDuration);
+  return requested ?? 5;
 }
-
-// Schema-driven input builder — see build-model-input.ts
-import { buildModelInput } from './build-model-input';
 
 /** Generate motion for a single frame using Fal.ai with Langfuse tracing */
 export async function generateMotionForFrame(
@@ -213,23 +207,18 @@ async function generateMotionInternal(
     throw new Error('Motion generation timed out after 10 minutes');
   }
 
-  const validatedDuration = snapDuration(
-    options.duration,
-    modelConfig.capabilities
-  );
-  const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
+  const validatedDuration = snapDuration(options.duration, modelKey);
 
   const providerInput = buildModelInput(options, modelConfig, modelKey);
   const cost = calculateVideoCost({
     endpointId: modelConfig.id,
     durationSeconds: validatedDuration,
-    audioEnabled: modelConfig.capabilities.supportsAudio,
+    audioEnabled: videoModelSupportsAudio(modelKey),
     resolution:
       'resolution' in providerInput &&
       typeof providerInput.resolution === 'string'
         ? providerInput.resolution
         : undefined,
-    fps: validatedFps,
   });
 
   return {
@@ -240,9 +229,6 @@ async function generateMotionInternal(
       model: modelConfig.id,
       provider: modelConfig.provider,
       duration: validatedDuration,
-      fps: validatedFps,
-      motionBucket: options.motionBucket,
-      totalFrames: Math.round(validatedDuration * validatedFps),
       cost,
       generatedAt: new Date().toISOString(),
       usedOwnKey: falApiKeyInfo.source === 'team',
@@ -287,6 +273,8 @@ export async function submitMotionJob(
   const falApiKeyInfo = options.scopedDb
     ? await options.scopedDb.apiKeys.resolveKey('fal')
     : { key: getEnv().FAL_KEY, source: 'platform' as const };
+
+  // Create the Tanstack AI adapter
   const adapter = falVideo(modelConfig.id, {
     apiKey: falApiKeyInfo.key,
   });
@@ -377,40 +365,31 @@ export async function pollMotionJob(
 export function calculateMotionMetadata(options: GenerateMotionOptions): {
   cost: number;
   duration: number;
-  fps: number;
   model: string;
   provider: string;
-  totalFrames: number;
 } {
   const modelKey = options.model || DEFAULT_VIDEO_MODEL;
   const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
 
-  const validatedDuration = snapDuration(
-    options.duration,
-    modelConfig.capabilities
-  );
-  const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
+  const validatedDuration = snapDuration(options.duration, modelKey);
 
   const providerInput = buildModelInput(options, modelConfig, modelKey);
   const cost = calculateVideoCost({
     endpointId: modelConfig.id,
     durationSeconds: validatedDuration,
-    audioEnabled: modelConfig.capabilities.supportsAudio,
+    audioEnabled: videoModelSupportsAudio(modelKey),
     resolution:
       'resolution' in providerInput &&
       typeof providerInput.resolution === 'string'
         ? providerInput.resolution
         : undefined,
-    fps: validatedFps,
   });
 
   return {
     cost,
     duration: validatedDuration,
-    fps: validatedFps,
     model: modelConfig.id,
     provider: modelConfig.provider,
-    totalFrames: Math.round(validatedDuration * validatedFps),
   };
 }
 

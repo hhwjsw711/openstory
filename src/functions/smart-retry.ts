@@ -7,7 +7,6 @@
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
@@ -159,8 +158,8 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
     }
 
     if (failedMotionFrames.length > 0) {
-      const duration =
-        IMAGE_TO_VIDEO_MODELS[videoModel].capabilities.defaultDuration;
+      const { snapDuration } = await import('@/lib/motion/motion-generation');
+      const duration = snapDuration(undefined, videoModel);
       totalCost = addMicros(
         totalCost,
         multiplyMicros(

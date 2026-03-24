@@ -8,7 +8,10 @@
  */
 
 import type { MotionPrompt } from '@/lib/ai/scene-analysis.schema';
-import { IMAGE_TO_VIDEO_MODELS, type ImageToVideoModel } from '@/lib/ai/models';
+import {
+  type ImageToVideoModel,
+  videoModelSupportsAudio,
+} from '@/lib/ai/models';
 import { assembleMotionPrompt } from './assemble-motion-prompt';
 
 type FramePromptData = {
@@ -29,16 +32,15 @@ export function resolveMotionPrompt(
   frame: FramePromptData,
   model: ImageToVideoModel
 ): string {
-  const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
   const motionPromptData = frame.metadata?.prompts?.motion;
 
   // User override: manually edited prompt string
   if (frame.motionPrompt) {
     // For audio models, enrich the user's prompt with dialogue/audio if available
-    if (modelConfig.capabilities.supportsAudio && motionPromptData) {
+    if (videoModelSupportsAudio(model) && motionPromptData) {
       return assembleMotionPrompt({
         motionPrompt: { ...motionPromptData, fullPrompt: frame.motionPrompt },
-        modelConfig,
+        model,
       });
     }
     return frame.motionPrompt;
@@ -48,7 +50,7 @@ export function resolveMotionPrompt(
   if (motionPromptData) {
     return assembleMotionPrompt({
       motionPrompt: motionPromptData,
-      modelConfig,
+      model,
     });
   }
 

@@ -7,11 +7,8 @@ import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
-import {
-  DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
-  safeImageToVideoModel,
-} from '@/lib/ai/models';
+import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
+import { snapDuration } from '@/lib/motion/motion-generation';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
 import { multiplyMicros, usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
@@ -53,9 +50,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
 
     const prompt = data.prompt || resolveMotionPrompt(frame, model);
 
-    const duration =
-      data.duration ??
-      IMAGE_TO_VIDEO_MODELS[model].capabilities.defaultDuration;
+    const duration = data.duration ?? snapDuration(undefined, model);
 
     await requireCredits(context.scopedDb, estimateVideoCost(model, duration), {
       errorMessage: 'Insufficient credits for motion generation',
@@ -124,9 +119,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     }
 
     const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
-    const batchDuration =
-      data.duration ??
-      IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
+    const batchDuration = snapDuration(data.duration, batchModel);
 
     await requireCredits(
       context.scopedDb,

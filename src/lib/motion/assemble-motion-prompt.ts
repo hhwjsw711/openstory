@@ -13,15 +13,17 @@ import type {
   DialogueLine,
   MotionPrompt,
 } from '@/lib/ai/scene-analysis.schema';
-import type { ImageToVideoModelConfig } from '@/lib/ai/models';
-import { MOTION_PROMPT_LIMITS } from './generated/prompt-limits';
-
+import {
+  IMAGE_TO_VIDEO_MODELS,
+  type ImageToVideoModel,
+  videoModelSupportsAudio,
+} from '@/lib/ai/models';
 type MotionDialogue = NonNullable<MotionPrompt['dialogue']>;
 type MotionAudio = NonNullable<MotionPrompt['audio']>;
 
 type AssembleOptions = {
   motionPrompt: MotionPrompt;
-  modelConfig: ImageToVideoModelConfig;
+  model: ImageToVideoModel;
 };
 
 /**
@@ -33,11 +35,11 @@ type AssembleOptions = {
  */
 export function assembleMotionPrompt({
   motionPrompt,
-  modelConfig,
+  model,
 }: AssembleOptions): string {
   const { dialogue, audio, fullPrompt } = motionPrompt;
-  const supportsAudio = modelConfig.capabilities.supportsAudio;
-  const provider = modelConfig.provider;
+  const supportsAudio = videoModelSupportsAudio(model);
+  const provider = IMAGE_TO_VIDEO_MODELS[model].provider;
 
   let assembled: string;
 
@@ -61,7 +63,7 @@ export function assembleMotionPrompt({
     }
   }
 
-  return truncateForModel(assembled, modelConfig);
+  return assembled;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,38 +143,4 @@ function buildVeoPrompt(
   }
 
   return parts.join('\n\n');
-}
-
-// ---------------------------------------------------------------------------
-// Prompt length truncation — paragraph-aware
-// ---------------------------------------------------------------------------
-
-function truncateForModel(
-  prompt: string,
-  modelConfig: ImageToVideoModelConfig
-): string {
-  const maxLength = MOTION_PROMPT_LIMITS[modelConfig.id];
-  if (!maxLength || prompt.length <= maxLength) return prompt;
-
-  // Keep whole paragraphs, dropping from the end (atmosphere → dialogue → camera)
-  const paragraphs = prompt.split('\n\n');
-  let result = '';
-  for (const paragraph of paragraphs) {
-    const candidate = result ? `${result}\n\n${paragraph}` : paragraph;
-    if (candidate.length <= maxLength) {
-      result = candidate;
-    } else {
-      break;
-    }
-  }
-
-  // First paragraph alone exceeds limit — hard slice
-  if (!result) {
-    return prompt.slice(0, maxLength - 3) + '...';
-  }
-
-  console.warn(
-    `[Motion] Prompt truncated from ${prompt.length} to ${result.length} chars for ${modelConfig.id}`
-  );
-  return result;
 }

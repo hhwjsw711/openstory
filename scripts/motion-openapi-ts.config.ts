@@ -488,6 +488,7 @@ export default getFalGroupedCategoryFilenames().map(
       },
       plugins: [
         { name: '@hey-api/typescript' },
+        { name: '@hey-api/schemas', type: 'json' },
         { name: 'zod', metadata: true },
       ],
       parser: {

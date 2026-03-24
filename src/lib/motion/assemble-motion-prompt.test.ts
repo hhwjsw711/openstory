@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { IMAGE_TO_VIDEO_MODELS } from '../ai/models';
 import type { MotionPrompt } from '../ai/scene-analysis.schema';
 import { assembleMotionPrompt } from './assemble-motion-prompt';
 
@@ -66,12 +65,12 @@ function makeMotionPrompt(overrides: Partial<MotionPrompt> = {}): MotionPrompt {
 
 describe('assembleMotionPrompt', () => {
   describe('Kling v3 Pro (audio)', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.kling_v3_pro;
+    const model = 'kling_v3_pro';
 
     it('starts with the fullPrompt as the base', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toStartWith(fullPromptText);
@@ -80,7 +79,7 @@ describe('assembleMotionPrompt', () => {
     it('appends character labels with tone and dialogue text', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toContain(
@@ -94,7 +93,7 @@ describe('assembleMotionPrompt', () => {
     it('uses temporal markers between dialogue lines', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toContain('Immediately,');
@@ -103,7 +102,7 @@ describe('assembleMotionPrompt', () => {
     it('appends ambient sound descriptions', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toContain('Ambient sounds:');
@@ -116,7 +115,7 @@ describe('assembleMotionPrompt', () => {
         motionPrompt: makeMotionPrompt({
           dialogue: { presence: false, lines: [] },
         }),
-        modelConfig,
+        model,
       });
 
       expect(result).not.toContain('[Sarah');
@@ -128,7 +127,7 @@ describe('assembleMotionPrompt', () => {
     it('omits audio section when no audio data', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt({ audio: undefined }),
-        modelConfig,
+        model,
       });
 
       expect(result).not.toContain('Ambient sounds:');
@@ -142,12 +141,12 @@ describe('assembleMotionPrompt', () => {
   // ---------------------------------------------------------------------------
 
   describe('Kling v3 Pro no audio', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.kling_v3_pro_no_audio;
+    const model = 'kling_v3_pro_no_audio';
 
     it('returns fullPrompt only for non-audio model', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toBe(fullPromptText);
@@ -159,12 +158,12 @@ describe('assembleMotionPrompt', () => {
   // ---------------------------------------------------------------------------
 
   describe('Google Veo 3.1 (audio)', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.veo3_1;
+    const model = 'veo3_1';
 
     it('starts with fullPrompt as the base', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toStartWith(fullPromptText);
@@ -173,7 +172,7 @@ describe('assembleMotionPrompt', () => {
     it('appends dialogue as natural narrative with inline quotes', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toContain(
@@ -185,7 +184,7 @@ describe('assembleMotionPrompt', () => {
     it('appends Audio: section with ambient and SFX', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toContain('Audio:');
@@ -196,7 +195,7 @@ describe('assembleMotionPrompt', () => {
     it('omits Audio: section when no audio data', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt({ audio: undefined }),
-        modelConfig,
+        model,
       });
 
       expect(result).not.toContain('Audio:');
@@ -207,7 +206,7 @@ describe('assembleMotionPrompt', () => {
         motionPrompt: makeMotionPrompt({
           dialogue: { presence: false, lines: [] },
         }),
-        modelConfig,
+        model,
       });
 
       expect(result).not.toContain('Sarah says');
@@ -220,12 +219,12 @@ describe('assembleMotionPrompt', () => {
   // ---------------------------------------------------------------------------
 
   describe('Seedance v1 Pro (no audio)', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.seedance_v1_pro;
+    const model = 'seedance_v1_pro';
 
     it('returns fullPrompt without dialogue or audio enrichment', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toBe(fullPromptText);
@@ -233,12 +232,12 @@ describe('assembleMotionPrompt', () => {
   });
 
   describe('Grok Imagine Video (no audio)', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.grok_imagine_video;
+    const model = 'grok_imagine_video';
 
     it('returns fullPrompt for non-audio model', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toBe(fullPromptText);
@@ -246,12 +245,12 @@ describe('assembleMotionPrompt', () => {
   });
 
   describe('Wan 2.6 Flash (no audio)', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash;
+    const model = 'wan_v2_6_flash';
 
     it('returns fullPrompt for non-audio model', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toBe(fullPromptText);
@@ -263,12 +262,12 @@ describe('assembleMotionPrompt', () => {
   // ---------------------------------------------------------------------------
 
   describe('OpenAI Sora 2 (audio)', () => {
-    const modelConfig = IMAGE_TO_VIDEO_MODELS.sora_2;
+    const model = 'sora_2';
 
     it('uses Veo-style natural narrative with dialogue', () => {
       const result = assembleMotionPrompt({
         motionPrompt: makeMotionPrompt(),
-        modelConfig,
+        model,
       });
 
       expect(result).toStartWith(fullPromptText);
@@ -290,7 +289,7 @@ describe('assembleMotionPrompt', () => {
             lines: [{ character: 'Sarah', line: 'Hello.', tone: '' }],
           },
         }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.kling_v3_pro,
+        model: 'kling_v3_pro',
       });
 
       // No tone → no tone suffix in Kling label
@@ -307,7 +306,7 @@ describe('assembleMotionPrompt', () => {
             ],
           },
         }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.kling_v3_pro,
+        model: 'kling_v3_pro',
       });
 
       expect(result).toContain('[Narrator, somber]: "It was a dark night."');
@@ -318,7 +317,7 @@ describe('assembleMotionPrompt', () => {
         motionPrompt: makeMotionPrompt({
           audio: { ambientSound: 'rain on windows', soundEffects: [] },
         }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.veo3_1,
+        model: 'veo3_1',
       });
 
       expect(result).toContain('Audio: rain on windows');
@@ -329,7 +328,7 @@ describe('assembleMotionPrompt', () => {
         motionPrompt: makeMotionPrompt({
           audio: { ambientSound: '', soundEffects: ['door slam'] },
         }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.veo3_1,
+        model: 'veo3_1',
       });
 
       expect(result).toContain('Audio: door slam');
@@ -340,93 +339,11 @@ describe('assembleMotionPrompt', () => {
         motionPrompt: makeMotionPrompt({
           audio: { ambientSound: '', soundEffects: [] },
         }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.veo3_1,
+        model: 'veo3_1',
       });
 
       // No Audio: section when both are empty
       expect(result).not.toContain('Audio:');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Prompt length truncation
-  // ---------------------------------------------------------------------------
-
-  describe('prompt length truncation', () => {
-    // Build a long fullPrompt with multiple paragraphs
-    const para1 = 'Camera dolly forward. ' + 'x'.repeat(300); // ~322 chars
-    const para2 = 'Sarah speaks firmly. ' + 'x'.repeat(300); // ~321 chars
-    const para3 = 'Rain falls softly. ' + 'x'.repeat(300); // ~319 chars
-    const longFullPrompt = [para1, para2, para3].join('\n\n');
-
-    it('Wan v2.6 truncates prompt exceeding 800 chars (paragraph-aware)', () => {
-      const result = assembleMotionPrompt({
-        motionPrompt: makeMotionPrompt({ fullPrompt: longFullPrompt }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash,
-      });
-
-      expect(result.length).toBeLessThanOrEqual(800);
-      // Should keep para1 + para2 (322 + 2 + 321 = 645) but drop para3
-      expect(result).toContain(para1);
-      expect(result).toContain(para2);
-      expect(result).not.toContain(para3);
-    });
-
-    it('Wan v2.6 preserves prompt under 800 chars', () => {
-      const shortPrompt = 'Camera pushes in slowly as dust motes drift.';
-      const result = assembleMotionPrompt({
-        motionPrompt: makeMotionPrompt({ fullPrompt: shortPrompt }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash,
-      });
-
-      expect(result).toBe(shortPrompt);
-    });
-
-    it('Kling v3 Pro truncates assembled prompt exceeding 2500 chars', () => {
-      // Kling is audio-capable, so dialogue + audio get appended (~220 chars)
-      // Base must be long enough that base + dialogue + audio > 2500
-      const longBase = 'Camera tracks forward. ' + 'x'.repeat(2400);
-      const result = assembleMotionPrompt({
-        motionPrompt: makeMotionPrompt({ fullPrompt: longBase }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.kling_v3_pro,
-      });
-
-      expect(result.length).toBeLessThanOrEqual(2500);
-      // Dialogue and audio sections should be dropped to fit
-      expect(result).not.toContain('[Sarah');
-      expect(result).not.toContain('Ambient sounds:');
-    });
-
-    it('Veo 3.1 passes through long prompts (20000 char limit)', () => {
-      const result = assembleMotionPrompt({
-        motionPrompt: makeMotionPrompt({ fullPrompt: longFullPrompt }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.veo3_1,
-      });
-
-      // Well under 20000, should include everything
-      expect(result).toContain(para1);
-      expect(result).toContain('Sarah says');
-      expect(result).toContain('Audio:');
-    });
-
-    it('Seedance passes through untruncated (no limit)', () => {
-      const result = assembleMotionPrompt({
-        motionPrompt: makeMotionPrompt({ fullPrompt: longFullPrompt }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro,
-      });
-
-      expect(result).toBe(longFullPrompt);
-    });
-
-    it('falls back to hard slice when first paragraph exceeds limit', () => {
-      const giantParagraph = 'x'.repeat(1000); // single paragraph, no \n\n
-      const result = assembleMotionPrompt({
-        motionPrompt: makeMotionPrompt({ fullPrompt: giantParagraph }),
-        modelConfig: IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash,
-      });
-
-      expect(result.length).toBe(800);
-      expect(result).toEndWith('...');
     });
   });
 });

@@ -20,7 +20,6 @@ import {
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
   getCompatibleModel,
   safeImageToVideoModel,
   safeTextToImageModel,
@@ -433,11 +432,9 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const motionPrompt = useMemo(() => {
     if (frame?.motionPrompt) return frame.motionPrompt;
     if (motionPromptData) {
-      const modelConfig =
-        IMAGE_TO_VIDEO_MODELS[selectedMotionModel || DEFAULT_VIDEO_MODEL];
       return assembleMotionPrompt({
         motionPrompt: motionPromptData,
-        modelConfig,
+        model: selectedMotionModel || DEFAULT_VIDEO_MODEL,
       });
     }
     return undefined;

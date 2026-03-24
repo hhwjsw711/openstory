@@ -1,23 +1,18 @@
 /**
  * Schema-Driven Model Input Builder
  *
- * Builds the fal.ai request body for a video model using the generated
- * Zod schemas from src/lib/motion/generated/. The Zod schemas provide
- * runtime validation and proper TypeScript types — no casts needed.
+ * Builds the fal.ai request body for a video model using generated
+ * Zod transforms. Each transform accepts our internal camelCase format
+ * (numeric duration, imageUrl) and produces the API's snake_case format
+ * with correctly-typed duration values.
  */
 
 import type {
   ImageToVideoModel,
   ImageToVideoModelConfig,
 } from '@/lib/ai/models';
-import {
-  MOTION_INPUT_SCHEMAS,
-  type MotionEndpointId,
-} from './generated/endpoint-map';
-import { snapDuration } from './motion-generation';
+import { MOTION_TRANSFORMS, type MotionEndpointId } from './endpoint-map';
 import type { GenerateMotionOptions } from './motion-generation';
-
-// -- Quality overrides (keyed by model key, not endpoint ID) ------------------
 
 /** Intentional deviations from API defaults */
 const QUALITY_OVERRIDES: Partial<
@@ -28,80 +23,22 @@ const QUALITY_OVERRIDES: Partial<
   seedance_v1_pro: { resolution: '1080p' },
 };
 
-// -- Duration formatting ------------------------------------------------------
-
-/**
- * Format duration for the target model based on what the API expects.
- * Kling/Seedance/Wan: string enum ("5", "10")
- * Veo: string with suffix ("4s", "8s")
- * Sora/Grok: integer
- */
-function formatDuration(
-  requested: number | undefined,
-  modelConfig: ImageToVideoModelConfig
-): string | number {
-  const snapped = snapDuration(requested, modelConfig.capabilities);
-
-  // Models with requiresStringDuration or string-typed duration enums
-  // We check capabilities since the model config already tracks this
-  if (
-    'requiresStringDuration' in modelConfig.capabilities &&
-    modelConfig.capabilities.requiresStringDuration
-  ) {
-    return String(Math.round(snapped));
-  }
-
-  // Veo models use "Ns" format
-  if (modelConfig.provider === 'google') {
-    return `${snapped}s`;
-  }
-
-  // Seedance and Wan use string durations
-  if (modelConfig.provider === 'seedance' || modelConfig.provider === 'wan') {
-    return String(Math.round(snapped));
-  }
-
-  // Sora, Grok use integer
-  return Math.round(snapped);
-}
-
-// -- Main builder -------------------------------------------------------------
-
 export function buildModelInput(
   options: GenerateMotionOptions,
   modelConfig: ImageToVideoModelConfig,
   modelKey: ImageToVideoModel
 ) {
   const endpointId = modelConfig.id satisfies MotionEndpointId;
-  const zodSchema = MOTION_INPUT_SCHEMAS[endpointId];
-  if (!zodSchema) {
-    throw new Error(`No schema found for model: ${modelConfig.id}`);
+  const transform = MOTION_TRANSFORMS[endpointId];
+  if (!transform) {
+    throw new Error(`No transform found for model: ${modelConfig.id}`);
   }
 
-  const overrides = QUALITY_OVERRIDES[modelKey];
-
-  // Build the input object with our values + overrides
-  // The Zod schema will validate and fill in defaults
-  const raw: Record<string, unknown> = {
+  return transform.parse({
     prompt: options.prompt,
-    duration: formatDuration(options.duration, modelConfig),
-    ...overrides,
-  };
-
-  // Set the image URL on the correct property name
-  // (image_url for most models, start_image_url for Kling v3/O1)
-  if (
-    'imageUrlParamName' in modelConfig.capabilities &&
-    modelConfig.capabilities.imageUrlParamName
-  ) {
-    raw[modelConfig.capabilities.imageUrlParamName] = options.imageUrl;
-  } else {
-    raw.image_url = options.imageUrl;
-  }
-
-  if (options.aspectRatio) {
-    raw.aspect_ratio = options.aspectRatio;
-  }
-
-  return zodSchema.parse(raw);
+    duration: options.duration,
+    imageUrl: options.imageUrl,
+    aspectRatio: options.aspectRatio,
+    ...QUALITY_OVERRIDES[modelKey],
+  });
 }

@@ -27,7 +27,7 @@ import type {
   MusicWorkflowInput,
 } from '@/lib/workflow/types';
 
-import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
+import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import { assembleMotionPrompt } from '@/lib/motion/assemble-motion-prompt';
 import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
@@ -394,7 +394,6 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       'merge-motion-prompts',
       () => {
         const modelKey = videoModel || DEFAULT_VIDEO_MODEL;
-        const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
 
         return scenesWithVisualPrompts.map((scene) => {
           const enrichment = partialScenesWithMotionPrompts.body.find(
@@ -407,16 +406,15 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
           }
 
           // Snap duration to model capabilities so music generation uses accurate values
-          const metadata =
-            scene.metadata && modelConfig
-              ? {
-                  ...scene.metadata,
-                  durationSeconds: snapDuration(
-                    scene.metadata.durationSeconds,
-                    modelConfig.capabilities
-                  ),
-                }
-              : scene.metadata;
+          const metadata = scene.metadata
+            ? {
+                ...scene.metadata,
+                durationSeconds: snapDuration(
+                  scene.metadata.durationSeconds,
+                  modelKey
+                ),
+              }
+            : scene.metadata;
 
           return {
             ...scene,
@@ -581,10 +579,9 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
               (f) => f.sceneId === scene.sceneId
             );
 
-            const videoModelConfig = IMAGE_TO_VIDEO_MODELS[videoModel];
             const prompt = assembleMotionPrompt({
               motionPrompt: motionPromptData,
-              modelConfig: videoModelConfig,
+              model: videoModel,
             });
 
             await context.invoke('motion', {
