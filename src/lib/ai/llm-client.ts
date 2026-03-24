@@ -48,6 +48,8 @@ export type LLMRequestParams = {
   metadata?: Record<string, unknown>;
   responseSchema?: z.ZodTypeAny;
   apiKey?: string;
+  /** OpenRouter plugins (e.g. web search) to enable for this request */
+  plugins?: Array<{ id: 'web'; max_results?: number }>;
 };
 
 /**
@@ -141,6 +143,7 @@ function buildModelOptions(params: LLMRequestParams) {
         params.observationName ?? 'response'
       ),
     }),
+    ...(params.plugins && { plugins: params.plugins }),
   };
 }
 
