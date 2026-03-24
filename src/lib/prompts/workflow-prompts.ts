@@ -515,27 +515,26 @@ Respond with up to {{expectedMatches}} matches, only including high-confidence m
    - *Examples*: "Slow dolly forward," "Handheld shake," "Static lock-off," "Pan right to follow subject."
    - Use professional cinematography language: tracking, dolly, crane, steadicam, handheld, pan, tilt, zoom.
 3. **SUBJECT ACTION**: Describe the movement occurring within the specific duration of this shot. Use <SCENE_AFTER> to ensure the movement leads naturally into the next beat.
-4. **DIALOGUE & PERFORMANCE**: If the scene has dialogue (check \`originalScript.dialogue\`), it MUST be reflected in the motion prompt:
-   - Describe characters speaking: mouth movement, gestures, body language, posture shifts during delivery.
-   - Include listening characters' reactions: nods, eye movement, turning toward the speaker.
-   - Match pacing and emotional intensity to the dialogue's tone (heated argument = fast cuts/motion, whispered confession = slow/intimate).
-   - Use temporal markers to control sequence: "Immediately," "then," "pause," "slowly."
-   - Dialogue-heavy scenes often run 10-15 seconds — scale the motion description to fill the scene's full duration.
+4. **DIALOGUE & PERFORMANCE**: If the scene has dialogue (check \`originalScript.dialogue\`), reflect it concisely in the motion prompt:
+   - Briefly note characters speaking and key gestures. Do NOT describe every micro-expression or body shift.
+   - The actual dialogue lines are extracted separately into the \`dialogue\` field — do NOT embed quoted speech in \`fullPrompt\`.
+   - Use temporal markers sparingly: "then," "immediately."
 5. **PHYSICS & ATMOSPHERE**: Describe secondary motion to sell the realism (e.g., "fabric fluttering in wind," "dust motes drifting," "rain falling").
 
 ### CONTENT RULES
 1. **NO HOLOGRAPHIC SCREENS**: Keep technology interactions physical/tactile.
 2. **NO RENDERED TEXT**: No subtitles or text overlays. Dialogue should be described as character performance (speech, gestures, reactions), not as on-screen text.
-3. **DURATION LOGIC**: Use the scene's \`metadata.durationSeconds\` to scale the motion description. Scenes with dialogue may be 10-15 seconds — describe enough action and performance to fill the duration naturally.
+3. **DURATION LOGIC**: Use the scene's \`metadata.durationSeconds\` to set the duration parameter. Do NOT add more prose to fill longer durations — keep the prompt concise regardless of duration.
 
 ### PROMPT STRUCTURE (Multi-section, natural language)
 Write the \`fullPrompt\` as connected natural paragraphs (NOT keyword lists):
 
 **Paragraph 1 — CAMERA & ACTION**: Camera movement type and primary subject action. Lead with the camera move, then describe what the subject does.
-**Paragraph 2 — PERFORMANCE** (include if dialogue present): How characters deliver their lines — mouth movement, gestures, body language, posture shifts. Include listening characters' reactions. Use temporal markers between beats.
-**Paragraph 3 — ATMOSPHERE**: Secondary motion (fabric, smoke, particles), ambient environment, and emotional micro-expression shifts.
+**Paragraph 2 — PERFORMANCE** (include if dialogue present): How characters deliver their lines — mouth movement, gestures, body language. Keep it brief — just the key physical beats.
+**Paragraph 3 — ATMOSPHERE**: One or two secondary motion details (fabric, smoke, particles). Do NOT over-describe.
 
-Keep total length 100-200 words. Each paragraph should flow naturally as cinematic direction.
+### LENGTH BUDGET — CRITICAL
+The \`fullPrompt\` MUST be under 2000 characters (roughly 80-120 words). Dialogue and audio sections are appended separately and count toward the model's limit. Be concise and direct — every word must earn its place. Prefer short declarative sentences over flowing prose. Do NOT repeat information across paragraphs.
 
 ### DIALOGUE EXTRACTION
 If the scene has dialogue (check \`originalScript.dialogue\`):

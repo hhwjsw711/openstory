@@ -34,11 +34,27 @@ export function buildModelInput(
     throw new Error(`No transform found for model: ${modelConfig.id}`);
   }
 
-  return transform.parse({
+  const result = transform.parse({
     prompt: options.prompt,
     duration: options.duration,
     imageUrl: options.imageUrl,
     aspectRatio: options.aspectRatio,
     ...QUALITY_OVERRIDES[modelKey],
   });
+
+  const outputPrompt =
+    'prompt' in result && typeof result.prompt === 'string'
+      ? result.prompt
+      : '';
+  const truncated = outputPrompt.length < options.prompt.length;
+
+  console.log(
+    `[buildModelInput] model=${modelKey} inputLen=${options.prompt.length} outputLen=${outputPrompt.length} truncated=${truncated}`
+  );
+  if (truncated) {
+    console.log(`[buildModelInput] INPUT prompt:\n${options.prompt}`);
+    console.log(`[buildModelInput] OUTPUT prompt:\n${outputPrompt}`);
+  }
+
+  return result;
 }

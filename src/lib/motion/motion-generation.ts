@@ -136,17 +136,21 @@ async function generateMotionInternal(
   modelConfig: ImageToVideoModelConfig
 ): Promise<MotionResult> {
   const modelKey = options.model || DEFAULT_VIDEO_MODEL;
-  const { prompt: _prompt, ...modelOptions } = buildModelInput(
+  const { prompt: truncatedPrompt, ...modelOptions } = buildModelInput(
     options,
     modelConfig,
     modelKey
   );
 
+  if (typeof truncatedPrompt !== 'string') {
+    throw new Error('Truncated prompt is not a string');
+  }
+
   console.log(
     `[Motion Service] Generating motion with model: ${modelConfig.id}`,
     {
       provider: modelConfig.provider,
-      promptLength: options.prompt?.length,
+      promptLength: truncatedPrompt.length,
       modelOptions,
     }
   );
@@ -160,7 +164,7 @@ async function generateMotionInternal(
 
   const job = await generateVideo({
     adapter,
-    prompt: options.prompt,
+    prompt: truncatedPrompt,
     modelOptions,
   });
 
@@ -258,15 +262,15 @@ export async function submitMotionJob(
     throw new Error(`Invalid model: ${modelKey}`);
   }
 
-  const { prompt: _prompt, ...modelOptions } = buildModelInput(
-    options,
-    modelConfig,
-    modelKey
-  );
+  const modelInput = buildModelInput(options, modelConfig, modelKey);
 
+  const { prompt: truncatedPrompt, ...modelOptions } = modelInput;
+  if (typeof truncatedPrompt !== 'string') {
+    throw new Error('Truncated prompt is not a string');
+  }
   console.log(`[Motion Service] Submitting job with model: ${modelConfig.id}`, {
     provider: modelConfig.provider,
-    promptLength: options.prompt?.length,
+    promptLength: truncatedPrompt.length,
     modelOptions,
   });
 
@@ -283,7 +287,7 @@ export async function submitMotionJob(
   try {
     job = await generateVideo({
       adapter,
-      prompt: options.prompt,
+      prompt: truncatedPrompt,
       modelOptions,
     });
   } catch (error) {
