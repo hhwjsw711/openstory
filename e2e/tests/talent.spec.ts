@@ -73,7 +73,7 @@ testWithUser.describe('Add Talent with Reference Media', () => {
   testWithUser(
     'can create talent without media',
     async ({ page, testUser }) => {
-      const uniqueName = `E2E Test Actor ${Date.now()}`;
+      const uniqueName = `E2E Test Actor ${crypto.randomUUID().slice(0, 8)}`;
 
       await page.goto('/talent');
       await waitForTalentPageLoad(page);
@@ -105,7 +105,7 @@ testWithUser.describe('Add Talent with Reference Media', () => {
   testWithUser(
     'can create talent with reference media',
     async ({ page, testUser }) => {
-      const uniqueName = `E2E Test Actor With Media ${Date.now()}`;
+      const uniqueName = `E2E Test Actor With Media ${crypto.randomUUID().slice(0, 8)}`;
 
       await page.goto('/talent');
       await waitForTalentPageLoad(page);
@@ -154,7 +154,7 @@ testWithUser.describe('Add Talent with Reference Media', () => {
   );
 
   testWithUser('shows upload progress indicator', async ({ page }) => {
-    const uniqueName = `Test Upload Progress ${Date.now()}`;
+    const uniqueName = `Test Upload Progress ${crypto.randomUUID().slice(0, 8)}`;
 
     await page.goto('/talent');
     await waitForTalentPageLoad(page);
@@ -217,7 +217,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
     // Create test talent with media using unique name
     testTalent = await createTestTalentWithMedia(
       testUser.teamId,
-      `E2E Edit Test Talent ${Date.now()}`,
+      `E2E Edit Test Talent ${crypto.randomUUID().slice(0, 8)}`,
       2
     );
   });
@@ -285,7 +285,7 @@ testWithUser.describe('Edit Talent with Reference Media', () => {
       ).toBeVisible();
 
       // Update name
-      const updatedName = `E2E Updated Talent ${Date.now()}`;
+      const updatedName = `E2E Updated Talent ${crypto.randomUUID().slice(0, 8)}`;
       await page.getByLabel('Name').fill(updatedName);
       await page.getByLabel('Description').fill('Updated description');
 
@@ -384,7 +384,7 @@ testWithUser.describe('Talent with Media - List View', () => {
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
-    const suffix = Date.now();
+    const suffix = crypto.randomUUID().slice(0, 8);
     testTalentAlpha = await createTestTalentWithMedia(
       testUser.teamId,
       `E2E Talent Alpha ${suffix}`,

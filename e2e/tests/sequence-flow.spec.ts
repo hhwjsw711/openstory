@@ -36,7 +36,7 @@ testWithUser.describe('Sequence Creation Flow', () => {
     await setupMockRoutes(page);
 
     // Create test talent for the test user's team with unique names
-    const suffix = Date.now();
+    const suffix = crypto.randomUUID().slice(0, 8);
     testTalents = await createTestTalentSet(testUser.teamId, [
       `E2E Test Actor One ${suffix}`,
       `E2E Test Actor Two ${suffix}`,
@@ -149,7 +149,7 @@ testWithUser.describe('Variant Selection', () => {
     testSequence = await createTestSequence(
       testUser.teamId,
       testUser.id,
-      `E2E Variant Test Sequence ${Date.now()}`
+      `E2E Variant Test Sequence ${crypto.randomUUID().slice(0, 8)}`
     );
     testFrame = await createTestFrame(testSequence.id, 0, {
       // Use real placeholder images
@@ -233,7 +233,7 @@ testWithUser.describe('Character Recast', () => {
     await setupMockRoutes(page);
 
     // Create test talent with unique names
-    const suffix = Date.now();
+    const suffix = crypto.randomUUID().slice(0, 8);
     testTalents = await createTestTalentSet(testUser.teamId, [
       `E2E Current Actor ${suffix}`,
       `E2E New Actor ${suffix}`,
