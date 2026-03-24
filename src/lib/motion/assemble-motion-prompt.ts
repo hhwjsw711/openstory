@@ -14,7 +14,7 @@ import type {
   MotionPrompt,
 } from '@/lib/ai/scene-analysis.schema';
 import type { ImageToVideoModelConfig } from '@/lib/ai/models';
-import { MOTION_PROMPT_LIMITS } from './motion-schemas';
+import { MOTION_PROMPT_LIMITS } from './generated/prompt-limits';
 
 type MotionDialogue = NonNullable<MotionPrompt['dialogue']>;
 type MotionAudio = NonNullable<MotionPrompt['audio']>;

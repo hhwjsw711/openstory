@@ -101,7 +101,6 @@ describe('Motion Service', () => {
           prompt: 'Dynamic action sequence',
           modelOptions: expect.objectContaining({
             image_url: 'https://example.com/image.jpg',
-            aspect_ratio: 'auto',
             resolution: '1080p',
             duration: '5',
             camera_fixed: false,
@@ -176,9 +175,7 @@ describe('Motion Service', () => {
           modelOptions: expect.objectContaining({
             start_image_url: 'https://example.com/image.jpg', // O1 uses start_image_url
             duration: '10', // Should be string
-            cfg_scale: 0.5,
-            negative_prompt: 'blur, distort, and low quality',
-            generate_audio: false, // O1 doesn't support audio
+            // O1 schema doesn't include cfg_scale, negative_prompt, or generate_audio
           }),
         })
       );

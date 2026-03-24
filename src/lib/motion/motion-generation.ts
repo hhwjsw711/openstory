@@ -86,97 +86,8 @@ export function snapDuration(
   return Math.min(duration, capabilities.maxDuration);
 }
 
-/** Provider-specific input builders -- each provider has different API requirements */
-const PROVIDER_INPUT_BUILDERS: Record<
-  string,
-  (
-    options: GenerateMotionOptions,
-    modelConfig: ImageToVideoModelConfig
-  ) => Record<string, unknown>
-> = {
-  kling: (options, modelConfig) => {
-    const duration = snapDuration(options.duration, modelConfig.capabilities);
-    const imageUrlParam =
-      'imageUrlParamName' in modelConfig.capabilities
-        ? modelConfig.capabilities.imageUrlParamName
-        : 'image_url';
-
-    return {
-      prompt: options.prompt,
-      [imageUrlParam]: options.imageUrl,
-      duration: String(duration),
-      cfg_scale: 0.5,
-      negative_prompt: 'blur, distort, and low quality',
-      generate_audio: modelConfig.capabilities.supportsAudio,
-    };
-  },
-
-  luma: (options) => ({
-    prompt: options.prompt,
-    image_url: options.imageUrl,
-    aspect_ratio: options.aspectRatio || '16:9',
-    loop: false,
-  }),
-
-  google: (options, modelConfig) => {
-    const duration = snapDuration(options.duration, modelConfig.capabilities);
-    return {
-      prompt: options.prompt,
-      image_url: options.imageUrl,
-      aspect_ratio: options.aspectRatio || 'auto',
-      duration: `${duration}s`,
-      generate_audio: true,
-      resolution: '1080p',
-    };
-  },
-
-  seedance: (options, modelConfig) => {
-    const duration = snapDuration(options.duration, modelConfig.capabilities);
-    return {
-      prompt: options.prompt,
-      image_url: options.imageUrl,
-      aspect_ratio: options.aspectRatio || 'auto',
-      resolution: '1080p',
-      duration: String(Math.round(duration)),
-      camera_fixed: false,
-      seed: Math.floor(Math.random() * 1000000),
-      enable_safety_checker: true,
-    };
-  },
-
-  openai: (options, modelConfig) => {
-    const duration = snapDuration(options.duration, modelConfig.capabilities);
-    return {
-      prompt: options.prompt,
-      image_url: options.imageUrl,
-      duration,
-      aspect_ratio: options.aspectRatio || 'auto',
-      resolution: '720p',
-    };
-  },
-
-  xai: (options, modelConfig) => {
-    const duration = snapDuration(options.duration, modelConfig.capabilities);
-    return {
-      prompt: options.prompt,
-      image_url: options.imageUrl,
-      duration: Math.round(duration),
-      resolution: '720p',
-      aspect_ratio: options.aspectRatio || '16:9',
-    };
-  },
-
-  wan: (options, modelConfig) => {
-    const duration = snapDuration(options.duration, modelConfig.capabilities);
-    return {
-      prompt: options.prompt,
-      image_url: options.imageUrl,
-      duration,
-      resolution: '1080p',
-      enable_prompt_expansion: true,
-    };
-  },
-};
+// Schema-driven input builder — see build-model-input.ts
+import { buildModelInput } from './build-model-input';
 
 /** Generate motion for a single frame using Fal.ai with Langfuse tracing */
 export async function generateMotionForFrame(
@@ -230,17 +141,11 @@ async function generateMotionInternal(
   options: GenerateMotionOptions,
   modelConfig: ImageToVideoModelConfig
 ): Promise<MotionResult> {
-  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
-
-  if (!inputBuilder) {
-    throw new Error(
-      `No input builder found for provider: ${modelConfig.provider}`
-    );
-  }
-
-  const { prompt: _prompt, ...modelOptions } = inputBuilder(
+  const modelKey = options.model || DEFAULT_VIDEO_MODEL;
+  const { prompt: _prompt, ...modelOptions } = buildModelInput(
     options,
-    modelConfig
+    modelConfig,
+    modelKey
   );
 
   console.log(
@@ -314,12 +219,13 @@ async function generateMotionInternal(
   );
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
-  const providerInput = inputBuilder(options, modelConfig);
+  const providerInput = buildModelInput(options, modelConfig, modelKey);
   const cost = calculateVideoCost({
     endpointId: modelConfig.id,
     durationSeconds: validatedDuration,
     audioEnabled: modelConfig.capabilities.supportsAudio,
     resolution:
+      'resolution' in providerInput &&
       typeof providerInput.resolution === 'string'
         ? providerInput.resolution
         : undefined,
@@ -366,16 +272,10 @@ export async function submitMotionJob(
     throw new Error(`Invalid model: ${modelKey}`);
   }
 
-  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
-  if (!inputBuilder) {
-    throw new Error(
-      `No input builder found for provider: ${modelConfig.provider}`
-    );
-  }
-
-  const { prompt: _prompt, ...modelOptions } = inputBuilder(
+  const { prompt: _prompt, ...modelOptions } = buildModelInput(
     options,
-    modelConfig
+    modelConfig,
+    modelKey
   );
 
   console.log(`[Motion Service] Submitting job with model: ${modelConfig.id}`, {
@@ -484,7 +384,6 @@ export function calculateMotionMetadata(options: GenerateMotionOptions): {
 } {
   const modelKey = options.model || DEFAULT_VIDEO_MODEL;
   const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
-  const inputBuilder = PROVIDER_INPUT_BUILDERS[modelConfig.provider];
 
   const validatedDuration = snapDuration(
     options.duration,
@@ -492,12 +391,13 @@ export function calculateMotionMetadata(options: GenerateMotionOptions): {
   );
   const validatedFps = options.fps || modelConfig.capabilities.fpsRange.default;
 
-  const providerInput = inputBuilder(options, modelConfig);
+  const providerInput = buildModelInput(options, modelConfig, modelKey);
   const cost = calculateVideoCost({
     endpointId: modelConfig.id,
     durationSeconds: validatedDuration,
     audioEnabled: modelConfig.capabilities.supportsAudio,
     resolution:
+      'resolution' in providerInput &&
       typeof providerInput.resolution === 'string'
         ? providerInput.resolution
         : undefined,
