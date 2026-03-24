@@ -14,6 +14,7 @@ import type {
   MotionPrompt,
 } from '@/lib/ai/scene-analysis.schema';
 import type { ImageToVideoModelConfig } from '@/lib/ai/models';
+import { MOTION_PROMPT_LIMITS } from './motion-schemas';
 
 type MotionDialogue = NonNullable<MotionPrompt['dialogue']>;
 type MotionAudio = NonNullable<MotionPrompt['audio']>;
@@ -38,41 +39,29 @@ export function assembleMotionPrompt({
   const supportsAudio = modelConfig.capabilities.supportsAudio;
   const provider = modelConfig.provider;
 
+  let assembled: string;
+
   // Non-audio models: fullPrompt is already great, no enrichment needed
   if (!supportsAudio) {
-    return fullPrompt;
+    assembled = fullPrompt;
+  } else {
+    // Audio-capable models: enrich fullPrompt with dialogue + audio sections
+    const hasDialogue = dialogue?.presence && dialogue.lines.length > 0;
+    const dialogueData = hasDialogue ? dialogue : undefined;
+
+    switch (provider) {
+      case 'kling':
+        assembled = buildKlingPrompt(fullPrompt, dialogueData, audio);
+        break;
+      case 'google':
+      case 'openai':
+      default:
+        assembled = buildVeoPrompt(fullPrompt, dialogueData, audio);
+        break;
+    }
   }
 
-  // Audio-capable models: enrich fullPrompt with dialogue + audio sections
-  const hasDialogue = dialogue?.presence && dialogue.lines.length > 0;
-
-  switch (provider) {
-    case 'kling':
-      return buildKlingPrompt(
-        fullPrompt,
-        hasDialogue ? dialogue : undefined,
-        audio
-      );
-    case 'google':
-      return buildVeoPrompt(
-        fullPrompt,
-        hasDialogue ? dialogue : undefined,
-        audio
-      );
-    case 'openai':
-      return buildVeoPrompt(
-        fullPrompt,
-        hasDialogue ? dialogue : undefined,
-        audio
-      );
-    default:
-      // Future audio-capable providers: use Veo-style as default
-      return buildVeoPrompt(
-        fullPrompt,
-        hasDialogue ? dialogue : undefined,
-        audio
-      );
-  }
+  return truncateForModel(assembled, modelConfig);
 }
 
 // ---------------------------------------------------------------------------
@@ -152,4 +141,38 @@ function buildVeoPrompt(
   }
 
   return parts.join('\n\n');
+}
+
+// ---------------------------------------------------------------------------
+// Prompt length truncation — paragraph-aware
+// ---------------------------------------------------------------------------
+
+function truncateForModel(
+  prompt: string,
+  modelConfig: ImageToVideoModelConfig
+): string {
+  const maxLength = MOTION_PROMPT_LIMITS[modelConfig.id];
+  if (!maxLength || prompt.length <= maxLength) return prompt;
+
+  // Keep whole paragraphs, dropping from the end (atmosphere → dialogue → camera)
+  const paragraphs = prompt.split('\n\n');
+  let result = '';
+  for (const paragraph of paragraphs) {
+    const candidate = result ? `${result}\n\n${paragraph}` : paragraph;
+    if (candidate.length <= maxLength) {
+      result = candidate;
+    } else {
+      break;
+    }
+  }
+
+  // First paragraph alone exceeds limit — hard slice
+  if (!result) {
+    return prompt.slice(0, maxLength - 3) + '...';
+  }
+
+  console.warn(
+    `[Motion] Prompt truncated from ${prompt.length} to ${result.length} chars for ${modelConfig.id}`
+  );
+  return result;
 }

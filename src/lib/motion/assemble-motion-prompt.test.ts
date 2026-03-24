@@ -347,4 +347,86 @@ describe('assembleMotionPrompt', () => {
       expect(result).not.toContain('Audio:');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Prompt length truncation
+  // ---------------------------------------------------------------------------
+
+  describe('prompt length truncation', () => {
+    // Build a long fullPrompt with multiple paragraphs
+    const para1 = 'Camera dolly forward. ' + 'x'.repeat(300); // ~322 chars
+    const para2 = 'Sarah speaks firmly. ' + 'x'.repeat(300); // ~321 chars
+    const para3 = 'Rain falls softly. ' + 'x'.repeat(300); // ~319 chars
+    const longFullPrompt = [para1, para2, para3].join('\n\n');
+
+    it('Wan v2.6 truncates prompt exceeding 800 chars (paragraph-aware)', () => {
+      const result = assembleMotionPrompt({
+        motionPrompt: makeMotionPrompt({ fullPrompt: longFullPrompt }),
+        modelConfig: IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash,
+      });
+
+      expect(result.length).toBeLessThanOrEqual(800);
+      // Should keep para1 + para2 (322 + 2 + 321 = 645) but drop para3
+      expect(result).toContain(para1);
+      expect(result).toContain(para2);
+      expect(result).not.toContain(para3);
+    });
+
+    it('Wan v2.6 preserves prompt under 800 chars', () => {
+      const shortPrompt = 'Camera pushes in slowly as dust motes drift.';
+      const result = assembleMotionPrompt({
+        motionPrompt: makeMotionPrompt({ fullPrompt: shortPrompt }),
+        modelConfig: IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash,
+      });
+
+      expect(result).toBe(shortPrompt);
+    });
+
+    it('Kling v3 Pro truncates assembled prompt exceeding 2500 chars', () => {
+      // Kling is audio-capable, so dialogue + audio get appended (~220 chars)
+      // Base must be long enough that base + dialogue + audio > 2500
+      const longBase = 'Camera tracks forward. ' + 'x'.repeat(2400);
+      const result = assembleMotionPrompt({
+        motionPrompt: makeMotionPrompt({ fullPrompt: longBase }),
+        modelConfig: IMAGE_TO_VIDEO_MODELS.kling_v3_pro,
+      });
+
+      expect(result.length).toBeLessThanOrEqual(2500);
+      // Dialogue and audio sections should be dropped to fit
+      expect(result).not.toContain('[Sarah');
+      expect(result).not.toContain('Ambient sounds:');
+    });
+
+    it('Veo 3.1 passes through long prompts (20000 char limit)', () => {
+      const result = assembleMotionPrompt({
+        motionPrompt: makeMotionPrompt({ fullPrompt: longFullPrompt }),
+        modelConfig: IMAGE_TO_VIDEO_MODELS.veo3_1,
+      });
+
+      // Well under 20000, should include everything
+      expect(result).toContain(para1);
+      expect(result).toContain('Sarah says');
+      expect(result).toContain('Audio:');
+    });
+
+    it('Seedance passes through untruncated (no limit)', () => {
+      const result = assembleMotionPrompt({
+        motionPrompt: makeMotionPrompt({ fullPrompt: longFullPrompt }),
+        modelConfig: IMAGE_TO_VIDEO_MODELS.seedance_v1_pro,
+      });
+
+      expect(result).toBe(longFullPrompt);
+    });
+
+    it('falls back to hard slice when first paragraph exceeds limit', () => {
+      const giantParagraph = 'x'.repeat(1000); // single paragraph, no \n\n
+      const result = assembleMotionPrompt({
+        motionPrompt: makeMotionPrompt({ fullPrompt: giantParagraph }),
+        modelConfig: IMAGE_TO_VIDEO_MODELS.wan_v2_6_flash,
+      });
+
+      expect(result.length).toBe(800);
+      expect(result).toEndWith('...');
+    });
+  });
 });
