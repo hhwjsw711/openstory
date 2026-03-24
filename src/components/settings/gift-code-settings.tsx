@@ -11,6 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { triggerBalanceFlash } from '@/hooks/use-balance-flash';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { BILLING_GATE_KEY } from '@/hooks/use-billing-gate';
 import {
@@ -57,6 +58,7 @@ function RedeemSection() {
     mutationFn: (input: { code: string }) => redeemGiftTokenFn({ data: input }),
     onSuccess: (result) => {
       setCode('');
+      triggerBalanceFlash();
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],
       });
