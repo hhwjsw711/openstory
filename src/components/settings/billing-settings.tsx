@@ -55,7 +55,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type BillingSettingsProps = {
@@ -108,23 +108,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // Clear pending flash marker if checkout was canceled
+  // Handle checkout return — runs once when returning from Stripe with success or canceled params
+  const checkoutHandledRef = useRef(false);
   useEffect(() => {
-    if (canceled) clearBalanceFlash();
-  }, [canceled]);
+    if (checkoutHandledRef.current || (!success && !canceled)) return;
+    checkoutHandledRef.current = true;
 
-  // Clear success/canceled from URL after showing
-  useEffect(() => {
-    if (success || canceled) {
-      const timer = setTimeout(() => {
-        window.history.replaceState({}, '', '/credits');
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, canceled]);
+    // Clear pending flash marker on cancel
+    canceled && clearBalanceFlash();
 
-  // Refetch balance on success + show return toast
-  useEffect(() => {
+    // Refetch balance + show return toast on success
     if (success) {
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],
@@ -149,7 +142,13 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         });
       }
     }
-  }, [success, queryClient, navigate]);
+
+    // Clear success/canceled from URL after showing
+    const timer = setTimeout(() => {
+      window.history.replaceState({}, '', '/credits');
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [success, canceled, queryClient, navigate]);
 
   const {
     data: balanceData,

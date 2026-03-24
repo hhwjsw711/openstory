@@ -22,8 +22,8 @@ export const SequencesList: React.FC<SequencesListProps> = ({ teamId }) => {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => (
-          <Card key={`skeleton-${i}`} className="p-6 animate-pulse">
+        {[1, 2, 3].map((n) => (
+          <Card key={`skeleton-${n}`} className="p-6 animate-pulse">
             <div className="h-4 bg-muted rounded w-3/4 mb-4" />
             <div className="h-3 bg-muted rounded w-1/2 mb-2" />
             <div className="h-3 bg-muted rounded w-2/3" />

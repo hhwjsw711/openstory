@@ -12,7 +12,9 @@ function GitHubIcon({ className }: { className?: string }) {
   );
 }
 
-const duplicatedFilmstrip = [...HERO_FILMSTRIP, ...HERO_FILMSTRIP];
+const duplicatedFilmstrip = [...HERO_FILMSTRIP, ...HERO_FILMSTRIP].map(
+  (src, idx) => ({ src, id: `film-${idx}` })
+);
 
 export function HeroSection() {
   return (
@@ -91,9 +93,9 @@ export function HeroSection() {
             className="flex w-max gap-2 will-change-transform"
             style={{ animation: 'marquee 40s linear infinite' }}
           >
-            {duplicatedFilmstrip.map((src, i) => (
+            {duplicatedFilmstrip.map(({ src, id }) => (
               <Image
-                key={`film-${i}-${src}`}
+                key={id}
                 src={src}
                 alt=""
                 width={142}

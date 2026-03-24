@@ -35,16 +35,14 @@ export function GiftCodeSettings() {
     staleTime: 5 * 60 * 1000,
   });
 
-  function renderAdminSection() {
-    if (adminLoading) return <Skeleton className="h-48 w-full" />;
-    if (adminStatus?.isAdmin) return <AdminSection />;
-    return null;
-  }
-
   return (
     <div className="space-y-6">
       <RedeemSection />
-      {renderAdminSection()}
+      {adminLoading ? (
+        <Skeleton className="h-48 w-full" />
+      ) : adminStatus?.isAdmin ? (
+        <AdminSection />
+      ) : null}
     </div>
   );
 }
@@ -144,13 +142,19 @@ function AdminSection() {
   );
 }
 
+const INITIAL_GIFT_FORM = {
+  amount: '',
+  maxRedemptions: '1',
+  note: '',
+  expiresInDays: '',
+};
+
 function CreateGiftCodeCard() {
   const queryClient = useQueryClient();
-  const [amount, setAmount] = useState('');
-  const [maxRedemptions, setMaxRedemptions] = useState('1');
-  const [note, setNote] = useState('');
-  const [expiresInDays, setExpiresInDays] = useState('');
+  const [form, setForm] = useState(INITIAL_GIFT_FORM);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const updateField = (field: keyof typeof form, value: string) =>
+    setForm((f) => ({ ...f, [field]: value }));
 
   const createMutation = useMutation({
     mutationFn: (input: {
@@ -161,10 +165,7 @@ function CreateGiftCodeCard() {
     }) => createGiftTokenFn({ data: input }),
     onSuccess: (token) => {
       setCreatedCode(token.code);
-      setAmount('');
-      setMaxRedemptions('1');
-      setNote('');
-      setExpiresInDays('');
+      setForm(INITIAL_GIFT_FORM);
       void queryClient.invalidateQueries({ queryKey: ['gift-tokens'] });
     },
     onError: (err) => {
@@ -176,15 +177,15 @@ function CreateGiftCodeCard() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const amountUsd = parseFloat(amount);
+    const amountUsd = parseFloat(form.amount);
     if (isNaN(amountUsd) || amountUsd <= 0) return;
 
-    const parsedDays = parseInt(expiresInDays, 10);
-    const parsedMax = parseInt(maxRedemptions, 10);
+    const parsedDays = parseInt(form.expiresInDays, 10);
+    const parsedMax = parseInt(form.maxRedemptions, 10);
     createMutation.mutate({
       amountUsd,
       maxRedemptions: parsedMax > 0 ? parsedMax : 1,
-      note: note || undefined,
+      note: form.note || undefined,
       expiresInDays: parsedDays > 0 ? parsedDays : undefined,
     });
   };
@@ -219,8 +220,8 @@ function CreateGiftCodeCard() {
                   min="0.01"
                   step="0.01"
                   placeholder="10.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  value={form.amount}
+                  onChange={(e) => updateField('amount', e.target.value)}
                   className="pl-7 tabular-nums"
                   autoComplete="off"
                   required
@@ -235,8 +236,8 @@ function CreateGiftCodeCard() {
                 min="1"
                 step="1"
                 placeholder="1"
-                value={maxRedemptions}
-                onChange={(e) => setMaxRedemptions(e.target.value)}
+                value={form.maxRedemptions}
+                onChange={(e) => updateField('maxRedemptions', e.target.value)}
                 autoComplete="off"
                 required
               />
@@ -249,8 +250,8 @@ function CreateGiftCodeCard() {
                 min="1"
                 step="1"
                 placeholder="No expiry"
-                value={expiresInDays}
-                onChange={(e) => setExpiresInDays(e.target.value)}
+                value={form.expiresInDays}
+                onChange={(e) => updateField('expiresInDays', e.target.value)}
                 autoComplete="off"
               />
             </div>
@@ -260,12 +261,15 @@ function CreateGiftCodeCard() {
             <Input
               id="gift-note"
               placeholder="e.g. Beta tester reward…"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
+              value={form.note}
+              onChange={(e) => updateField('note', e.target.value)}
               autoComplete="off"
             />
           </div>
-          <Button type="submit" disabled={!amount || createMutation.isPending}>
+          <Button
+            type="submit"
+            disabled={!form.amount || createMutation.isPending}
+          >
             {createMutation.isPending ? 'Creating…' : 'Create Gift Code'}
           </Button>
         </form>
@@ -298,41 +302,31 @@ function GiftCodeListCard() {
     staleTime: 30_000,
   });
 
-  function renderTokenList() {
-    if (isLoading) {
-      return (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      );
-    }
-
-    if (!tokens?.length) {
-      return (
-        <p className="text-center text-muted-foreground py-4">
-          No gift codes yet
-        </p>
-      );
-    }
-
-    return (
-      <div className="space-y-2">
-        {tokens.map((token) => (
-          <GiftTokenRow key={token.id} token={token} />
-        ))}
-      </div>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Gift Codes</CardTitle>
         <CardDescription>All gift codes created by admins</CardDescription>
       </CardHeader>
-      <CardContent>{renderTokenList()}</CardContent>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : !tokens?.length ? (
+          <p className="text-center text-muted-foreground py-4">
+            No gift codes yet
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {tokens.map((token) => (
+              <GiftTokenRow key={token.id} token={token} />
+            ))}
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 }

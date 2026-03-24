@@ -82,8 +82,8 @@ export const EvalView: React.FC = () => {
         </Card>
         <Card className="flex-1 p-4">
           <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={`skeleton-${i}`} className="flex gap-4">
+            {[1, 2, 3].map((n) => (
+              <div key={`skeleton-${n}`} className="flex gap-4">
                 <Skeleton className="h-24 w-64" />
                 <Skeleton className="h-24 w-48" />
                 <Skeleton className="h-24 w-48" />

@@ -161,28 +161,21 @@ export function VariantSelector({
         onOpenChange={(open) => !open && handleCancel()}
       >
         <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleConfirm();
-            }}
-          >
-            <DialogHeader>
-              <DialogTitle>Select this variant?</DialogTitle>
-              <DialogDescription>
-                This will replace the current frame image. The video will need
-                to be regenerated.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="mt-4">
-              <DialogClose asChild>
-                <Button type="button" variant="outline">
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="submit">Confirm</Button>
-            </DialogFooter>
-          </form>
+          <DialogHeader>
+            <DialogTitle>Select this variant?</DialogTitle>
+            <DialogDescription>
+              This will replace the current frame image. The video will need to
+              be regenerated.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button onClick={handleConfirm}>Confirm</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

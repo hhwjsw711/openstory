@@ -68,9 +68,9 @@ function TalentDetailPage() {
             <Skeleton className="h-4 w-96" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4].map((n) => (
               <Skeleton
-                key={`skeleton-${i}`}
+                key={`skeleton-${n}`}
                 className="aspect-square rounded-lg"
               />
             ))}

@@ -30,7 +30,7 @@ import type { AspectRatio } from '@/lib/constants/aspect-ratios';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { SceneCastTab } from './scene-cast-tab';
 import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';
@@ -151,29 +151,39 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   aspectRatio,
 }) => {
   const [copiedTab, setCopiedTab] = useState<string | null>(null);
-  const [isShortening, setIsShortening] = useState(false);
-  const [shortenError, setShortenError] = useState<string | null>(null);
-  const [shortenSuccess, setShortenSuccess] = useState<string | null>(null);
+  const [shortenStatus, setShortenStatus] = useState<{
+    loading: boolean;
+    error: string | null;
+    success: string | null;
+  }>({ loading: false, error: null, success: null });
 
-  // Image regeneration state
-  const [editedImagePrompt, setEditedImagePrompt] = useState<string>('');
-  const [selectedImageModel, setSelectedImageModel] = useState<
-    TextToImageModel | undefined
-  >(undefined);
+  // Image & motion regeneration state
+  const [editPrompts, setEditPrompts] = useState({
+    imagePrompt: '' as string,
+    imageModel: undefined as TextToImageModel | undefined,
+    motionPrompt: '' as string,
+    motionModel: undefined as ImageToVideoModel | undefined,
+  });
+  const {
+    imagePrompt: editedImagePrompt,
+    imageModel: selectedImageModel,
+    motionPrompt: editedMotionPrompt,
+    motionModel: selectedMotionModel,
+  } = editPrompts;
+  const setEditedImagePrompt = (v: string) =>
+    setEditPrompts((s) => ({ ...s, imagePrompt: v }));
+  const setSelectedImageModel = (v: TextToImageModel | undefined) =>
+    setEditPrompts((s) => ({ ...s, imageModel: v }));
+  const setEditedMotionPrompt = (v: string) =>
+    setEditPrompts((s) => ({ ...s, motionPrompt: v }));
+  const setSelectedMotionModel = (v: ImageToVideoModel | undefined) =>
+    setEditPrompts((s) => ({ ...s, motionModel: v }));
 
-  // Motion regeneration state
-  const [editedMotionPrompt, setEditedMotionPrompt] = useState<string>('');
-  const [selectedMotionModel, setSelectedMotionModel] = useState<
-    ImageToVideoModel | undefined
-  >(undefined);
-
-  // Previous value tracking for prop-to-state sync (React-recommended pattern)
-  const [prevImagePrompt, setPrevImagePrompt] = useState<string | undefined>();
-  const [prevImageModel, setPrevImageModel] = useState<string | undefined>();
-  const [prevMotionPrompt, setPrevMotionPrompt] = useState<
-    string | undefined
-  >();
-  const [prevMotionModelKey, setPrevMotionModelKey] = useState<string>('');
+  // Previous value tracking for prop-to-state sync (refs avoid extra re-renders)
+  const prevImagePromptRef = useRef<string | undefined>(undefined);
+  const prevImageModelRef = useRef<string | undefined>(undefined);
+  const prevMotionPromptRef = useRef<string | undefined>(undefined);
+  const prevMotionModelKeyRef = useRef<string>('');
 
   const queryClient = useQueryClient();
   const generateVariants = useGenerateVariants();
@@ -210,33 +220,35 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     frame?.imagePrompt || frame?.metadata?.prompts?.visual?.fullPrompt;
 
   const handleShortenPrompt = useCallback(async () => {
-    setShortenError(null);
-    setShortenSuccess(null);
+    setShortenStatus({ loading: false, error: null, success: null });
 
     const currentPrompt = editedImagePrompt || imagePrompt;
     if (!currentPrompt || currentPrompt.length < 20) {
-      setShortenError('Prompt is too short to shorten');
+      setShortenStatus((s) => ({
+        ...s,
+        error: 'Prompt is too short to shorten',
+      }));
       return;
     }
 
-    setIsShortening(true);
+    setShortenStatus((s) => ({ ...s, loading: true }));
 
     try {
       const result = await shortenPromptFn({ data: { prompt: currentPrompt } });
 
       setEditedImagePrompt(result.shortenedPrompt);
-      setShortenSuccess(
-        `Prompt shortened by ${result.reductionPercent}% (${result.originalLength} → ${result.shortenedLength} chars)`
-      );
+      const msg = `Prompt shortened by ${result.reductionPercent}% (${result.originalLength} → ${result.shortenedLength} chars)`;
+      setShortenStatus({ loading: false, error: null, success: msg });
       // Clear success message after 5 seconds
-      setTimeout(() => setShortenSuccess(null), 5000);
+      setTimeout(
+        () => setShortenStatus((s) => ({ ...s, success: null })),
+        5000
+      );
     } catch (error) {
       console.error('Failed to shorten prompt:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Failed to shorten prompt';
-      setShortenError(errorMessage);
-    } finally {
-      setIsShortening(false);
+      setShortenStatus({ loading: false, error: errorMessage, success: null });
     }
   }, [editedImagePrompt, imagePrompt]);
 
@@ -427,27 +439,27 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
   const motionPrompt =
     frame?.motionPrompt || frame?.metadata?.prompts?.motion?.fullPrompt;
 
-  // Sync local state when props change (React-recommended prev-value pattern)
-  if (imagePrompt !== prevImagePrompt) {
-    setPrevImagePrompt(imagePrompt);
+  // Sync local state when props change (prev-value refs avoid extra re-renders)
+  if (imagePrompt !== prevImagePromptRef.current) {
+    prevImagePromptRef.current = imagePrompt;
     setEditedImagePrompt(imagePrompt || '');
   }
 
-  if (frame?.imageModel !== prevImageModel) {
-    setPrevImageModel(frame?.imageModel);
+  if (frame?.imageModel !== prevImageModelRef.current) {
+    prevImageModelRef.current = frame?.imageModel;
     setSelectedImageModel(
       safeTextToImageModel(frame?.imageModel, DEFAULT_IMAGE_MODEL)
     );
   }
 
-  if (motionPrompt !== prevMotionPrompt) {
-    setPrevMotionPrompt(motionPrompt);
+  if (motionPrompt !== prevMotionPromptRef.current) {
+    prevMotionPromptRef.current = motionPrompt;
     setEditedMotionPrompt(motionPrompt || '');
   }
 
   const motionModelKey = `${frame?.motionModel ?? ''}:${aspectRatio ?? ''}`;
-  if (motionModelKey !== prevMotionModelKey) {
-    setPrevMotionModelKey(motionModelKey);
+  if (motionModelKey !== prevMotionModelKeyRef.current) {
+    prevMotionModelKeyRef.current = motionModelKey;
     const currentModel = frame?.motionModel
       ? safeImageToVideoModel(frame.motionModel)
       : DEFAULT_VIDEO_MODEL;
@@ -524,15 +536,15 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
       <TabsContent value="image-prompt">
         <div className="space-y-4">
           {/* Error/Success Messages */}
-          {shortenError && (
+          {shortenStatus.error && (
             <Alert variant="destructive">
-              <AlertDescription>{shortenError}</AlertDescription>
+              <AlertDescription>{shortenStatus.error}</AlertDescription>
             </Alert>
           )}
 
-          {shortenSuccess && (
+          {shortenStatus.success && (
             <Alert>
-              <AlertDescription>{shortenSuccess}</AlertDescription>
+              <AlertDescription>{shortenStatus.success}</AlertDescription>
             </Alert>
           )}
 
@@ -578,16 +590,18 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
             variant="outline"
             onClick={() => void handleShortenPrompt()}
             disabled={
-              isShortening ||
+              shortenStatus.loading ||
               isGenerating ||
               !editedImagePrompt ||
               editedImagePrompt.length < 20
             }
             className="w-full"
           >
-            {isShortening && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {!isShortening && <Minimize2 className="mr-2 h-4 w-4" />}
-            {isShortening ? 'Shortening…' : 'Shorten Prompt'}
+            {shortenStatus.loading && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {!shortenStatus.loading && <Minimize2 className="mr-2 h-4 w-4" />}
+            {shortenStatus.loading ? 'Shortening…' : 'Shorten Prompt'}
           </Button>
 
           {/* Regenerate button */}

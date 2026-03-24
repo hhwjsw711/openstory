@@ -72,15 +72,17 @@ export const EvalMatrix: React.FC<EvalMatrixProps> = ({
           >
             Sequence
           </div>
-          {Array.from({ length: maxSceneCount }, (_, i) => (
-            <div
-              key={`header-${i}`}
-              className="p-4 text-center font-medium text-sm shrink-0"
-              style={{ width: CELL_WIDTH }}
-            >
-              Scene {i + 1}
-            </div>
-          ))}
+          {Array.from({ length: maxSceneCount }, (_, idx) => idx + 1).map(
+            (sceneNum) => (
+              <div
+                key={`header-${sceneNum}`}
+                className="p-4 text-center font-medium text-sm shrink-0"
+                style={{ width: CELL_WIDTH }}
+              >
+                Scene {sceneNum}
+              </div>
+            )
+          )}
         </div>
 
         {/* Virtualized rows */}
