@@ -128,17 +128,13 @@ export async function setupMockRoutes(page: Page): Promise<void> {
     }
   });
 
-  // Safety net: intercept any stray picsum.photos requests with a local SVG placeholder
+  // Safety net: redirect any stray picsum.photos requests to local test image endpoint
   await page.route('**/picsum.photos/**', async (route: Route) => {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
-      <rect width="200" height="200" fill="#4F46E5"/>
-      <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
-            font-family="sans-serif" font-size="16" fill="white">mock</text>
-    </svg>`;
     await route.fulfill({
-      status: 200,
-      contentType: 'image/svg+xml',
-      body: svg,
+      status: 302,
+      headers: {
+        Location: 'http://localhost:3001/api/test/image?w=9&h=9',
+      },
     });
   });
 
