@@ -408,7 +408,7 @@ function mergeOpenAPISpecs(
 // -- Config -------------------------------------------------------------------
 
 function getFalCategoryFilenames(): Array<string> {
-  const categoryDir = join(__dirname, 'json');
+  const categoryDir = join(__dirname, '..', 'json');
   const files = readdirSync(categoryDir)
     .filter((file) => file.endsWith('.json'))
     .sort();
@@ -436,7 +436,10 @@ function getFalGroupedCategoryFilenames(): Array<{
 }
 
 function getFalModelOpenApiObjects(filename: string): Array<OpenAPISpec> {
-  const fileContents = readFileSync(join(__dirname, 'json', filename), 'utf8');
+  const fileContents = readFileSync(
+    join(__dirname, '..', 'json', filename),
+    'utf8'
+  );
   const json = JSON.parse(fileContents);
 
   let totalFixed = 0;
@@ -481,7 +484,7 @@ export default getFalGroupedCategoryFilenames().map(
       output: {
         path: OUTPUT_PATH_OVERRIDES[category] ?? `./libs/types/src/${category}`,
         indexFile: false,
-        postProcess: ['prettier'],
+        postProcess: ['oxfmt'],
       },
       plugins: [
         { name: '@hey-api/typescript' },

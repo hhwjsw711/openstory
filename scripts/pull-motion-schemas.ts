@@ -70,13 +70,31 @@ async function main() {
 
   // Run hey-api codegen
   console.log('\nRunning @hey-api/openapi-ts codegen...\n');
-  const proc = Bun.spawn(['bunx', '@hey-api/openapi-ts'], {
-    stdout: 'inherit',
-    stderr: 'inherit',
-  });
+  const proc = Bun.spawn(
+    [
+      'bunx',
+      '@hey-api/openapi-ts',
+      '-f',
+      'scripts/motion-openapi-ts.config.ts',
+    ],
+    { stdout: 'inherit', stderr: 'inherit' }
+  );
   const exitCode = await proc.exited;
   if (exitCode !== 0) {
     throw new Error(`Codegen failed with exit code ${exitCode}`);
+  }
+
+  // Generate endpoint map + prompt limits from the generated types
+  console.log('\nGenerating endpoint map...\n');
+  const mapProc = Bun.spawn(
+    ['bun', 'scripts/generate-motion-endpoint-map.ts'],
+    { stdout: 'inherit', stderr: 'inherit' }
+  );
+  const mapExitCode = await mapProc.exited;
+  if (mapExitCode !== 0) {
+    throw new Error(
+      `Endpoint map generation failed with exit code ${mapExitCode}`
+    );
   }
 
   console.log('\nDone! Generated types in src/lib/motion/generated/');
