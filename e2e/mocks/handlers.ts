@@ -128,6 +128,20 @@ export async function setupMockRoutes(page: Page): Promise<void> {
     }
   });
 
+  // Safety net: intercept any stray picsum.photos requests with a local SVG placeholder
+  await page.route('**/picsum.photos/**', async (route: Route) => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+      <rect width="200" height="200" fill="#4F46E5"/>
+      <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle"
+            font-family="sans-serif" font-size="16" fill="white">mock</text>
+    </svg>`;
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: svg,
+    });
+  });
+
   // Mock R2 storage uploads (PutObject operations)
   await page.route('**/*.r2.cloudflarestorage.com/**', async (route: Route) => {
     const method = route.request().method();

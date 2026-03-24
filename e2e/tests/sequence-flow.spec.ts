@@ -139,7 +139,8 @@ Here's your caffeine fix. How's it going?
 testWithUser.describe('Variant Selection', () => {
   let testSequence: TestSequence;
   let testFrame: TestFrame;
-  const originalThumbnailUrl = 'https://picsum.photos/seed/e2e-thumb/1024/576';
+  const originalThumbnailUrl =
+    'http://localhost:3001/api/test/image?w=1024&h=576&label=thumb';
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
@@ -153,7 +154,8 @@ testWithUser.describe('Variant Selection', () => {
     testFrame = await createTestFrame(testSequence.id, 0, {
       // Use real placeholder images
       thumbnailUrl: originalThumbnailUrl,
-      variantImageUrl: 'https://picsum.photos/seed/e2e-variants/3072/3072',
+      variantImageUrl:
+        'http://localhost:3001/api/test/image?w=3072&h=3072&label=variants',
       variantImageStatus: 'completed',
     });
   });
@@ -177,10 +179,13 @@ testWithUser.describe('Variant Selection', () => {
     ).toBeVisible({ timeout: 15000 });
 
     // Also wait for the frame thumbnail to be visible
-    await expect(page.getByRole('img', { name: 'Scene 1' })).toBeVisible();
+    // Frames load via a separate API call from the sequence data, so needs its own timeout
+    await expect(page.getByRole('img', { name: 'Scene 1' })).toBeVisible({
+      timeout: 15000,
+    });
 
     const variantsTab = page.getByRole('tab', { name: /Variants/i });
-    await expect(variantsTab).toBeVisible();
+    await expect(variantsTab).toBeVisible({ timeout: 10000 });
 
     // Click the Variants tab
     await variantsTab.click();
@@ -249,7 +254,8 @@ testWithUser.describe('Character Recast', () => {
       testTalents[0].id,
       {
         // Use real placeholder image
-        sheetImageUrl: 'https://picsum.photos/seed/e2e-character/1920/1080',
+        sheetImageUrl:
+          'http://localhost:3001/api/test/image?w=1920&h=1080&label=character',
         sheetStatus: 'completed',
       }
     );

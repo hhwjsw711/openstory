@@ -40,13 +40,12 @@ export async function createTestTalent(
     updatedAt: now,
   });
 
-  // Insert default sheet with real placeholder image
-  // Using picsum.photos for real images that are always available
+  // Insert default sheet with local test image (no external dependencies)
   await testDb.insert(talentSheets).values({
     id: sheetId,
     talentId,
     name: 'Default',
-    imageUrl: `https://picsum.photos/seed/${talentId}/512/512`, // Deterministic image based on talent ID
+    imageUrl: `http://localhost:3001/api/test/image?w=512&h=512&label=sheet`,
     isDefault: true,
     source: 'manual_upload',
     createdAt: now,
@@ -93,12 +92,12 @@ export async function createTestTalentWithMedia(
     updatedAt: now,
   });
 
-  // Insert default sheet
+  // Insert default sheet with local test image (no external dependencies)
   await testDb.insert(talentSheets).values({
     id: sheetId,
     talentId,
     name: 'Default',
-    imageUrl: `https://picsum.photos/seed/${talentId}/512/512`,
+    imageUrl: `http://localhost:3001/api/test/image?w=512&h=512&label=sheet`,
     isDefault: true,
     source: 'manual_upload',
     createdAt: now,
@@ -114,7 +113,7 @@ export async function createTestTalentWithMedia(
       id: mediaId,
       talentId,
       type: 'image',
-      url: `https://picsum.photos/seed/${mediaId}/400/400`,
+      url: `http://localhost:3001/api/test/image?w=400&h=400&label=media`,
       path: `${teamId}/${talentId}/${mediaId}.jpg`,
       createdAt: now,
       updatedAt: now,

@@ -28,16 +28,15 @@ export type TestCharacter = {
   name: string;
 };
 
-// Real test images that are always available
+// Local test images served by /api/test/image endpoint (no external dependencies)
+const E2E_IMAGE_BASE = 'http://localhost:3001/api/test/image';
+
 const TEST_IMAGES = {
-  // Fal's official test image from documentation
-  falTest: 'https://fal.media/files/elephant/8kkhB12hEZI2kkbU8pZPA_test.jpeg',
-  // Picsum placeholder images (deterministic by seed)
-  thumbnail: (seed: string) => `https://picsum.photos/seed/${seed}/1024/576`, // 16:9
-  variantGrid: (seed: string) =>
-    `https://picsum.photos/seed/${seed}-grid/3072/3072`, // 3x3 grid
-  characterSheet: (seed: string) =>
-    `https://picsum.photos/seed/${seed}-sheet/1920/1080`,
+  thumbnail: (_seed: string) => `${E2E_IMAGE_BASE}?w=1024&h=576&label=thumb`,
+  variantGrid: (_seed: string) =>
+    `${E2E_IMAGE_BASE}?w=3072&h=3072&label=variants`,
+  characterSheet: (_seed: string) =>
+    `${E2E_IMAGE_BASE}?w=1920&h=1080&label=character`,
 };
 
 /**
