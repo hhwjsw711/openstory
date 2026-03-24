@@ -14,6 +14,11 @@ type Database = LibSQLDatabase<typeof schema>;
 const dbUrl = process.env.DATABASE_URL || 'file:local.db';
 const client = createClient({ url: dbUrl });
 
+// Set busy_timeout so concurrent queries wait for locks instead of failing with SQLITE_BUSY
+client.execute('PRAGMA busy_timeout = 5000').catch(() => {
+  // Ignore errors (e.g. remote Turso connections don't support PRAGMAs)
+});
+
 /**
  * Drizzle database instance
  * Uses the libSQL client and includes all schema definitions

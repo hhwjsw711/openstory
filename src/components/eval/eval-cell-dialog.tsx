@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -93,6 +94,9 @@ export const EvalCellDialog: React.FC<EvalCellDialogProps> = ({
           <DialogTitle>
             {sequenceTitle} - Scene {sceneNumber}
           </DialogTitle>
+          <DialogDescription>
+            View scene details, prompts, and generated images.
+          </DialogDescription>
         </DialogHeader>
 
         <Tabs

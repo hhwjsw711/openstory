@@ -8,6 +8,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -208,12 +209,11 @@ export const LocationSuggestionSelector: React.FC<
                 </span>
               )}
             </DialogTitle>
+            <DialogDescription>
+              Select locations from your library. The AI will use these as
+              visual references when matching locations from your script.
+            </DialogDescription>
           </DialogHeader>
-
-          <p className="text-sm text-muted-foreground">
-            Select locations from your library. The AI will use these as visual
-            references when matching locations from your script.
-          </p>
 
           {/* Search input */}
           <div className="relative">

@@ -128,6 +128,16 @@ export async function setupMockRoutes(page: Page): Promise<void> {
     }
   });
 
+  // Safety net: redirect any stray picsum.photos requests to local test image endpoint
+  await page.route('**/picsum.photos/**', async (route: Route) => {
+    await route.fulfill({
+      status: 302,
+      headers: {
+        Location: 'http://localhost:3001/api/test/image?w=9&h=9',
+      },
+    });
+  });
+
   // Mock R2 storage uploads (PutObject operations)
   await page.route('**/*.r2.cloudflarestorage.com/**', async (route: Route) => {
     const method = route.request().method();

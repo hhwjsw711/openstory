@@ -73,7 +73,7 @@ testWithUser.describe('Add Location with Reference Media', () => {
   testWithUser(
     'can create location without media',
     async ({ page, testUser }) => {
-      const uniqueName = `E2E Test Location ${Date.now()}`;
+      const uniqueName = `E2E Test Location ${crypto.randomUUID().slice(0, 8)}`;
 
       await page.goto('/locations');
       await waitForLocationsPageLoad(page);
@@ -141,7 +141,7 @@ testWithUser.describe('Edit Location', () => {
     await setupMockRoutes(page);
     testLocation = await createTestLibraryLocation(
       testUser.teamId,
-      `E2E Edit Test Location ${Date.now()}`
+      `E2E Edit Test Location ${crypto.randomUUID().slice(0, 8)}`
     );
   });
 
@@ -210,7 +210,7 @@ testWithUser.describe('Location Library - List View', () => {
 
   testWithUser.beforeEach(async ({ page, testUser }) => {
     await setupMockRoutes(page);
-    const suffix = Date.now();
+    const suffix = crypto.randomUUID().slice(0, 8);
     testLocationAlpha = await createTestLibraryLocation(
       testUser.teamId,
       `E2E Location Alpha ${suffix}`
