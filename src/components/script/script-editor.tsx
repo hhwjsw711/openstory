@@ -3,9 +3,10 @@ import { cn } from '@/lib/utils';
 import type * as React from 'react';
 import { useCallback } from 'react';
 
-interface ScriptEditorProps {
+type ScriptEditorProps = {
   value: string;
   onValueChange: (value: string) => void;
+  ref?: React.Ref<HTMLTextAreaElement>;
   error?: string;
   maxLength?: number;
   placeholder?: string;
@@ -13,11 +14,12 @@ interface ScriptEditorProps {
   showCharacterCount?: boolean;
   loading?: boolean;
   autoFocus?: boolean;
-}
+};
 
 export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   value,
   onValueChange,
+  ref,
   error,
   maxLength = 5000,
   placeholder = 'Enter your script here...',
@@ -58,6 +60,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     <>
       <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
         <Textarea
+          ref={ref}
           name="script"
           id="script"
           value={loading ? 'Loading...' : value}
