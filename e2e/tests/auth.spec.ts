@@ -23,7 +23,9 @@ baseTest.describe('Route Protection', () => {
     await expect(page).toHaveURL('/login');
     await expect(page.getByLabel('Email')).toBeVisible();
     await expect(page.getByLabel('Email')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Send code' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Continue with email' })
+    ).toBeVisible();
   });
 
   baseTest(
@@ -32,7 +34,9 @@ baseTest.describe('Route Protection', () => {
       await page.goto('/login');
 
       const emailInput = page.getByLabel('Email');
-      const submitButton = page.getByRole('button', { name: 'Send code' });
+      const submitButton = page.getByRole('button', {
+        name: 'Continue with email',
+      });
 
       await expect(emailInput).toBeVisible();
       await expect(emailInput).toBeEnabled();
@@ -96,7 +100,9 @@ baseTest.describe('Email OTP Flow', () => {
     await page.goto('/login');
 
     const emailInput = page.getByLabel('Email');
-    const submitButton = page.getByRole('button', { name: 'Send code' });
+    const submitButton = page.getByRole('button', {
+      name: 'Continue with email',
+    });
 
     // Enter invalid email
     await emailInput.fill('invalid-email');
