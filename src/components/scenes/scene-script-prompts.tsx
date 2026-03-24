@@ -406,7 +406,10 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
           variantIndex: index,
         });
       } catch (error) {
-        console.error('Failed to select variant:', error);
+        console.error(
+          'Failed to select variant:',
+          error instanceof Error ? error.message : error
+        );
         // Error handling is done by the mutation hook
       }
     },

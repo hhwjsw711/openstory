@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -92,6 +93,9 @@ export const LocationPickerDialog: React.FC<LocationPickerDialogProps> = ({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Select Location Reference</DialogTitle>
+          <DialogDescription>
+            Choose a location from your library to use as a visual reference.
+          </DialogDescription>
         </DialogHeader>
 
         {/* Search input */}

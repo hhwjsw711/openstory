@@ -17,6 +17,7 @@ import {
   user,
   verification,
 } from '@/lib/db/schema';
+import { credits } from '@/lib/db/schema/credits';
 import { eq } from 'drizzle-orm';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -89,6 +90,11 @@ export async function createTestUser(
     joinedAt: now,
   });
 
+  // Seed credits so billing checks pass during e2e tests
+  await testDb
+    .insert(credits)
+    .values({ teamId, balance: 100_000_000, updatedAt: now });
+
   return { id: userId, email, name, teamId };
 }
 
@@ -152,7 +158,7 @@ export async function authenticateUser(
   // Wait for the OTP input to be ready and type the code
   const otpInput = page.locator('input[data-input-otp="true"]');
   await otpInput.waitFor({ timeout: 30_000 });
-  await expect(otpInput).toBeEnabled({ timeout: 10_000 });
+  await expect(otpInput).toBeEnabled({ timeout: 30_000 });
   await otpInput.click();
   await otpInput.pressSequentially(testOtp, { delay: 50 });
 

@@ -9,11 +9,9 @@ import { schema } from '@/lib/db/schema';
 
 const client = createClient({ url: 'file:test.db' });
 
-// Configure SQLite for better concurrency with parallel tests
-// WAL mode allows concurrent reads while writing
-// busy_timeout waits for locks instead of failing immediately
+// busy_timeout waits for locks instead of failing immediately during parallel tests
+// WAL mode is set by CI workflow and global-setup, not here (avoids SQLITE_BUSY_RECOVERY on stale WAL files)
 const initPromise = (async () => {
-  await client.execute('PRAGMA journal_mode = WAL');
   await client.execute('PRAGMA busy_timeout = 30000');
 })();
 
