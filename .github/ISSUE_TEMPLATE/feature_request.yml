@@ -1,34 +1,13 @@
 name: Feature Request
 description: Suggest a new feature or enhancement for OpenStory
-title: '[Feature] '
-labels: ['enhancement', 'triage']
+type: Feature
 
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for suggesting a new feature! Please provide as much detail as possible to help us understand your request.
-
   - type: textarea
-    id: problem
+    id: description
     attributes:
-      label: Problem or Use Case
-      description: What problem does this feature solve? What use case does it address?
-      placeholder: |
-        I'm frustrated when...
-        It would be helpful if...
-        Currently, there's no way to...
-    validations:
-      required: true
-
-  - type: textarea
-    id: solution
-    attributes:
-      label: Proposed Solution
-      description: Describe the solution you'd like to see
-      placeholder: |
-        I would like OpenStory to...
-        This could work by...
-        The interface might look like...
+      label: Description
+      description: Describe the feature you'd like and the problem it solves
+      placeholder: I would like OpenStory to…
     validations:
       required: true
