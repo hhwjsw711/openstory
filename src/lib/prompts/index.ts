@@ -6,7 +6,7 @@
  */
 
 import { getEnv } from '#env';
-import { isLangfuseEnabled } from '@/lib/observability/langfuse';
+import { isLangfusePromptsEnabled } from '@/lib/observability/langfuse';
 import {
   LangfuseClient,
   type ChatPromptClient,
@@ -64,7 +64,7 @@ export async function getPrompt(
   variables?: Record<string, string>
 ): Promise<{ prompt: TextPromptClient | undefined; compiled: string }> {
   // Try Langfuse first
-  if (isLangfuseEnabled()) {
+  if (isLangfusePromptsEnabled()) {
     try {
       const prompt = await getClient().prompt.get(name, { type: 'text' });
       const compiled = variables ? prompt.compile(variables) : prompt.prompt;
@@ -106,7 +106,7 @@ export async function getChatPrompt(
   messages: ChatMessage[];
 }> {
   // Try Langfuse first
-  if (isLangfuseEnabled()) {
+  if (isLangfusePromptsEnabled()) {
     try {
       const prompt = await getClient().prompt.get(name, { type: 'chat' });
       const messages = variables ? prompt.compile(variables) : prompt.prompt;

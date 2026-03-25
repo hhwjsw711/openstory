@@ -8,7 +8,7 @@
  */
 
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
-import { micros, microsToUsd } from '@/lib/billing/money';
+import { microsToUsd, type Microdollars } from '@/lib/billing/money';
 import { ensureImageUnderLimit } from '@/lib/image/image-compress';
 import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import {
@@ -26,6 +26,8 @@ import type {
   MergeVideoWorkflowInput,
   MotionWorkflowInput,
 } from '@/lib/workflow/types';
+import { startObservation } from '@langfuse/tracing';
+import { WorkflowNonRetryableError } from '@upstash/workflow';
 
 /** Each batch polls in a tight loop for ~30s, then checkpoints for durability */
 const POLL_BATCH_DURATION_MS = 30_000;
@@ -34,6 +36,35 @@ const POLL_INTERVAL_MS = 3_000;
 const MAX_BATCHES = 30;
 /** Kling rejects start frame images over 10MB — use 9.5MB safety margin */
 const KLING_MAX_IMAGE_BYTES = 9.5 * 1024 * 1024;
+
+function recordMotionObservation(params: {
+  model: string;
+  prompt: string;
+  imageUrl: string;
+  videoUrl: string;
+  cost: Microdollars;
+  videoDuration: number;
+  generationTimeMs: number;
+}) {
+  const span = startObservation(
+    'fal-motion',
+    {
+      model: params.model,
+      input: { prompt: params.prompt, imageUrl: params.imageUrl },
+    },
+    { asType: 'generation' }
+  );
+  span
+    .update({
+      output: { videoUrl: params.videoUrl },
+      costDetails: { total: microsToUsd(params.cost) },
+      metadata: {
+        videoDuration: params.videoDuration,
+        generationTimeMs: params.generationTimeMs,
+      },
+    })
+    .end();
+}
 
 export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
   async (context, scopedDb) => {
@@ -45,6 +76,38 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
         'Thumbnail Path is required for motion generation'
       );
     }
+    // Step 0: Get cost and check if team has enough credits
+    // Calculate cost + metadata
+
+    const { cost, duration } = await context.run('check-credits', async () => {
+      const { cost, duration } = calculateMotionMetadata({
+        imageUrl: input.imageUrl,
+        prompt: input.prompt,
+        model,
+        duration: input.duration,
+        fps: input.fps,
+        motionBucket: input.motionBucket,
+        aspectRatio: input.aspectRatio,
+      });
+
+      // Check if team has enough credits (resolve BYOK status before job submission)
+      const falKeyInfo = await scopedDb.apiKeys.resolveKey('fal');
+      const usedOwnKey = falKeyInfo.source === 'team';
+      if (cost > 0 && !usedOwnKey) {
+        const canAfford = await scopedDb.billing.hasEnoughCredits(cost);
+        if (!canAfford) {
+          console.warn(
+            `[MotionWorkflow] Insufficient credits for team ${input.teamId} (cost: $${microsToUsd(cost).toFixed(4)}), skipping deduction`
+          );
+
+          // Throw an error so the workflow fails
+          throw new WorkflowNonRetryableError(
+            `Insufficient credits for motion generation`
+          );
+        }
+      }
+      return { cost, duration };
+    });
 
     // Step 1: Set status to generating and store model being used
     const { frameDeleted } = await context.run(
@@ -121,7 +184,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
 
     // Step 3a: Submit the motion generation job
     const job = await context.run('submit-motion', async () => {
-      return submitMotionJob({
+      return await submitMotionJob({
         imageUrl: startImageUrl,
         prompt: input.prompt,
         model,
@@ -130,12 +193,28 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
         motionBucket: input.motionBucket,
         aspectRatio: input.aspectRatio,
         scopedDb,
+      }).catch((error) => {
+        if (
+          error instanceof Error &&
+          'status' in error &&
+          error.status === 422
+        ) {
+          throw new WorkflowNonRetryableError(
+            `Motion job submission rejected (422): ${error.message}`
+          );
+        }
+        // If the error is not a 422, throw it. We'll retry
+        throw error;
       });
     });
 
     // Step 3b: Batched polling — tight loop inside each context.run, checkpoint between batches
     let videoUrl = '';
 
+    // Note how this works with workflow
+    // The loop will run from 0 every time, but
+    // the serialized result from context.run will be returned immediately from previous runs,
+    //  so the loop will properly execute pollMotionJob a max of MAX_BATCHES times
     for (let batch = 0; batch < MAX_BATCHES; batch++) {
       if (batch > 0) {
         await context.sleep(`motion-batch-wait-${batch}`, 1);
@@ -145,19 +224,47 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
         const deadline = Date.now() + POLL_BATCH_DURATION_MS;
 
         while (Date.now() < deadline) {
-          const result = await pollMotionJob(job.jobId, job.modelKey, scopedDb);
+          // Poll the job status
+          const pollResult = await pollMotionJob(
+            job.jobId,
+            job.modelKey,
+            scopedDb
+          ).catch((error) => {
+            if (
+              error instanceof Error &&
+              'status' in error &&
+              error.status === 422
+            ) {
+              throw new WorkflowNonRetryableError(
+                `Motion job polling failed (422): ${error.message}`
+              );
+            }
+            // If the error is not a 422, throw it. We'll retry
+            throw error;
+          });
 
-          if (result.progress !== undefined) {
-            console.log(`[MotionWorkflow] Progress: ${result.progress}%`);
+          if (pollResult.progress !== undefined) {
+            // Log the progress
+            console.log(`[MotionWorkflow] Progress: ${pollResult.progress}%`);
           }
 
-          if (result.status === 'completed' && result.videoUrl) {
-            console.log(`[MotionWorkflow] Generation completed`);
-            return result;
+          // If the job is completed, check the video URL and return the result
+          // If the video URL is not returned, throw an error and stop the workflow without retrying
+          if (pollResult.status === 'completed') {
+            if (pollResult.url) {
+              console.log(`[MotionWorkflow] Generation completed`);
+              return pollResult;
+            } else {
+              throw new WorkflowNonRetryableError(
+                `Motion generation failed: ${pollResult.error || 'No URL returned'}`
+              );
+            }
           }
-
-          if (result.status === 'failed') {
-            return result;
+          // If the job is failed, throw an error and stop the workflow without retrying
+          if (pollResult.status === 'failed') {
+            throw new WorkflowNonRetryableError(
+              `Motion generation failed: ${pollResult.error || 'Unknown error'}`
+            );
           }
 
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
@@ -165,9 +272,10 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
 
         return { status: 'pending' as const };
       });
-
-      if (poll.status === 'completed' && 'videoUrl' in poll && poll.videoUrl) {
-        videoUrl = poll.videoUrl;
+      // Note poll is serialised by the workflow
+      // this loop will run again, but always break as status will be completed
+      if (poll.status === 'completed' && 'url' in poll && poll.url) {
+        videoUrl = poll.url;
         break;
       }
 
@@ -182,39 +290,28 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
       throw new Error('Motion generation timed out after 15 minutes');
     }
 
-    // Calculate cost + metadata
-    const motionMeta = calculateMotionMetadata({
-      imageUrl: input.imageUrl,
-      prompt: input.prompt,
-      model,
-      duration: input.duration,
-      fps: input.fps,
-      motionBucket: input.motionBucket,
-      aspectRatio: input.aspectRatio,
+    await context.run('record-motion-observation', async () => {
+      // Record Langfuse observation with cost and generation time
+      recordMotionObservation({
+        model,
+        prompt: input.prompt,
+        imageUrl: input.imageUrl,
+        videoUrl,
+        cost: cost,
+        videoDuration: duration,
+        generationTimeMs: Date.now() - job.submittedAt,
+      });
     });
-
-    const actualDuration = motionMeta.duration;
-
     // Deduct credits (skip if team used own fal key)
-    const motionCostMicros = micros(motionMeta.cost);
-    const { teamId } = input;
-    if (motionCostMicros > 0 && teamId && !job.usedOwnKey) {
+    if (cost > 0 && input.teamId && !job.usedOwnKey) {
       await context.run('deduct-credits', async () => {
-        const canAfford =
-          await scopedDb.billing.hasEnoughCredits(motionCostMicros);
-        if (!canAfford) {
-          console.warn(
-            `[MotionWorkflow] Insufficient credits for team ${teamId} (cost: $${microsToUsd(motionCostMicros).toFixed(4)}), skipping deduction`
-          );
-          return;
-        }
-        await scopedDb.billing.deductCredits(motionCostMicros, {
+        await scopedDb.billing.deductCredits(cost, {
           description: `Motion generation (${model})`,
           metadata: {
             model,
             frameId: input.frameId,
             sequenceId: input.sequenceId,
-            duration: motionMeta.duration,
+            duration: duration,
           },
         });
       });
@@ -264,7 +361,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
           {
             videoPath: storageResult.path,
             videoUrl: storageResult.url,
-            durationMs: actualDuration * 1000,
+            durationMs: duration * 1000,
             videoStatus: 'completed',
             videoGeneratedAt: new Date(),
             videoError: null,
@@ -323,7 +420,8 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
     }
 
     console.log('[MotionWorkflow] Motion generation workflow completed');
-    return { videoUrl, duration: actualDuration };
+    // Return the video URL and duration
+    return { videoUrl, duration };
   },
   {
     failureFunction: async ({ context, scopedDb, failResponse }) => {

@@ -71,6 +71,7 @@
     "build:analyze": "DEBUG_VISUALIZER=1 vite build && open .output/stats-nitro.html",
     "build:analyze:treeshakeoff": "DEBUG_VISUALIZER=1 DEBUG_TREESHAKE_OFF=1 vite build && open .output/stats-nitro.html",
     "letzai:codegen": "bunx @hey-api/openapi-ts -f src/lib/letzai/letzai-config.ts",
+    "motion:codegen": "bun scripts/pull-motion-schemas.ts",
     "doppler:setup": "doppler setup -p openstory -c dev",
     "doppler:pull:dev": "doppler secrets download --config=dev --format=env --no-file > .env.local",
     "doppler:pull:prd": "doppler secrets download --config=prd --format=env --no-file > .env.production",

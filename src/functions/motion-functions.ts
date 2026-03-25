@@ -7,11 +7,8 @@ import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
-import {
-  DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
-  safeImageToVideoModel,
-} from '@/lib/ai/models';
+import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
+import { snapDuration } from '@/lib/motion/motion-generation';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
 import { multiplyMicros, usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
@@ -24,23 +21,10 @@ import type {
   MusicWorkflowInput,
 } from '@/lib/workflow/types';
 
+import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
+
 import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
 import { buildSceneSummaries } from './sequences';
-
-// -- Shared helper: resolve motion prompt from frame data -----------------
-
-function resolveMotionPrompt(frame: {
-  motionPrompt: string | null;
-  metadata: { prompts?: { motion?: { fullPrompt?: string } } } | null;
-  description: string | null;
-}): string {
-  return (
-    frame.motionPrompt ||
-    frame.metadata?.prompts?.motion?.fullPrompt ||
-    frame.description ||
-    ''
-  );
-}
 
 // -- Generate Motion for Frame -------------------------------------------
 
@@ -59,16 +43,14 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
       throw new Error('Frame has no thumbnail to generate motion from');
     }
 
-    const prompt = data.prompt || resolveMotionPrompt(frame);
-
     const model = safeImageToVideoModel(
       data.model || frame.motionModel || sequence.videoModel,
       DEFAULT_VIDEO_MODEL
     );
 
-    const duration =
-      data.duration ??
-      IMAGE_TO_VIDEO_MODELS[model].capabilities.defaultDuration;
+    const prompt = data.prompt || resolveMotionPrompt(frame, model);
+
+    const duration = data.duration ?? snapDuration(undefined, model);
 
     await requireCredits(context.scopedDb, estimateVideoCost(model, duration), {
       errorMessage: 'Insufficient credits for motion generation',
@@ -137,9 +119,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     }
 
     const batchModel = data.model ?? DEFAULT_VIDEO_MODEL;
-    const batchDuration =
-      data.duration ??
-      IMAGE_TO_VIDEO_MODELS[batchModel].capabilities.defaultDuration;
+    const batchDuration = snapDuration(data.duration, batchModel);
 
     await requireCredits(
       context.scopedDb,
@@ -159,17 +139,19 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       try {
         if (!frame.thumbnailUrl) continue;
 
+        const frameModel = safeImageToVideoModel(
+          data.model || frame.motionModel || sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        );
+
         const workflowInput: MotionWorkflowInput = {
           userId: user.id,
           teamId,
           frameId: frame.id,
           sequenceId: sequence.id,
           imageUrl: frame.thumbnailUrl,
-          prompt: resolveMotionPrompt(frame),
-          model: safeImageToVideoModel(
-            data.model || frame.motionModel || sequence.videoModel,
-            DEFAULT_VIDEO_MODEL
-          ),
+          prompt: resolveMotionPrompt(frame, frameModel),
+          model: frameModel,
           duration:
             data.duration || frame.metadata?.metadata?.durationSeconds || 3,
           fps: data.fps,

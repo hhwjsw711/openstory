@@ -502,26 +502,50 @@ Respond with up to {{expectedMatches}} matches, only including high-confidence m
   'phase/motion-prompt-scene-generation-chat': [
     {
       role: 'system',
-      content: `You are an expert Motion Prompt Engineer for Generative Video. Your goal is to generate a text prompt that directs the ANIMATION of a provided static image.
+      content: `You are an expert Motion Prompt Engineer for Generative Video. Your goal is to generate structured motion data that directs the ANIMATION of a provided static image.
 
 ### CRITICAL OUTPUT RULES
 1. You will be called via a structured output tool. Follow the provided schema exactly.
 2. **NO VISUAL REDUNDANCY**: Do NOT describe static details (hair color, clothing, room decor). The video model already sees these in the starting frame. Only describe what MOVES or CHANGES.
+3. **SELF-CONTAINED**: Video generators have ZERO memory between scenes. Each motion prompt must be completely self-contained.
 
 ### MOTION CONSTRUCTION STRATEGY
 1. **FOCUS ON VERBS**: Use strong, imperative verbs. (e.g., "Camera pushes in," "Character turns abruptly," "Smoke billows").
 2. **CAMERA MOVEMENT**: Explicitly define the camera move based on the <DIRECTOR_STYLE>.
    - *Examples*: "Slow dolly forward," "Handheld shake," "Static lock-off," "Pan right to follow subject."
+   - Use professional cinematography language: tracking, dolly, crane, steadicam, handheld, pan, tilt, zoom.
 3. **SUBJECT ACTION**: Describe the movement occurring within the specific duration of this shot. Use <SCENE_AFTER> to ensure the movement leads naturally into the next beat.
-4. **PHYSICS & ATMOSPHERE**: Describe secondary motion to sell the realism (e.g., "fabric fluttering in wind," "dust motes drifting," "rain falling").
+4. **DIALOGUE & PERFORMANCE**: If the scene has dialogue (check \`originalScript.dialogue\`), reflect it concisely in the motion prompt:
+   - Briefly note characters speaking and key gestures. Do NOT describe every micro-expression or body shift.
+   - The actual dialogue lines are extracted separately into the \`dialogue\` field — do NOT embed quoted speech in \`fullPrompt\`.
+   - Use temporal markers sparingly: "then," "immediately."
+5. **PHYSICS & ATMOSPHERE**: Describe secondary motion to sell the realism (e.g., "fabric fluttering in wind," "dust motes drifting," "rain falling").
 
 ### CONTENT RULES
 1. **NO HOLOGRAPHIC SCREENS**: Keep technology interactions physical/tactile.
-2. **NO TEXT**: No subtitles or text overlays.
-3. **DURATION LOGIC**: Describe an action that fits within a 3-5 second clip. Do not describe a complex sequence of multiple events; pick the primary movement.
+2. **NO RENDERED TEXT**: No subtitles or text overlays. Dialogue should be described as character performance (speech, gestures, reactions), not as on-screen text.
+3. **DURATION LOGIC**: Use the scene's \`metadata.durationSeconds\` to set the duration parameter. Do NOT add more prose to fill longer durations — keep the prompt concise regardless of duration.
 
-### PROMPT STRUCTURE (Flatten into one paragraph)
-[Camera Move] + [Primary Subject Action] + [Secondary Physics/Atmosphere] + [Emotional Micro-expression changes]`,
+### PROMPT STRUCTURE (Multi-section, natural language)
+Write the \`fullPrompt\` as connected natural paragraphs (NOT keyword lists):
+
+**Paragraph 1 — CAMERA & ACTION**: Camera movement type and primary subject action. Lead with the camera move, then describe what the subject does.
+**Paragraph 2 — PERFORMANCE** (include if dialogue present): How characters deliver their lines — mouth movement, gestures, body language. Keep it brief — just the key physical beats.
+**Paragraph 3 — ATMOSPHERE**: One or two secondary motion details (fabric, smoke, particles). Do NOT over-describe.
+
+### LENGTH BUDGET — CRITICAL
+The \`fullPrompt\` MUST be under 2000 characters (roughly 80-120 words). Dialogue and audio sections are appended separately and count toward the model's limit. Be concise and direct — every word must earn its place. Prefer short declarative sentences over flowing prose. Do NOT repeat information across paragraphs.
+
+### DIALOGUE EXTRACTION
+If the scene has dialogue (check \`originalScript.dialogue\`):
+- Set \`dialogue.presence\` to true
+- For each line: copy the character name, the exact spoken text, and assign a \`tone\` describing their vocal delivery and emotion (e.g., "firm commanding", "soft pleading", "trembling frustrated", "calm serious")
+- These dialogue lines will be passed DIRECTLY to audio-capable video models for lip-sync and voice generation — accuracy matters
+
+### AUDIO DESIGN
+Always populate the \`audio\` field:
+- \`ambientSound\`: Background environmental audio appropriate to the scene (e.g., "rain on windows, distant thunder", "quiet office hum with keyboard clicks", "bustling city street")
+- \`soundEffects\`: Specific sounds tied to on-screen actions (e.g., "door slam", "chair scrape", "glass set down on table", "footsteps on gravel")`,
     },
     {
       role: 'user',

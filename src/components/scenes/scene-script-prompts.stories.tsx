@@ -45,6 +45,7 @@ const mockFrame = {
         {
           character: 'SARAH',
           line: 'This deadline is going to kill me.',
+          tone: '',
         },
       ],
     },
@@ -186,6 +187,7 @@ Sarah doesn't respond, too absorbed in her work. The barista shrugs and sets the
             {
               character: 'BARISTA',
               line: 'Large oat milk latte for Sarah!',
+              tone: '',
             },
           ],
         },
