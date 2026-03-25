@@ -20,6 +20,7 @@ import {
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  IMAGE_TO_VIDEO_MODELS,
   getCompatibleModel,
   safeImageToVideoModel,
   safeTextToImageModel,
@@ -27,10 +28,11 @@ import {
   type TextToImageModel,
 } from '@/lib/ai/models';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 import type { Frame } from '@/types/database';
 import { useQueryClient } from '@tanstack/react-query';
 import { CopyIcon, Loader2, Minimize2 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { SceneCastTab } from './scene-cast-tab';
 import { SceneLocationTab } from './scene-location-tab';
 import { VariantSelector } from './variant-selector';
@@ -436,8 +438,35 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     [frame, selectVariant]
   );
 
-  const motionPrompt =
-    frame?.motionPrompt || frame?.metadata?.prompts?.motion?.fullPrompt;
+  const motionPromptData = frame?.metadata?.prompts?.motion;
+
+  // Raw prompt for editing (just motion direction, no dialogue/audio)
+  const rawMotionPrompt =
+    frame?.motionPrompt || motionPromptData?.fullPrompt || '';
+
+  // Assembled preview: exactly what resolveMotionPrompt produces on the server
+  const assembledPrompt = useMemo(() => {
+    const promptOverride = editedMotionPrompt || rawMotionPrompt;
+    return resolveMotionPrompt(
+      {
+        motionPrompt: promptOverride || null,
+        metadata: frame?.metadata ?? null,
+        description: frame?.description ?? null,
+      },
+      selectedMotionModel || DEFAULT_VIDEO_MODEL
+    );
+  }, [
+    editedMotionPrompt,
+    rawMotionPrompt,
+    frame?.metadata,
+    frame?.description,
+    selectedMotionModel,
+  ]);
+
+  const motionModel = selectedMotionModel || DEFAULT_VIDEO_MODEL;
+  const maxPromptLength = IMAGE_TO_VIDEO_MODELS[motionModel].maxPromptLength;
+  const isOverLimit =
+    assembledPrompt != null && assembledPrompt.length > maxPromptLength;
 
   // Sync local state when props change (prev-value refs avoid extra re-renders)
   if (imagePrompt !== prevImagePromptRef.current) {
@@ -452,9 +481,9 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
     );
   }
 
-  if (motionPrompt !== prevMotionPromptRef.current) {
-    prevMotionPromptRef.current = motionPrompt;
-    setEditedMotionPrompt(motionPrompt || '');
+  if (rawMotionPrompt !== prevMotionPromptRef.current) {
+    prevMotionPromptRef.current = rawMotionPrompt;
+    setEditedMotionPrompt(rawMotionPrompt);
   }
 
   const motionModelKey = `${frame?.motionModel ?? ''}:${aspectRatio ?? ''}`;
@@ -648,7 +677,7 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
 
       <TabsContent value="motion-prompt">
         <div className="space-y-4">
-          {/* Editable motion prompt */}
+          {/* Editable raw motion prompt */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label
@@ -658,12 +687,12 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
                 Prompt
               </label>
               <span className="text-xs text-muted-foreground">
-                {(editedMotionPrompt || motionPrompt || '').length} characters
+                {(editedMotionPrompt || rawMotionPrompt).length} characters
               </span>
             </div>
             <Textarea
               id="motion-prompt-input"
-              value={editedMotionPrompt || motionPrompt || ''}
+              value={editedMotionPrompt || rawMotionPrompt}
               onChange={(e) => setEditedMotionPrompt(e.target.value)}
               placeholder={
                 isGeneratingMotion
@@ -685,6 +714,32 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
               aspectRatio={aspectRatio}
             />
           </div>
+
+          {/* Assembled prompt preview */}
+          {assembledPrompt && assembledPrompt !== editedMotionPrompt && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span
+                  id="motion-assembled-prompt-heading"
+                  className="text-sm font-medium"
+                >
+                  Optimised prompt
+                </span>
+                <span
+                  className={`text-xs ${isOverLimit ? 'text-destructive font-medium' : 'text-muted-foreground'}`}
+                >
+                  {assembledPrompt.length}&nbsp;/&nbsp;{maxPromptLength}
+                </span>
+              </div>
+              <p
+                id="motion-assembled-prompt-preview"
+                aria-labelledby="motion-assembled-prompt-heading"
+                className="whitespace-pre-wrap rounded-md border bg-muted/50 p-3 text-sm leading-relaxed text-foreground"
+              >
+                {assembledPrompt}
+              </p>
+            </div>
+          )}
 
           {/* Regenerate button */}
           <Button
@@ -708,16 +763,11 @@ export const SceneScriptPrompts: React.FC<SceneScriptPromptsProps> = ({
                 : 'Generate Motion'}
           </Button>
 
-          {/* Copy button for current prompt */}
+          {/* Copy button for assembled prompt */}
           <Button
             variant="outline"
-            onClick={() =>
-              void handleCopy(
-                editedMotionPrompt || motionPrompt,
-                'motion-prompt'
-              )
-            }
-            disabled={!motionPrompt}
+            onClick={() => void handleCopy(assembledPrompt, 'motion-prompt')}
+            disabled={!assembledPrompt}
             className="w-full"
           >
             {copiedTab === 'motion-prompt' ? (

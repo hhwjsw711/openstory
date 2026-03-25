@@ -4,7 +4,9 @@
  */
 
 import type { AnalysisModelId } from '@/lib/ai/models.config';
+import { z } from 'zod';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
+import { MOTION_INPUT_SCHEMAS } from '@/lib/motion/endpoint-map';
 
 // ============================================================================
 // Text (Chat/LLM) Models — OpenRouter
@@ -19,208 +21,85 @@ export type TextModel = AnalysisModelId;
 
 /**
  * Image-to-video models (for motion generation)
- * Enriched with capabilities and performance metadata
+ *
+ * API-contract details (durations, aspect ratios, image URL field names) are
+ * derived from OpenAPI schemas — see MOTION_ENDPOINT_META and MOTION_TRANSFORMS
+ * in src/lib/motion/generated/endpoint-map.ts.
+ *
+ * Only model-level metadata lives here: identity, audio override, performance.
  */
 export const IMAGE_TO_VIDEO_MODELS = {
-  // Premium models - highest quality
   seedance_v1_pro: {
     id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
     name: 'Premium Motion (Seedance Pro)',
     provider: 'seedance',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 12,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed at 24fps per docs
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
-      supportedResolutions: ['480p', '720p', '1080p'],
-      supportedDurations: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
-    },
-    performance: {
-      estimatedGenerationTime: 12,
-      quality: 'best',
-    },
+    maxPromptLength: 4096,
+    performance: { estimatedGenerationTime: 12, quality: 'best' },
   },
-
   veo3: {
     id: 'fal-ai/veo3',
     name: 'Ultra Premium Motion with Audio (Google Veo 3)',
     provider: 'google',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: true,
-      maxDuration: 8,
-      defaultDuration: 8,
-      fpsRange: { min: 24, max: 30, default: 24 }, // Fixed FPS
-      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
-      supportedResolutions: ['720p', '1080p'],
-      supportedDurations: [8], // Only 8s supported
-    },
-    performance: {
-      estimatedGenerationTime: 25,
-      quality: 'best',
-    },
+    maxPromptLength: 20000,
+    performance: { estimatedGenerationTime: 25, quality: 'best' },
   },
-
-  // Latest models - cutting edge
   veo3_1: {
     id: 'fal-ai/veo3.1/image-to-video',
     name: 'Google Veo 3.1',
     provider: 'google',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: true,
-      maxDuration: 8,
-      defaultDuration: 8,
-      supportedDurations: [4, 6, 8],
-      fpsRange: { min: 24, max: 60, default: 30 },
-      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
-    },
-    performance: {
-      estimatedGenerationTime: 25,
-      quality: 'best',
-    },
+    maxPromptLength: 20000,
+    performance: { estimatedGenerationTime: 25, quality: 'best' },
   },
-
   kling_v2_5_turbo_pro: {
     id: 'fal-ai/kling-video/v2.5-turbo/pro/image-to-video',
     name: 'Kling v2.5 Turbo Pro',
     provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 10,
-      fpsRange: { min: 24, max: 60, default: 30 },
-      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
-      requiresStringDuration: true, // API expects string, not number
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
-    },
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'best',
-    },
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 15, quality: 'best' },
   },
-
   sora_2: {
     id: 'fal-ai/sora-2/image-to-video',
     name: 'OpenAI Sora 2',
     provider: 'openai',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: true,
-      maxDuration: 12,
-      defaultDuration: 4,
-      supportedDurations: [4, 8, 12],
-      fpsRange: { min: 24, max: 60, default: 30 },
-      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
-    },
-    performance: {
-      estimatedGenerationTime: 30,
-      quality: 'best',
-    },
+    supportsAudio: true, // always generates audio, no toggle in schema
+    maxPromptLength: 5000,
+    performance: { estimatedGenerationTime: 30, quality: 'best' },
   },
-
   kling_o1: {
     id: 'fal-ai/kling-video/o1/image-to-video',
     name: 'Kling O1 (Omni)',
     provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 10,
-      defaultDuration: 10,
-      fpsRange: { min: 24, max: 30, default: 30 }, // Standard for Kling models
-      supportedDurations: [5, 10], // API only accepts "5" or "10" as string enum
-      requiresStringDuration: true, // API expects string, not number
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[], // Uses input image aspect ratio
-      imageUrlParamName: 'start_image_url' as const, // O1 uses start_image_url instead of image_url
-    },
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'best',
-    },
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 15, quality: 'best' },
   },
-
   kling_v3_pro: {
     id: 'fal-ai/kling-video/v3/pro/image-to-video',
     name: 'Kling v3 Pro',
     provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: true,
-      maxDuration: 15,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 30 },
-      supportedDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      requiresStringDuration: true,
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
-      imageUrlParamName: 'start_image_url' as const,
-    },
-    performance: {
-      estimatedGenerationTime: 20,
-      quality: 'best',
-    },
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 20, quality: 'best' },
   },
-
   kling_v3_pro_no_audio: {
     id: 'fal-ai/kling-video/v3/pro/image-to-video',
     name: 'Kling v3 Pro (no Audio)',
     provider: 'kling',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 15,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 30 },
-      supportedDurations: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      requiresStringDuration: true,
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
-      imageUrlParamName: 'start_image_url' as const,
-    },
-    performance: {
-      estimatedGenerationTime: 20,
-      quality: 'best',
-    },
+    supportsAudio: false as const, // override — same endpoint as kling_v3_pro but without audio
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 20, quality: 'best' },
   },
-
   grok_imagine_video: {
     id: 'xai/grok-imagine-video/image-to-video',
     name: 'Grok Imagine Video',
     provider: 'xai',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 15,
-      defaultDuration: 6,
-      fpsRange: { min: 24, max: 24, default: 24 },
-      supportedDurations: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      supportedAspectRatios: ['16:9', '9:16', '1:1'] as AspectRatio[],
-    },
-    performance: {
-      estimatedGenerationTime: 20,
-      quality: 'best',
-    },
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 20, quality: 'best' },
   },
-
   wan_v2_6_flash: {
     id: 'wan/v2.6/image-to-video/flash',
     name: 'Wan 2.6 Flash',
     provider: 'wan',
-    capabilities: {
-      supportsPrompt: true,
-      supportsAudio: false,
-      maxDuration: 15,
-      defaultDuration: 5,
-      fpsRange: { min: 24, max: 30, default: 30 },
-      supportedDurations: [5, 10, 15],
-      supportedAspectRatios: ['16:9', '9:16'] as AspectRatio[],
-    },
-    performance: {
-      estimatedGenerationTime: 15,
-      quality: 'good',
-    },
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 15, quality: 'good' },
   },
 } as const;
 
@@ -448,6 +327,18 @@ export function getImageToVideoModelId(
   return IMAGE_TO_VIDEO_MODELS[modelKey].id;
 }
 
+function schemaOf(modelKey: ImageToVideoModel) {
+  return MOTION_INPUT_SCHEMAS[IMAGE_TO_VIDEO_MODELS[modelKey].id];
+}
+
+/** Check if a video model supports audio output.
+ *  Checks the Zod schema for a generate_audio field, respects per-model overrides. */
+export function videoModelSupportsAudio(modelKey: ImageToVideoModel): boolean {
+  const config = IMAGE_TO_VIDEO_MODELS[modelKey];
+  if ('supportsAudio' in config) return config.supportsAudio;
+  return 'generate_audio' in schemaOf(modelKey).shape;
+}
+
 /**
  * Runtime validation: Check if a string is a valid TextToImageModel key
  * @param value - String value to validate
@@ -527,10 +418,11 @@ export function isModelCompatibleWithAspectRatio(
   model: ImageToVideoModel,
   aspectRatio: AspectRatio
 ): boolean {
-  const config = IMAGE_TO_VIDEO_MODELS[model];
-  const supported = config.capabilities.supportedAspectRatios;
-  // If supportedAspectRatios is not defined, assume all are supported
-  return !supported || supported.includes(aspectRatio);
+  const schema = schemaOf(model);
+  if (!('aspect_ratio' in schema.shape)) return true;
+  return z
+    .object({ aspect_ratio: schema.shape.aspect_ratio })
+    .safeParse({ aspect_ratio: aspectRatio }).success;
 }
 
 /**

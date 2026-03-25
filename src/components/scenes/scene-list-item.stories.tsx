@@ -41,7 +41,11 @@ const mockFrame: Frame = {
       extract:
         'INT. COFFEE SHOP - MORNING\n\nSARAH sits at a corner table, typing furiously on her laptop. Steam rises from her untouched latte.',
       dialogue: [
-        { character: 'SARAH', line: 'This deadline is going to kill me.' },
+        {
+          character: 'SARAH',
+          line: 'This deadline is going to kill me.',
+          tone: '',
+        },
       ],
     },
     metadata: {

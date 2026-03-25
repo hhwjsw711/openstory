@@ -17,7 +17,6 @@ import {
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import type { ScopedDb } from '@/lib/db/scoped';
-import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { chat } from '@tanstack/ai';
@@ -78,20 +77,12 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
         );
       }
 
-      const { prompt, messages } = await getChatPrompt(
+      const { messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      const promptReference: PromptReference | undefined = prompt
-        ? {
-            name: prompt.name,
-            version: prompt.version,
-            isFallback: prompt.isFallback,
-          }
-        : undefined;
-
-      return { messages, promptReference };
+      return { messages, promptReference: undefined };
     }
   );
 
@@ -233,20 +224,12 @@ export async function durableStreamingSceneSplit<TInput>(
         );
       }
 
-      const { prompt, messages } = await getChatPrompt(
+      const { messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      const promptReference: PromptReference | undefined = prompt
-        ? {
-            name: prompt.name,
-            version: prompt.version,
-            isFallback: prompt.isFallback,
-          }
-        : undefined;
-
-      return { messages, promptReference };
+      return { messages, promptReference: undefined };
     }
   );
 

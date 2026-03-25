@@ -477,7 +477,7 @@ export const ScriptView: FC<{
                 if (canUndoEnhance) setEnhance('canUndoEnhance', false);
               }}
               maxLength={50000}
-              placeholder="A one-liner or website URL is all you need — click Enhance Script to do the rest.\nOr paste a full screenplay and generate directly."
+              placeholder="A one-liner or website URL is all you need — click Enhance Script to do the rest. Or paste a full screenplay and generate directly."
               disabled={loading}
               showCharacterCount={false}
             />

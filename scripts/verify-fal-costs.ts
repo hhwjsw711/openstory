@@ -28,9 +28,11 @@ import {
   IMAGE_MODELS,
   IMAGE_TO_VIDEO_MODELS,
   type AudioModel,
-  type ImageToVideoModel,
   type TextToImageModel,
+  videoModelSupportsAudio,
 } from '@/lib/ai/models';
+import { buildModelInput } from '@/lib/motion/build-model-input';
+import { snapDuration } from '@/lib/motion/motion-generation';
 import { typedEntries } from '@/lib/utils/typed-object';
 import { createFalClient } from '@fal-ai/client';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
@@ -269,83 +271,6 @@ function buildImageTasks(): Task[] {
 // Video tasks — shortest + longest supported duration
 // ============================================================================
 
-function buildVideoInput(
-  _modelKey: ImageToVideoModel,
-  config: (typeof IMAGE_TO_VIDEO_MODELS)[ImageToVideoModel],
-  durationSeconds: number,
-  imageUrl: string
-): Record<string, unknown> {
-  const caps = config.capabilities;
-  const imageUrlParam =
-    'imageUrlParamName' in caps ? caps.imageUrlParamName : 'image_url';
-  const base = { prompt: TEST_VIDEO_PROMPT, [imageUrlParam]: imageUrl };
-
-  switch (config.provider) {
-    case 'kling':
-      return {
-        ...base,
-        duration: String(durationSeconds),
-        cfg_scale: 0.5,
-        negative_prompt: 'blur, distort, and low quality',
-        generate_audio: caps.supportsAudio,
-      };
-    case 'google':
-      return {
-        ...base,
-        duration: `${durationSeconds}s`,
-        aspect_ratio: '16:9',
-        generate_audio: true,
-        resolution: '1080p',
-      };
-    case 'seedance':
-      return {
-        ...base,
-        duration: String(durationSeconds),
-        aspect_ratio: 'auto',
-        resolution: '1080p',
-        seed: 42,
-        enable_safety_checker: true,
-      };
-    case 'openai':
-      return {
-        ...base,
-        duration: durationSeconds,
-        aspect_ratio: 'auto',
-        resolution: '720p',
-      };
-    case 'xai':
-      return {
-        ...base,
-        duration: durationSeconds,
-        resolution: '720p',
-        aspect_ratio: '16:9',
-      };
-    case 'wan':
-      return {
-        ...base,
-        duration: durationSeconds,
-        resolution: '1080p',
-        enable_prompt_expansion: true,
-      };
-    default:
-      return { ...base, duration: durationSeconds };
-  }
-}
-
-function getVideoResolution(provider: string): string | undefined {
-  switch (provider) {
-    case 'google':
-    case 'seedance':
-    case 'wan':
-      return '1080p';
-    case 'openai':
-    case 'xai':
-      return '720p';
-    default:
-      return undefined;
-  }
-}
-
 function buildVideoTasks(imageUrl: string): Task[] {
   const tasks: Task[] = [];
   const seenEndpoints = new Set<string>();
@@ -355,9 +280,8 @@ function buildVideoTasks(imageUrl: string): Task[] {
     if (seenEndpoints.has(config.id)) continue;
     seenEndpoints.add(config.id);
 
-    const durations = config.capabilities.supportedDurations;
-    const shortest = durations[0];
-    const longest = durations[durations.length - 1];
+    const shortest = snapDuration(1, modelKey);
+    const longest = snapDuration(999, modelKey);
 
     const durationVariations =
       shortest === longest
@@ -367,22 +291,33 @@ function buildVideoTasks(imageUrl: string): Task[] {
             { label: `${longest}s`, duration: longest, tier: 'high' as Tier },
           ];
 
-    const resolution = getVideoResolution(config.provider);
-
     for (const { label, duration, tier } of durationVariations) {
+      const input = buildModelInput(
+        {
+          prompt: TEST_VIDEO_PROMPT,
+          imageUrl,
+          duration,
+        },
+        config,
+        modelKey
+      );
+      const resolution =
+        'resolution' in input && typeof input.resolution === 'string'
+          ? input.resolution
+          : undefined;
+
       tasks.push({
         type: 'video',
         modelKey,
         endpointId: config.id,
         variation: label,
         tier,
-        input: buildVideoInput(modelKey, config, duration, imageUrl),
+        input: input as Record<string, unknown>,
         estimatedCost: calculateVideoCost({
           endpointId: config.id,
           durationSeconds: duration,
-          audioEnabled: config.capabilities.supportsAudio,
+          audioEnabled: videoModelSupportsAudio(modelKey),
           resolution,
-          fps: config.capabilities.fpsRange.default,
         }),
       });
     }

@@ -7,7 +7,6 @@
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
@@ -25,7 +24,6 @@ import {
 import { requireCredits } from '@/lib/billing/preflight';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import type { Character } from '@/lib/db/schema';
-import type { Frame } from '@/lib/db/schema/frames';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
@@ -37,20 +35,12 @@ import type {
   MusicWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
+import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { sequenceAccessMiddleware } from './middleware';
 import { buildSceneSummaries } from './sequences';
-
-function resolveMotionPrompt(frame: Frame): string {
-  return (
-    frame.motionPrompt ||
-    frame.metadata?.prompts?.motion?.fullPrompt ||
-    frame.description ||
-    ''
-  );
-}
 
 function getSceneCharacterReferenceImages(
   allCharacters: Character[],
@@ -168,8 +158,8 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
     }
 
     if (failedMotionFrames.length > 0) {
-      const duration =
-        IMAGE_TO_VIDEO_MODELS[videoModel].capabilities.defaultDuration;
+      const { snapDuration } = await import('@/lib/motion/motion-generation');
+      const duration = snapDuration(undefined, videoModel);
       totalCost = addMicros(
         totalCost,
         multiplyMicros(
@@ -240,7 +230,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           frameId: frame.id,
           sequenceId: sequence.id,
           imageUrl: frame.thumbnailUrl,
-          prompt: resolveMotionPrompt(frame),
+          prompt: resolveMotionPrompt(frame, videoModel),
           model: videoModel,
           aspectRatio: sequence.aspectRatio,
         };
