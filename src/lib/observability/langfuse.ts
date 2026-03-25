@@ -17,6 +17,12 @@ export function isLangfuseEnabled(): boolean {
   return !!env.LANGFUSE_PUBLIC_KEY && !!env.LANGFUSE_SECRET_KEY;
 }
 
+/** Whether Langfuse prompt management is enabled (fetch prompts from Langfuse API). */
+export function isLangfusePromptsEnabled(): boolean {
+  const env = getEnv();
+  return isLangfuseEnabled() && env.LANGFUSE_PROMPTS_ENABLED === 'true';
+}
+
 /**
  * Initialize Langfuse tracing.
  * Call once at module load before any traced operations.
