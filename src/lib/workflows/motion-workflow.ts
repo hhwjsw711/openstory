@@ -90,8 +90,10 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
         aspectRatio: input.aspectRatio,
       });
 
-      // Check if team has enough credits
-      if (cost > 0 && !job.usedOwnKey) {
+      // Check if team has enough credits (resolve BYOK status before job submission)
+      const falKeyInfo = await scopedDb.apiKeys.resolveKey('fal');
+      const usedOwnKey = falKeyInfo.source === 'team';
+      if (cost > 0 && !usedOwnKey) {
         const canAfford = await scopedDb.billing.hasEnoughCredits(cost);
         if (!canAfford) {
           console.warn(
