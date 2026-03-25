@@ -16,7 +16,7 @@ export default meta;
 type Story = StoryObj<typeof AspectRatioSelect>;
 
 export const Default: Story = {
-  render: () => {
+  render: function RenderDefault() {
     const [value, setValue] = useState<AspectRatio | undefined>();
     return (
       <AspectRatioSelect
@@ -29,35 +29,35 @@ export const Default: Story = {
 };
 
 export const Selected: Story = {
-  render: () => {
+  render: function RenderSelected() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return <AspectRatioSelect value={value} onChange={setValue} />;
   },
 };
 
 export const Disabled: Story = {
-  render: () => {
+  render: function RenderDisabled() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return <AspectRatioSelect value={value} onChange={setValue} disabled />;
   },
 };
 
 export const SmallSize: Story = {
-  render: () => {
+  render: function RenderSmallSize() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return <AspectRatioSelect value={value} onChange={setValue} size="sm" />;
   },
 };
 
 export const LargeSize: Story = {
-  render: () => {
+  render: function RenderLargeSize() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return <AspectRatioSelect value={value} onChange={setValue} size="lg" />;
   },
 };
 
 export const SizeComparison: Story = {
-  render: () => {
+  render: function RenderSizeComparison() {
     const [valueSm, setValueSm] = useState<AspectRatio>('16:9');
     const [valueDefault, setValueDefault] = useState<AspectRatio>('9:16');
     const [valueLg, setValueLg] = useState<AspectRatio>('1:1');
@@ -86,7 +86,7 @@ export const SizeComparison: Story = {
 };
 
 export const Vertical: Story = {
-  render: () => {
+  render: function RenderVertical() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return (
       <AspectRatioSelect value={value} onChange={setValue} variant="vertical" />
@@ -95,7 +95,7 @@ export const Vertical: Story = {
 };
 
 export const VerticalSmall: Story = {
-  render: () => {
+  render: function RenderVerticalSmall() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return (
       <AspectRatioSelect
@@ -109,7 +109,7 @@ export const VerticalSmall: Story = {
 };
 
 export const VerticalLarge: Story = {
-  render: () => {
+  render: function RenderVerticalLarge() {
     const [value, setValue] = useState<AspectRatio>('16:9');
     return (
       <AspectRatioSelect
@@ -123,7 +123,7 @@ export const VerticalLarge: Story = {
 };
 
 export const VariantComparison: Story = {
-  render: () => {
+  render: function RenderVariantComparison() {
     const [valueHorizontal, setValueHorizontal] = useState<AspectRatio>('16:9');
     const [valueVertical, setValueVertical] = useState<AspectRatio>('9:16');
 
@@ -155,7 +155,7 @@ export const VariantComparison: Story = {
 };
 
 export const Interactive: Story = {
-  render: () => {
+  render: function RenderInteractive() {
     const [selectedRatio, setSelectedRatio] = useState<AspectRatio | undefined>(
       '16:9'
     );

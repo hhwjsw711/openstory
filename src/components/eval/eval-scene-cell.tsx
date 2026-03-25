@@ -85,8 +85,9 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
 
     return (
       <>
-        <div
-          className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden"
+        <button
+          type="button"
+          className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden w-full text-left appearance-none bg-transparent"
           onClick={handleClick}
         >
           <div className="flex-1 flex items-center min-h-0">
@@ -99,7 +100,7 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
               height={1000}
             />
           </div>
-        </div>
+        </button>
         <EvalCellDialog
           open={dialogOpen}
           onOpenChange={onDialogOpenChange}
@@ -128,8 +129,9 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
 
     return (
       <>
-        <div
-          className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden"
+        <button
+          type="button"
+          className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 overflow-hidden w-full text-left appearance-none bg-transparent"
           onClick={handleClick}
         >
           <ScrollArea className="flex-1 w-full min-h-0">
@@ -137,7 +139,7 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
               {script}
             </p>
           </ScrollArea>
-        </div>
+        </button>
         <EvalCellDialog
           open={dialogOpen}
           onOpenChange={onDialogOpenChange}
@@ -165,8 +167,9 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
 
   return (
     <>
-      <div
-        className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0"
+      <button
+        type="button"
+        className="border-b p-2 cursor-pointer hover:bg-muted/50 transition-colors h-full flex flex-col min-h-0 w-full text-left appearance-none bg-transparent"
         onClick={handleClick}
       >
         <ScrollArea className="flex-1 w-full min-h-0">
@@ -174,7 +177,7 @@ export const EvalSceneCell: React.FC<EvalSceneCellProps> = ({
             {prompt}
           </p>
         </ScrollArea>
-      </div>
+      </button>
       <EvalCellDialog
         open={dialogOpen}
         onOpenChange={onDialogOpenChange}

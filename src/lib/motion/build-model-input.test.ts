@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test';
-import { IMAGE_TO_VIDEO_MODELS, type ImageToVideoModel } from '../ai/models';
+import {
+  IMAGE_TO_VIDEO_MODELS,
+  safeImageToVideoModel,
+  type ImageToVideoModel,
+} from '../ai/models';
 import { buildModelInput } from './build-model-input';
 import type { GenerateMotionOptions } from './motion-generation';
 
@@ -162,10 +166,8 @@ describe('buildModelInput', () => {
 
   describe('common behavior', () => {
     it('always includes prompt', () => {
-      for (const key of Object.keys(
-        IMAGE_TO_VIDEO_MODELS
-      ) as ImageToVideoModel[]) {
-        const result = build(key);
+      for (const key of Object.keys(IMAGE_TO_VIDEO_MODELS)) {
+        const result = build(safeImageToVideoModel(key));
         expect(result.prompt).toBe(baseOptions.prompt);
       }
     });

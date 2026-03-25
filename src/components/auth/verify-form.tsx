@@ -127,7 +127,8 @@ export function VerifyForm({
               value={otp}
               onChange={setOtp}
               disabled={!hydrated || isPending}
-              autoFocus
+              // oxlint-disable-next-line no-autofocus - autofocus is appropriate for the input-otp component
+              autoFocus={true}
             >
               <InputOTPGroup>
                 <InputOTPSlot index={0} />

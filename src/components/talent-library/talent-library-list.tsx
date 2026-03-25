@@ -26,8 +26,8 @@ export const TalentLibraryList: React.FC<TalentLibraryListProps> = ({
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="overflow-hidden animate-pulse">
+        {[1, 2, 3, 4, 5, 6].map((n) => (
+          <Card key={`skeleton-${n}`} className="overflow-hidden animate-pulse">
             <div className="aspect-square bg-muted" />
             <div className="p-4">
               <div className="h-4 bg-muted rounded w-3/4 mb-2" />

@@ -13,7 +13,6 @@ type ScriptEditorProps = {
   disabled?: boolean;
   showCharacterCount?: boolean;
   loading?: boolean;
-  autoFocus?: boolean;
 };
 
 export const ScriptEditor: React.FC<ScriptEditorProps> = ({
@@ -26,7 +25,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   disabled = false,
   showCharacterCount = true,
   loading = false,
-  autoFocus = false,
 }) => {
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -68,7 +66,6 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
             'min-h-[4lh] flex-1 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain [field-sizing:fixed]',

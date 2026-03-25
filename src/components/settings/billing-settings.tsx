@@ -24,29 +24,29 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  PRESET_TOPUP_AMOUNTS_USD,
-  MIN_TOPUP_AMOUNT_USD,
-} from '@/lib/billing/constants';
+import { Switch } from '@/components/ui/switch';
 import {
   createCheckoutSessionFn,
   getTransactionsFn,
   updateAutoTopUpFn,
 } from '@/functions/billing';
 import {
-  useBillingBalance,
-  BILLING_BALANCE_KEY,
-} from '@/hooks/use-billing-balance';
-import {
   clearBalanceFlash,
   prepareBalanceFlash,
 } from '@/hooks/use-balance-flash';
-import { useShowBalance } from '@/hooks/use-show-balance';
+import {
+  BILLING_BALANCE_KEY,
+  useBillingBalance,
+} from '@/hooks/use-billing-balance';
 import { BILLING_GATE_KEY } from '@/hooks/use-billing-gate';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { LucideIcon } from 'lucide-react';
+import { useShowBalance } from '@/hooks/use-show-balance';
+import {
+  MIN_TOPUP_AMOUNT_USD,
+  PRESET_TOPUP_AMOUNTS_USD,
+} from '@/lib/billing/constants';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   CreditCard,
   DollarSign,
@@ -54,8 +54,8 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type BillingSettingsProps = {
@@ -108,23 +108,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // Clear pending flash marker if checkout was canceled
+  // Handle checkout return — runs once when returning from Stripe with success or canceled params
+  const checkoutHandledRef = useRef(false);
   useEffect(() => {
+    if (checkoutHandledRef.current || (!success && !canceled)) return;
+    checkoutHandledRef.current = true;
+
+    // Clear pending flash marker on cancel
     if (canceled) clearBalanceFlash();
-  }, [canceled]);
 
-  // Clear success/canceled from URL after showing
-  useEffect(() => {
-    if (success || canceled) {
-      const timer = setTimeout(() => {
-        window.history.replaceState({}, '', '/credits');
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, canceled]);
-
-  // Refetch balance on success + show return toast
-  useEffect(() => {
+    // Refetch balance + show return toast on success
     if (success) {
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],
@@ -149,7 +142,13 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         });
       }
     }
-  }, [success, queryClient, navigate]);
+
+    // Clear success/canceled from URL after showing
+    const timer = setTimeout(() => {
+      window.history.replaceState({}, '', '/credits');
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [success, canceled, queryClient, navigate]);
 
   const {
     data: balanceData,

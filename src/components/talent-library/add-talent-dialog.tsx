@@ -99,7 +99,6 @@ export const AddTalentDialog: React.FC<AddTalentDialogProps> = ({
                 name="name"
                 placeholder="Talent name…"
                 autoComplete="off"
-                autoFocus
                 required
               />
             </div>
