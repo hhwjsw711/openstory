@@ -160,9 +160,17 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       sequence.id
     );
     const characterTags = frame.metadata?.continuity?.characterTags ?? [];
-    const referenceImages = getSceneCharacterReferenceImages(
+    const characterReferences = getSceneCharacterReferenceImages(
       allCharacters,
       characterTags
+    );
+
+    const allLocations =
+      await context.scopedDb.sequenceLocations.listWithReferences(sequence.id);
+    const locationReferences = getSceneLocationReferenceImages(
+      allLocations,
+      frame.metadata?.continuity?.environmentTag ?? '',
+      frame.metadata?.metadata?.location ?? ''
     );
 
     const model =
@@ -183,7 +191,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
       numImages: 1,
       frameId: frame.id,
       sequenceId: sequence.id,
-      referenceImages,
+      referenceImages: [...characterReferences, ...locationReferences],
     };
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {
