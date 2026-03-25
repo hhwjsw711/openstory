@@ -33,24 +33,28 @@ export const IMAGE_TO_VIDEO_MODELS = {
     id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
     name: 'Premium Motion (Seedance Pro)',
     provider: 'seedance',
+    maxPromptLength: 4096,
     performance: { estimatedGenerationTime: 12, quality: 'best' },
   },
   veo3: {
     id: 'fal-ai/veo3',
     name: 'Ultra Premium Motion with Audio (Google Veo 3)',
     provider: 'google',
+    maxPromptLength: 20000,
     performance: { estimatedGenerationTime: 25, quality: 'best' },
   },
   veo3_1: {
     id: 'fal-ai/veo3.1/image-to-video',
     name: 'Google Veo 3.1',
     provider: 'google',
+    maxPromptLength: 20000,
     performance: { estimatedGenerationTime: 25, quality: 'best' },
   },
   kling_v2_5_turbo_pro: {
     id: 'fal-ai/kling-video/v2.5-turbo/pro/image-to-video',
     name: 'Kling v2.5 Turbo Pro',
     provider: 'kling',
+    maxPromptLength: 2500,
     performance: { estimatedGenerationTime: 15, quality: 'best' },
   },
   sora_2: {
@@ -58,18 +62,21 @@ export const IMAGE_TO_VIDEO_MODELS = {
     name: 'OpenAI Sora 2',
     provider: 'openai',
     supportsAudio: true, // always generates audio, no toggle in schema
+    maxPromptLength: 5000,
     performance: { estimatedGenerationTime: 30, quality: 'best' },
   },
   kling_o1: {
     id: 'fal-ai/kling-video/o1/image-to-video',
     name: 'Kling O1 (Omni)',
     provider: 'kling',
+    maxPromptLength: 2500,
     performance: { estimatedGenerationTime: 15, quality: 'best' },
   },
   kling_v3_pro: {
     id: 'fal-ai/kling-video/v3/pro/image-to-video',
     name: 'Kling v3 Pro',
     provider: 'kling',
+    maxPromptLength: 2500,
     performance: { estimatedGenerationTime: 20, quality: 'best' },
   },
   kling_v3_pro_no_audio: {
@@ -77,18 +84,21 @@ export const IMAGE_TO_VIDEO_MODELS = {
     name: 'Kling v3 Pro (no Audio)',
     provider: 'kling',
     supportsAudio: false as const, // override — same endpoint as kling_v3_pro but without audio
+    maxPromptLength: 2500,
     performance: { estimatedGenerationTime: 20, quality: 'best' },
   },
   grok_imagine_video: {
     id: 'xai/grok-imagine-video/image-to-video',
     name: 'Grok Imagine Video',
     provider: 'xai',
+    maxPromptLength: 2500,
     performance: { estimatedGenerationTime: 20, quality: 'best' },
   },
   wan_v2_6_flash: {
     id: 'wan/v2.6/image-to-video/flash',
     name: 'Wan 2.6 Flash',
     provider: 'wan',
+    maxPromptLength: 2500,
     performance: { estimatedGenerationTime: 15, quality: 'good' },
   },
 } as const;
