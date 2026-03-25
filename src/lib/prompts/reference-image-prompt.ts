@@ -76,7 +76,7 @@ export function buildReferenceImagePrompt(
     }
 
     const instructionLines: string[] = [];
-    if (characters.length > 0 || locations.length > 0) {
+    if (primary.length > 0 && (characters.length > 0 || locations.length > 0)) {
       instructionLines.push(
         'IMPORTANT: Character and location reference images are for LIKENESS CONSISTENCY ONLY. Do NOT reproduce them as separate panels or subjects. All output panels must depict the scene from the PRIMARY SOURCE image.'
       );
