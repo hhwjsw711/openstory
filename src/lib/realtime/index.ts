@@ -201,7 +201,11 @@ let realtimeInstance: ReturnType<typeof createRealtime> | null = null;
 
 function createRealtime() {
   const redis = getRedis();
-  return new Realtime({ schema: realtimeSchema, redis });
+  return new Realtime({
+    schema: realtimeSchema,
+    redis,
+    history: { maxLength: 200, expireAfterSecs: 3600 },
+  });
 }
 
 /**

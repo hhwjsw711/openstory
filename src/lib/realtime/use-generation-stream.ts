@@ -217,7 +217,7 @@ function mapEventToAction(
  * ```
  */
 export function useGenerationStream(
-  sequenceId?: string,
+  sequenceId: string,
   phaseConfig?: GenerationPhaseConfig
 ) {
   const queryClient = useQueryClient();
@@ -233,9 +233,7 @@ export function useGenerationStream(
       const { event: eventName, data } = event;
 
       // Update TanStack Query cache for data-related events
-      if (sequenceId) {
-        updateQueryCacheFromEvent(queryClient, sequenceId, eventName, data);
-      }
+      updateQueryCacheFromEvent(queryClient, sequenceId, eventName, data);
 
       // Map event to typed action and dispatch
       const action = mapEventToAction(eventName, data);
@@ -246,10 +244,11 @@ export function useGenerationStream(
     [queryClient, sequenceId]
   );
 
-  // Subscribe to realtime events
-  // Only include the channel if sequenceId is defined to avoid invalid subscriptions
+  // Subscribe to realtime events with history replay.
+  // History replays past events on mount so progress persists across navigation.
+  // https://upstash.com/docs/realtime/features/history#subscribe-with-history
   const { status } = useRealtime({
-    channels: sequenceId ? [sequenceId] : [],
+    channels: [sequenceId],
     events: [
       'generation.phase:start',
       'generation.phase:complete',
@@ -269,8 +268,10 @@ export function useGenerationStream(
       'generation.updated',
       'generation.error',
     ] as const,
+    // @ts-expect-error history supported at runtime, not yet in SDK types
+    history: true,
     onData: handleEvent,
-    enabled: !!sequenceId, // Only subscribe if sequenceId is defined
+    enabled: true,
   });
 
   const reset = useCallback(() => {

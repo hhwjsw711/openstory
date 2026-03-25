@@ -28,7 +28,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 type ScenesViewProps = {
-  sequenceId?: string;
+  sequenceId: string;
 };
 
 // Full class names required for Tailwind JIT to detect at build time
@@ -202,12 +202,10 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   );
 
   const handleFullRetry = useCallback(() => {
-    if (!sequenceId) return;
     void navigate({ to: '/sequences/$id/script', params: { id: sequenceId } });
   }, [sequenceId, navigate]);
 
   const handleSmartRetry = useCallback(async () => {
-    if (!sequenceId) return;
     setIsRetrying(true);
     try {
       const result = await smartRetryFn({ data: { sequenceId } });
@@ -243,8 +241,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   // Handler for batch motion generation (server determines eligible frames)
   const handleBatchMotionGeneration = useCallback(
     async (includeMusic: boolean) => {
-      if (!sequenceId) return;
-
       // Optimistic: compute eligible frames locally (same filter as backend)
       const eligibleFrameIds = (frames ?? [])
         .filter(
@@ -375,7 +371,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           </div>
           <SceneScriptPrompts
             frame={selectedFrame}
-            sequenceId={sequenceId ?? ''}
+            sequenceId={sequenceId}
             selectedTab={selectedTab}
             onTabChange={setSelectedTab}
             regeneratingImages={regeneratingImages}
