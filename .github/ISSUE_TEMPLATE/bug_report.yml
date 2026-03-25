@@ -1,61 +1,13 @@
 name: Bug Report
 description: Report a bug or unexpected behavior with OpenStory
-title: '[Bug] '
-labels: ['bug', 'triage']
+type: Bug
 
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Thanks for taking the time to report a bug! Please fill out the information below to help us understand and reproduce the issue.
-
   - type: textarea
     id: description
     attributes:
-      label: Bug Description
-      description: A clear and concise description of what the bug is
-      placeholder: Describe what happened...
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Expected Behavior
-      description: What you expected to happen
-      placeholder: Describe the expected behavior...
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Steps to Reproduce
-      description: Step-by-step instructions to reproduce the bug
-      placeholder: |
-        1. Run `openstory ...`
-        2. Navigate to ...
-        3. Execute ...
-        4. See error
-    validations:
-      required: true
-
-  - type: textarea
-    id: logs
-    attributes:
-      label: Error Logs or Output
-      description: Any relevant error messages, logs, or command output
-      render: shell
-      placeholder: Paste any error messages or relevant output here...
-    validations:
-      required: false
-
-  - type: textarea
-    id: environment
-    attributes:
-      label: Environment Information
-      description: Please provide details about your environment
-      placeholder: |
-        - OS: (e.g., macOS 14.5, Ubuntu 22.04, Windows 11)
+      label: Description
+      description: Describe the bug, what you expected to happen, and how to reproduce it
+      placeholder: Describe what happened…
     validations:
       required: true
