@@ -211,6 +211,10 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
     // Step 3b: Batched polling — tight loop inside each context.run, checkpoint between batches
     let videoUrl = '';
 
+    // Note how this works with workflow
+    // The loop will run from 0 every time, but
+    // the serialized result from context.run will be returned immediately from previous runs,
+    //  so the loop will properly execute pollMotionJob a max of MAX_BATCHES times
     for (let batch = 0; batch < MAX_BATCHES; batch++) {
       if (batch > 0) {
         await context.sleep(`motion-batch-wait-${batch}`, 1);
@@ -247,12 +251,12 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
           // If the job is completed, check the video URL and return the result
           // If the video URL is not returned, throw an error and stop the workflow without retrying
           if (pollResult.status === 'completed') {
-            if (pollResult.videoUrl) {
+            if (pollResult.url) {
               console.log(`[MotionWorkflow] Generation completed`);
               return pollResult;
             } else {
               throw new WorkflowNonRetryableError(
-                `Motion generation failed: ${pollResult.error || 'No video URL returned'}`
+                `Motion generation failed: ${pollResult.error || 'No URL returned'}`
               );
             }
           }
@@ -268,9 +272,10 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
 
         return { status: 'pending' as const };
       });
-
-      if (poll.status === 'completed' && 'videoUrl' in poll && poll.videoUrl) {
-        videoUrl = poll.videoUrl;
+      // Note poll is serialised by the workflow
+      // this loop will run again, but always break as status will be completed
+      if (poll.status === 'completed' && 'url' in poll && poll.url) {
+        videoUrl = poll.url;
         break;
       }
 

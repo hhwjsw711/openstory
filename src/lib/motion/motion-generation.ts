@@ -142,7 +142,7 @@ export async function pollMotionJob(
   jobId: string,
   modelKey: ImageToVideoModel,
   scopedDb?: ScopedDb
-): Promise<MotionPollResult> {
+) {
   const modelConfig = IMAGE_TO_VIDEO_MODELS[modelKey];
 
   // Resolve the API key for the motion generation with BYOK if available
