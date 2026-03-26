@@ -224,12 +224,12 @@ export async function durableStreamingSceneSplit<TInput>(
         );
       }
 
-      const { messages } = await getChatPrompt(
+      const { prompt, messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      return { messages, promptReference: undefined };
+      return { messages, promptReference: prompt };
     }
   );
 

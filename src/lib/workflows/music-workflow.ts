@@ -1,7 +1,6 @@
 import { DEFAULT_MUSIC_MODEL } from '@/lib/ai/models';
-import { DEFAULT_ANALYSIS_MODEL } from '@/lib/ai/models.config';
 import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
-import { generateMusicForScene } from '@/lib/audio/music-generation';
+import { generateMusic } from '@/lib/audio/music-generation';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -12,19 +11,15 @@ import type {
   MergeAudioVideoWorkflowInput,
   MusicWorkflowInput,
 } from '@/lib/workflow/types';
-import { durableLLMCall } from './llm-call-helper';
-import {
-  musicPromptSchema,
-  reinforceInstrumentalTags,
-} from './music-prompt.schema';
 
 export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
   async (context, scopedDb) => {
     const input = context.requestPayload;
+    const { prompt, tags, duration } = input;
 
-    if (!input.prompt && !input.tags && !input.scenes?.length) {
+    if (!prompt || !tags || !duration) {
       throw new WorkflowValidationError(
-        'Either prompt+tags or scenes are required for music generation'
+        'Either prompt+tags+duration are required for music generation'
       );
     }
 
@@ -48,42 +43,11 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
       });
     }
 
-    // Use pre-generated prompt or generate from scenes via LLM
-    let effectivePrompt: string;
-    let effectiveTags: string;
-
-    if (input.prompt && input.tags) {
-      effectivePrompt = input.prompt;
-      effectiveTags = reinforceInstrumentalTags(input.tags);
-    } else {
-      const musicPrompt = await durableLLMCall(
-        context,
-        {
-          name: 'music-prompt-generation',
-          phase: { number: 6, name: 'Composing music…' },
-          promptName: 'phase/music-prompt-generation-chat',
-          promptVariables: {
-            scenes: JSON.stringify(input.scenes),
-          },
-          modelId: DEFAULT_ANALYSIS_MODEL,
-          responseSchema: musicPromptSchema,
-        },
-        {
-          sequenceId,
-          userId: input.userId,
-          scopedDb,
-        }
-      );
-      effectivePrompt = musicPrompt.prompt;
-      // Reinforce instrumental -- ACE-Step sometimes generates vocals despite [inst]
-      effectiveTags = reinforceInstrumentalTags(musicPrompt.tags);
-    }
-
     const audioResult = await context.run('generate-music', async () => {
-      const result = await generateMusicForScene({
-        prompt: effectivePrompt,
-        tags: effectiveTags,
-        duration: input.duration,
+      const result = await generateMusic({
+        prompt,
+        tags,
+        duration,
         instrumental: true,
         model,
         traceName: 'sequence-music',
@@ -165,6 +129,8 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
           }
         );
       });
+
+      // TODO: Tom Mar 2026 - Add a step to generate a music track for each scene
 
       // Check if merged video is also ready -- trigger mux if so
       await context.run('check-mux-trigger', async () => {

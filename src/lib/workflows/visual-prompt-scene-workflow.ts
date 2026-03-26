@@ -12,6 +12,7 @@ import {
   type VisualPromptWithContinuity,
   visualPromptWithContinuitySchema,
 } from '../ai/scene-analysis.schema';
+import { getGenerationChannel } from '../realtime';
 import { durableLLMCall } from './llm-call-helper';
 
 export const visualPromptSceneWorkflow = createScopedWorkflow<
@@ -21,48 +22,22 @@ export const visualPromptSceneWorkflow = createScopedWorkflow<
   async (context, scopedDb) => {
     const input = context.requestPayload;
     const {
-      scenes,
-      sceneIndex,
+      scene,
+      sceneBefore,
+      sceneAfter,
       aspectRatio,
       characterBible,
       locationBible,
       styleConfig,
       analysisModelId,
+      frameId,
+      sequenceId,
     } = input;
 
     console.log(
-      `[VisualPromptSceneWorkflow] Generating visual prompt for scene ${sceneIndex + 1}/${scenes.length}`
+      `[VisualPromptSceneWorkflow] Generating visual prompt for scene ${scene.sceneId}`
     );
 
-    // ============================================================
-    // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
-    // ============================================================
-
-    const { promptVariables, additionalMetadata } = await context.run(
-      'prepare-visual-prompt-generation',
-      async () => {
-        return {
-          promptVariables: {
-            sceneBefore:
-              sceneIndex > 0
-                ? JSON.stringify(scenes[sceneIndex - 1], null, 2)
-                : '(none)',
-            sceneAfter:
-              sceneIndex < scenes.length - 1
-                ? JSON.stringify(scenes[sceneIndex + 1], null, 2)
-                : '(none)',
-            scene: JSON.stringify(scenes[sceneIndex], null, 2),
-            characterBible: JSON.stringify(characterBible, null, 2),
-            locationBible: JSON.stringify(locationBible, null, 2),
-            styleConfig: JSON.stringify(styleConfig, null, 2),
-            aspectRatio,
-          },
-          additionalMetadata: {
-            sceneCount: scenes.length,
-          },
-        };
-      }
-    );
     const result = await durableLLMCall(
       context,
       {
@@ -70,12 +45,26 @@ export const visualPromptSceneWorkflow = createScopedWorkflow<
         phase: { number: 3, name: 'Writing image prompts…' },
 
         promptName: 'phase/visual-prompt-scene-generation-chat',
-        promptVariables,
+        promptVariables: {
+          sceneBefore: sceneBefore
+            ? JSON.stringify(sceneBefore, null, 2)
+            : '(none)',
+          sceneAfter: sceneAfter
+            ? JSON.stringify(sceneAfter, null, 2)
+            : '(none)',
+          scene: JSON.stringify(scene, null, 2),
+          characterBible: JSON.stringify(characterBible, null, 2),
+          locationBible: JSON.stringify(locationBible, null, 2),
+          styleConfig: JSON.stringify(styleConfig, null, 2),
+          aspectRatio,
+        },
 
         modelId: analysisModelId,
         responseSchema: visualPromptWithContinuitySchema,
 
-        additionalMetadata,
+        additionalMetadata: {
+          frameId,
+        },
       },
       {
         // Note: don't include sequenceId as it causes the durable call to emit a generation.phase:start event
@@ -83,7 +72,24 @@ export const visualPromptSceneWorkflow = createScopedWorkflow<
       }
     );
 
-    return { sceneId: scenes[sceneIndex].sceneId, ...result };
+    if (sequenceId && frameId) {
+      await context.run('save-visual-prompt-to-db', async () => {
+        await scopedDb.frames.update(frameId, {
+          metadata: scene,
+          imagePrompt: scene.prompts?.visual?.fullPrompt,
+        });
+        await getGenerationChannel(sequenceId).emit(
+          'generation.frame:updated',
+          {
+            frameId,
+            updateType: 'visual-prompt',
+            metadata: scene,
+          }
+        );
+      });
+    }
+
+    return { sceneId: scene.sceneId, ...result };
   },
   {
     failureFunction: async ({ context, failStatus, failResponse }) => {

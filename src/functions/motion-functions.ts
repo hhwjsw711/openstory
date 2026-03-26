@@ -8,10 +8,10 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
 import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
-import { snapDuration } from '@/lib/motion/motion-generation';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
 import { multiplyMicros, usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
+import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -24,7 +24,6 @@ import type {
 import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 
 import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
-import { buildSceneSummaries } from './sequences';
 
 // -- Generate Motion for Frame -------------------------------------------
 
@@ -197,11 +196,14 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
         sequenceId: sequence.id,
         duration: totalDuration || 30,
       };
-
-      const musicInput: MusicWorkflowInput =
-        effectivePrompt && effectiveTags
-          ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
-          : { ...baseInput, scenes: buildSceneSummaries(allFrames) };
+      if (!effectivePrompt || !effectiveTags) {
+        throw new Error('No music prompt or tags found');
+      }
+      const musicInput: MusicWorkflowInput = {
+        ...baseInput,
+        prompt: effectivePrompt,
+        tags: effectiveTags,
+      };
 
       try {
         await triggerWorkflow('/music', musicInput);

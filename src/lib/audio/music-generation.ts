@@ -1,5 +1,5 @@
+import { getEnv } from '#env';
 import { calculateAudioCost } from '@/lib/ai/fal-cost';
-import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   AUDIO_MODEL_KEYS,
   AUDIO_MODELS,
@@ -7,11 +7,11 @@ import {
   type AudioModel,
   type AudioModelConfig,
 } from '@/lib/ai/models';
+import { microsToUsd, type Microdollars } from '@/lib/billing/money';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { createFalClient } from '@fal-ai/client';
-import { getEnv } from '#env';
 import { startObservation } from '@langfuse/tracing';
 import { z } from 'zod';
-import type { ScopedDb } from '@/lib/db/scoped';
 
 export const generateMusicOptionsSchema = z.object({
   prompt: z.string().min(1),
@@ -137,7 +137,7 @@ function extractAudioUrl(data: unknown): string | undefined {
 /**
  * Generate music/audio using Fal.ai with queue-based status tracking.
  */
-export async function generateMusicForScene(
+export async function generateMusic(
   options: GenerateMusicOptions
 ): Promise<MusicResult> {
   const modelKey = options.model || DEFAULT_MUSIC_MODEL;

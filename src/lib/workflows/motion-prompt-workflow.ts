@@ -5,15 +5,14 @@
  * Uses three-step durable pattern: prepare → context.call → log
  */
 
-import type { Scene } from '@/lib/ai/scene-analysis.schema';
-import { WorkflowValidationError } from '@/lib/workflow/errors';
+import type { MotionPrompt } from '@/lib/ai/scene-analysis.schema';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { MotionPromptWorkflowInput } from '@/lib/workflow/types';
 import { motionPromptSceneWorkflow } from './motion-prompt-scene-workflow';
 
 export const motionPromptWorkflow = createScopedWorkflow<
   MotionPromptWorkflowInput,
-  Scene[]
+  { sceneId: string; motionPrompt: MotionPrompt }[]
 >(
   async (context, _scopedDb) => {
     const input = context.requestPayload;
@@ -21,8 +20,10 @@ export const motionPromptWorkflow = createScopedWorkflow<
       scenes,
       aspectRatio,
       characterBible,
+      locationBible,
       styleConfig,
       analysisModelId,
+      frameMapping,
     } = input;
 
     console.log(
@@ -32,53 +33,41 @@ export const motionPromptWorkflow = createScopedWorkflow<
     // PHASE 3: Motion Prompt Generation (using durableLLMCall helper)
     // ============================================================
     const motionPromptResults = await Promise.all(
-      scenes.map(
-        async (_scene, sceneIndex) =>
-          await context.invoke('motion-prompt-scene', {
-            workflow: motionPromptSceneWorkflow,
-            body: {
-              scenes,
-              sceneIndex: sceneIndex,
-              aspectRatio,
-              characterBible,
-              styleConfig,
-              analysisModelId,
-              teamId: input.teamId,
-              userId: input.userId,
-              sequenceId: input.sequenceId,
-            },
-          })
-      )
+      scenes.map(async (scene, sceneIndex) => {
+        const sceneBefore = sceneIndex > 0 ? scenes[sceneIndex - 1] : undefined;
+        const sceneAfter =
+          sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : undefined;
+
+        return await context.invoke('motion-prompt-scene', {
+          workflow: motionPromptSceneWorkflow,
+          body: {
+            scene,
+            sceneBefore,
+            sceneAfter,
+            aspectRatio,
+            characterBible,
+            locationBible,
+            styleConfig,
+            analysisModelId,
+            teamId: input.teamId,
+            userId: input.userId,
+            sequenceId: input.sequenceId,
+            frameId: frameMapping?.find((f) => f.sceneId === scene.sceneId)
+              ?.frameId,
+          },
+        });
+      })
     );
 
-    // Merge in the response
-    const { scenes: scenesWithMotionPrompts } = await context.run(
-      'merge-motion-prompts',
-      async () => {
-        return {
-          scenes: scenes.map((scene) => {
-            const enrichment = motionPromptResults.find(
-              (s) => s.body.sceneId === scene.sceneId
-            );
-            if (!enrichment) {
-              throw new WorkflowValidationError(
-                `Scene ID mismatch in motion prompts: expected "${scene.sceneId}" but AI returned [${motionPromptResults.map((s) => s.body.sceneId).join(', ')}]. ` +
-                  `Input had [${scenes.map((s) => s.sceneId).join(', ')}].`
-              );
-            }
-            return {
-              ...scene,
-              prompts: {
-                ...scene.prompts,
-                motion: enrichment.body.motionPrompt,
-              },
-            };
-          }),
-        };
-      }
-    );
+    return motionPromptResults.map((result) => {
+      if (result.isFailed || result.isCanceled)
+        throw new Error('Motion prompt generation failed');
 
-    return scenesWithMotionPrompts;
+      return {
+        sceneId: result.body.sceneId,
+        motionPrompt: result.body.motionPrompt,
+      };
+    });
   },
   {
     failureFunction: async () => {

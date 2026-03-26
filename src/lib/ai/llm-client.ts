@@ -4,10 +4,14 @@
  */
 
 import type { TextModel } from '@/lib/ai/models';
-import type { ChatMessage } from '@/lib/prompts';
+import { getChatPrompt, type ChatMessage } from '@/lib/prompts';
 import { chat } from '@tanstack/ai';
 import { z } from 'zod';
+import { ZERO_MICROS } from '../billing/money';
+import { deductWorkflowCredits } from '../billing/workflow-deduction';
+import type { ScopedDb } from '../db/scoped';
 import { createAdapter } from './create-adapter';
+import { getContextWindow } from './models.config';
 
 type StreamChunk = {
   delta: string;
@@ -218,4 +222,99 @@ export async function* callLLMStream(
   }
 
   yield { delta: '', accumulated, done: true };
+}
+
+export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
+  name: string;
+  promptName: string;
+  promptVariables?: Record<string, string>;
+  modelId: TextModel;
+  responseSchema: TSchema;
+  additionalMetadata?: Record<string, unknown>;
+};
+
+/**
+ * Execute a durable LLM call with the standard 3-step pattern:
+ * 1. Prepare: Fetch prompt from Langfuse, emit phase start
+ * 2. Call: LLM call via context.run() + @tanstack/ai-openrouter
+ * 3. Log & Process: Log to Langfuse, parse response, emit phase complete
+ *
+ * Uses context.run() instead of context.api.openai.call() to avoid
+ * passing API keys in headers that get stored in Upstash logs.
+ */
+export async function callChat<TSchema extends z.ZodType>(
+  config: DurableLLMCallConfig<TSchema>,
+  scopedDb: ScopedDb
+): Promise<z.infer<TSchema>> {
+  const { name, modelId, promptName, promptVariables, responseSchema } = config;
+  const logTags = [name, promptName, 'analysis'];
+  const logMetadata = {
+    name,
+    modelId,
+    promptName,
+    promptVariables,
+    ...config.additionalMetadata,
+  };
+
+  // Step 1: Prepare -- fetch prompt and emit phase start
+  // Prompt is the Langfuse prompt reference, messages is the compiled messages
+  const { prompt, messages } = await getChatPrompt(promptName, promptVariables);
+
+  // Step 2: Durable LLM call (QStash retries step delivery on failure)
+  // Determine the API key to use
+  const openRouterApiKeyInfo = await scopedDb.apiKeys.resolveKey('openrouter');
+  // Create the adapter using the API key
+  const adapter = createAdapter(modelId, openRouterApiKeyInfo.key);
+
+  console.log(`[LLM:${name}] Starting call`, {
+    model: modelId,
+    keySource: openRouterApiKeyInfo.source,
+    messageCount: messages.length,
+  });
+
+  const systemPrompts: string[] = [];
+  const chatMessages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }> = [];
+
+  for (const msg of messages) {
+    if (msg.role === 'system') {
+      systemPrompts.push(msg.content);
+    } else {
+      chatMessages.push({ role: msg.role, content: msg.content });
+    }
+  }
+
+  const jsonResponse: z.infer<TSchema> = await chat({
+    adapter,
+    messages: chatMessages,
+    systemPrompts,
+    stream: false,
+    maxTokens: Math.floor(getContextWindow(config.modelId) * 0.5),
+    metadata: {
+      observationName: promptName,
+      prompt,
+      tags: logTags,
+      metadata: logMetadata,
+    },
+    outputSchema: responseSchema,
+  });
+
+  console.log(`[LLM:${name}] Call succeeded`);
+
+  // Deduct LLM credits (cost tracked via Langfuse; adapter doesn't expose per-call usage)
+  // TODO: Add cost calculation
+  await deductWorkflowCredits({
+    scopedDb: scopedDb,
+    costMicros: ZERO_MICROS,
+    usedOwnKey: openRouterApiKeyInfo.source === 'team',
+    description: `LLM analysis (${modelId})`,
+    metadata: {
+      model: modelId,
+      stepName: name,
+    },
+  });
+
+  return jsonResponse;
 }

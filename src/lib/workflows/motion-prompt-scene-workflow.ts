@@ -20,16 +20,20 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
   async (context, scopedDb) => {
     const input = context.requestPayload;
     const {
-      scenes,
-      sceneIndex,
+      scene,
+      sceneBefore,
+      sceneAfter,
       aspectRatio,
       characterBible,
+      locationBible,
       styleConfig,
       analysisModelId,
+      sequenceId,
+      frameId,
     } = input;
 
     console.log(
-      `[MotionPromptSceneWorkflow] Generating motion prompt for scene ${sceneIndex + 1}/${scenes.length}`
+      `[MotionPromptSceneWorkflow] Generating motion prompt for scene ${scene.sceneId}`
     );
 
     // ============================================================
@@ -41,21 +45,20 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
       async () => {
         return {
           promptVariables: {
-            sceneBefore:
-              sceneIndex > 0
-                ? JSON.stringify(scenes[sceneIndex - 1], null, 2)
-                : '(none)',
-            sceneAfter:
-              sceneIndex < scenes.length - 1
-                ? JSON.stringify(scenes[sceneIndex + 1], null, 2)
-                : '(none)',
-            scene: JSON.stringify(scenes[sceneIndex], null, 2),
+            sceneBefore: sceneBefore
+              ? JSON.stringify(sceneBefore, null, 2)
+              : '(none)',
+            sceneAfter: sceneAfter
+              ? JSON.stringify(sceneAfter, null, 2)
+              : '(none)',
+            scene: JSON.stringify(scene, null, 2),
             characterBible: JSON.stringify(characterBible, null, 2),
+            locationBible: JSON.stringify(locationBible, null, 2),
             styleConfig: JSON.stringify(styleConfig, null, 2),
             aspectRatio,
           },
           additionalMetadata: {
-            sceneCount: scenes.length,
+            frameId,
           },
         };
       }
@@ -80,7 +83,15 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
       }
     );
 
-    return { sceneId: scenes[sceneIndex].sceneId, motionPrompt };
+    if (sequenceId && frameId) {
+      await context.run('save-motion-prompt-to-db', async () => {
+        await scopedDb.frames.update(frameId, {
+          metadata: scene,
+          motionPrompt: motionPrompt.fullPrompt,
+        });
+      });
+    }
+    return { sceneId: scene.sceneId, motionPrompt };
   },
   {
     failureFunction: async () => {

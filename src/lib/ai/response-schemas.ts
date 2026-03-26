@@ -5,6 +5,7 @@
  * All derive from the canonical scene-analysis.schema.ts definitions.
  */
 
+import { z } from 'zod';
 import {
   continuitySchema,
   locationBibleEntrySchema,
@@ -15,7 +16,6 @@ import {
   sceneSchema,
   visualPromptSchema,
 } from './scene-analysis.schema';
-import { z } from 'zod';
 
 /**
  * Talent Matching Response
@@ -153,6 +153,18 @@ export const motionPromptGenerationResultSchema = z.object({
         })
     )
     .meta({ description: 'Array of scenes with motion prompts' }),
+});
+
+/**
+ * Music Prompt Generation Response
+ */
+export const musicPromptSchema = z.object({
+  tags: z
+    .string()
+    .describe('Comma-separated genre/style tags for ACE-Step (20-50 words)'),
+  prompt: z
+    .string()
+    .describe('Descriptive music prompt as fallback for non-tag models'),
 });
 
 /**
