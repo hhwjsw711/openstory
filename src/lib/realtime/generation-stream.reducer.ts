@@ -51,7 +51,7 @@ export type GenerationPhase = {
 };
 
 export type GenerationStreamState = {
-  /** Current generation phase (1-7) */
+  /** Current generation phase (1-5) */
   currentPhase: number;
   /** All phases with their status */
   phases: GenerationPhase[];
@@ -105,12 +105,10 @@ export type GenerationStreamAction =
   | { type: 'RESET' };
 
 const PHASES = [
-  { name: 'Analyzing script…', shortName: 'Script' },
-  { name: 'Casting characters & locations…', shortName: 'Casting' },
-  { name: 'Generating references & prompts…', shortName: 'Visual Prompts' },
-  { name: 'Generating images…', shortName: 'Images' },
-  { name: 'Writing motion prompts…', shortName: 'Motion Prompts' },
-  { name: 'Composing music…', shortName: 'Music Prompts' },
+  { name: 'Analyzing script\u2026', shortName: 'Script' },
+  { name: 'Casting characters & locations\u2026', shortName: 'Casting' },
+  { name: 'Generating references & prompts\u2026', shortName: 'References' },
+  { name: 'Generating images\u2026', shortName: 'Images' },
 ] as const;
 
 export type GenerationPhaseConfig = {
@@ -118,37 +116,39 @@ export type GenerationPhaseConfig = {
   autoGenerateMusic: boolean;
 };
 
-function getPhase7Label(config: GenerationPhaseConfig): {
+function getPhase5Label(config: GenerationPhaseConfig): {
   name: string;
   shortName: string;
 } {
   const { autoGenerateMotion, autoGenerateMusic } = config;
   if (autoGenerateMotion && autoGenerateMusic) {
-    return { name: 'Generating motion & music…', shortName: 'Music & Motion' };
+    return {
+      name: 'Generating motion & music\u2026',
+      shortName: 'Music & Motion',
+    };
   }
   if (autoGenerateMotion) {
-    return { name: 'Generating motion…', shortName: 'Motion' };
+    return { name: 'Generating motion\u2026', shortName: 'Motion' };
   }
-  return { name: 'Generating music…', shortName: 'Music' };
+  return { name: 'Generating music\u2026', shortName: 'Music' };
 }
 
 export function createInitialState(
   config?: GenerationPhaseConfig
 ): GenerationStreamState {
-  const includePhase7 = config?.autoGenerateMotion || config?.autoGenerateMusic;
-  const basePhaseDefs = PHASES;
+  const includePhase5 = config?.autoGenerateMotion || config?.autoGenerateMusic;
 
-  const phases: GenerationPhase[] = basePhaseDefs.map((p, i) => ({
+  const phases: GenerationPhase[] = PHASES.map((p, i) => ({
     phase: i + 1,
     phaseName: p.name,
     shortName: p.shortName,
     status: 'pending' as const,
   }));
 
-  if (includePhase7 && config) {
-    const label = getPhase7Label(config);
+  if (includePhase5 && config) {
+    const label = getPhase5Label(config);
     phases.push({
-      phase: 7,
+      phase: 5,
       phaseName: label.name,
       shortName: label.shortName,
       status: 'pending',

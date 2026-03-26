@@ -78,7 +78,7 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
         additionalMetadata,
       },
       {
-        // Note: don't include sequenceId as it causes the durable call to emit a generation.phase:start event
+        sequenceId,
         scopedDb,
       }
     );

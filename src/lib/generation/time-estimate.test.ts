@@ -31,9 +31,9 @@ describe('estimateSceneCount', () => {
 describe('estimateTotalSeconds', () => {
   test('returns reasonable total for any scene count', () => {
     const total = estimateTotalSeconds(6);
-    // All phases run in parallel so total is flat (~13min without phase 7)
-    expect(total).toBeGreaterThan(600);
-    expect(total).toBeLessThan(1200);
+    // Phases 1-4 with parallel execution (~3-4min without phase 5)
+    expect(total).toBeGreaterThan(150);
+    expect(total).toBeLessThan(400);
   });
 
   test('uses default scene count for 0', () => {
@@ -69,7 +69,7 @@ describe('estimateRemainingSeconds', () => {
   test('never returns negative', () => {
     const result = estimateRemainingSeconds({
       sceneCount: 6,
-      completedPhases: [1, 2, 3, 4, 5, 6, 7],
+      completedPhases: [1, 2, 3, 4, 5],
       elapsedSeconds: 9999,
     });
 
@@ -79,7 +79,7 @@ describe('estimateRemainingSeconds', () => {
   test('returns 0 when all phases completed', () => {
     const result = estimateRemainingSeconds({
       sceneCount: 1,
-      completedPhases: [1, 2, 3, 4, 5, 6, 7],
+      completedPhases: [1, 2, 3, 4, 5],
       elapsedSeconds: 0,
     });
 

@@ -8,7 +8,6 @@
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
-import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
@@ -66,13 +65,6 @@ export const frameImagesWorkflow = createScopedWorkflow<
         ),
       })
     );
-
-    await context.run('frame-images-start', async () => {
-      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-        phase: 4,
-        phaseName: 'Generating images\u2026',
-      });
-    });
 
     const imageSize = aspectRatioToImageSize(aspectRatio);
 
@@ -152,20 +144,7 @@ export const frameImagesWorkflow = createScopedWorkflow<
     return { imageUrls };
   },
   {
-    failureFunction: async ({ context }) => {
-      const { sequenceId } = context.requestPayload;
-      if (sequenceId) {
-        try {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.phase:complete',
-            {
-              phase: 4,
-            }
-          );
-        } catch {
-          // Ignore emit errors
-        }
-      }
+    failureFunction: async () => {
       return 'Frame image generation failed';
     },
   }

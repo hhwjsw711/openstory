@@ -66,17 +66,10 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     ...config.additionalMetadata,
   };
 
-  // Step 1: Prepare -- fetch prompt and emit phase start
+  // Step 1: Prepare -- fetch prompt
   const { messages, promptReference } = await context.run(
     `prepare-${name}`,
     async () => {
-      if (callContext.sequenceId) {
-        await getGenerationChannel(callContext.sequenceId).emit(
-          'generation.phase:start',
-          { phase: phase.number, phaseName: phase.name }
-        );
-      }
-
       const { messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
@@ -158,16 +151,6 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     });
   }
 
-  // Step 3: Emit phase complete
-  await context.run(`log-${name}`, async () => {
-    if (callContext.sequenceId) {
-      await getGenerationChannel(callContext.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: phase.number }
-      );
-    }
-  });
-
   return jsonResponse;
 }
 
@@ -213,17 +196,10 @@ export async function durableStreamingSceneSplit<TInput>(
   const logTags = [name, `phase-${phase.number}`, 'analysis'];
   const logMetadata = { phase: phase.number, phaseName: phase.name };
 
-  // Step 1: Prepare — fetch prompt and emit phase start
+  // Step 1: Prepare — fetch prompt
   const { messages, promptReference } = await context.run(
     'prepare-scene-splitting',
     async () => {
-      if (callContext.sequenceId) {
-        await getGenerationChannel(callContext.sequenceId).emit(
-          'generation.phase:start',
-          { phase: phase.number, phaseName: phase.name }
-        );
-      }
-
       const { prompt, messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
@@ -487,15 +463,6 @@ export async function durableStreamingSceneSplit<TInput>(
       });
     });
   }
-
-  await context.run('log-scene-splitting', async () => {
-    if (callContext.sequenceId) {
-      await getGenerationChannel(callContext.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: phase.number }
-      );
-    }
-  });
 
   return { scenes, title, frameMapping };
 }

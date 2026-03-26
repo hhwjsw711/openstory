@@ -8,7 +8,6 @@
 import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { snapDuration } from '@/lib/motion/motion-generation';
-import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
@@ -148,18 +147,7 @@ export const motionMusicPromptsWorkflow = createScopedWorkflow<
     };
   },
   {
-    failureFunction: async ({ context }) => {
-      const { sequenceId } = context.requestPayload;
-      if (sequenceId) {
-        try {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.phase:complete',
-            { phase: 5 }
-          );
-        } catch {
-          // Ignore emit errors
-        }
-      }
+    failureFunction: async () => {
       return 'Motion/music prompt generation failed';
     },
   }

@@ -67,6 +67,14 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       scopedDb,
     };
 
+    // Phase 1 START
+    await context.run('phase-1-start', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 1,
+        phaseName: 'Analyzing script\u2026',
+      });
+    });
+
     // @TODO: TB Mar 26 2026: Look at making this into a separate workflow
     const { scenes, frameMapping } = await durableStreamingSceneSplit(
       context,
@@ -83,6 +91,14 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       },
       llmCallContext
     );
+
+    // Phase 2 START
+    await context.run('phase-2-start', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 2,
+        phaseName: 'Casting characters & locations\u2026',
+      });
+    });
 
     // Phase 2: Talent + location matching in parallel
     const [characterMatchingResult, locationMatchingResult] = await Promise.all(
@@ -120,6 +136,14 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       characterMatchingResult.body;
     const { locationBible, matches: libraryLocationMatches } =
       locationMatchingResult.body;
+
+    // Phase 3 START
+    await context.run('phase-3-start', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 3,
+        phaseName: 'Generating references & prompts\u2026',
+      });
+    });
 
     // Phase 3: Character sheets, location sheets, and visual prompts in parallel
     const [charResult, locationResult, visualResult] = await Promise.all([
@@ -174,7 +198,15 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
     const locationsWithSheets = locationResult.body;
     const scenesWithVisualPrompts = visualResult.body;
 
-    // Phase 4+5+6: Frame images + variants AND motion + music prompts in parallel
+    // Phase 4 START
+    await context.run('phase-4-start', async () => {
+      await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+        phase: 4,
+        phaseName: 'Generating images\u2026',
+      });
+    });
+
+    // Phase 4: Frame images + variants AND motion + music prompts in parallel
     const [frameImagesResult, motionMusicResult] = await Promise.all([
       context.invoke('frame-images', {
         workflow: frameImagesWorkflow,
@@ -232,24 +264,33 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
         scene.musicDesign?.presence && scene.musicDesign.presence !== 'none'
     );
 
-    if (scenesWithMusic.length > 0) {
+    const shouldGenerateMotion =
+      autoGenerateMotion && videoModel && imageUrls.length > 0;
+    const shouldGenerateMusic =
+      autoGenerateMusic && sequenceId && scenesWithMusic.length > 0;
+
+    if (shouldGenerateMotion || shouldGenerateMusic) {
       let totalDuration = 0;
       for (const scene of scenesWithMusic) {
         totalDuration += scene.metadata?.durationSeconds || 5;
       }
 
-      // Generate motion for each scene
-      if (autoGenerateMotion && videoModel && imageUrls.length > 0) {
-        await context.run('start-motion-generation', async () => {
-          await getGenerationChannel(sequenceId).emit(
-            'generation.phase:start',
-            {
-              phase: 7,
-              phaseName: 'Generating motion\u2026',
-            }
-          );
+      // Phase 5 START
+      await context.run('phase-5-start', async () => {
+        const phaseName =
+          shouldGenerateMotion && shouldGenerateMusic
+            ? 'Generating motion & music\u2026'
+            : shouldGenerateMotion
+              ? 'Generating motion\u2026'
+              : 'Generating music\u2026';
+        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
+          phase: 5,
+          phaseName,
         });
+      });
 
+      // Generate motion for each scene
+      if (shouldGenerateMotion) {
         await Promise.all(
           completeScenes.map(async (scene, index) => {
             const motionPromptData = scene.prompts?.motion;
@@ -290,7 +331,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       }
 
       // Generate music for whole movie
-      if (autoGenerateMusic && sequenceId) {
+      if (shouldGenerateMusic) {
         if (!input.userId || !input.teamId) {
           throw new Error('userId and teamId required for music generation');
         }

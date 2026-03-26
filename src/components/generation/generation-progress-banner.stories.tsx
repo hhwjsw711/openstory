@@ -41,22 +41,22 @@ function withPhaseProgress(
   };
 }
 
-const sixPhases = createInitialState({
+const fourPhases = createInitialState({
   autoGenerateMotion: false,
   autoGenerateMusic: false,
 });
 
-const sevenPhasesMotion = createInitialState({
+const fivePhasesMotion = createInitialState({
   autoGenerateMotion: true,
   autoGenerateMusic: false,
 });
 
-const sevenPhasesMusic = createInitialState({
+const fivePhasesMusic = createInitialState({
   autoGenerateMotion: false,
   autoGenerateMusic: true,
 });
 
-const sevenPhasesBoth = createInitialState({
+const fivePhasesBoth = createInitialState({
   autoGenerateMotion: true,
   autoGenerateMusic: true,
 });
@@ -79,90 +79,81 @@ const meta: Meta<typeof GenerationProgressBanner> = {
 export default meta;
 type Story = StoryObj<typeof GenerationProgressBanner>;
 
-// --- 6 phases (auto-generate off) ---
+// --- 4 phases (auto-generate off) ---
 
-export const SixPhases_Phase1: Story = {
-  name: '6 phases - Script analysis',
+export const FourPhases_Phase1: Story = {
+  name: '4 phases - Script analysis',
   args: {
-    generationState: withPhaseProgress(sixPhases, 1),
+    generationState: withPhaseProgress(fourPhases, 1),
     isProcessing: true,
     startedAt: new Date(),
   },
 };
 
-export const SixPhases_Phase3: Story = {
-  name: '6 phases - Generating prompts',
+export const FourPhases_Phase3: Story = {
+  name: '4 phases - Generating prompts',
   args: {
-    generationState: withPhaseProgress(sixPhases, 3),
+    generationState: withPhaseProgress(fourPhases, 3),
     isProcessing: true,
     startedAt: new Date(Date.now() - 60_000),
   },
 };
 
-export const SixPhases_Phase4: Story = {
-  name: '6 phases - Generating images',
+export const FourPhases_Phase4: Story = {
+  name: '4 phases - Generating images (last phase)',
   args: {
-    generationState: withPhaseProgress(sixPhases, 4),
+    generationState: withPhaseProgress(fourPhases, 4),
     isProcessing: true,
     startedAt: new Date(Date.now() - 90_000),
   },
 };
 
-export const SixPhases_Phase6: Story = {
-  name: '6 phases - Music design (last phase)',
-  args: {
-    generationState: withPhaseProgress(sixPhases, 6),
-    isProcessing: true,
-    startedAt: new Date(Date.now() - 120_000),
-  },
-};
+// --- 5 phases (motion only) ---
 
-// --- 7 phases (motion only) ---
-
-export const SevenPhasesMotion_Phase4: Story = {
-  name: '7 phases (motion) - Generating images',
+export const FivePhasesMotion_Phase4: Story = {
+  name: '5 phases (motion) - Generating images',
   args: {
-    generationState: withPhaseProgress(sevenPhasesMotion, 4),
+    generationState: withPhaseProgress(fivePhasesMotion, 4),
     isProcessing: true,
     startedAt: new Date(Date.now() - 90_000),
   },
 };
 
-export const SevenPhasesMotion_Phase7: Story = {
-  name: '7 phases (motion) - Motion video',
+export const FivePhasesMotion_Phase5: Story = {
+  name: '5 phases (motion) - Motion video',
   args: {
-    generationState: withPhaseProgress(sevenPhasesMotion, 7),
+    generationState: withPhaseProgress(fivePhasesMotion, 5),
     isProcessing: true,
     startedAt: new Date(Date.now() - 150_000),
   },
 };
 
-// --- 7 phases (music only) ---
+// --- 5 phases (music only) ---
 
-export const SevenPhasesMusic_Phase7: Story = {
-  name: '7 phases (music) - Music generation',
+export const FivePhasesMusic_Phase5: Story = {
+  name: '5 phases (music) - Music generation',
   args: {
-    generationState: withPhaseProgress(sevenPhasesMusic, 7),
+    generationState: withPhaseProgress(fivePhasesMusic, 5),
     isProcessing: true,
     startedAt: new Date(Date.now() - 150_000),
   },
 };
 
-// --- 7 phases (both) ---
+// --- 5 phases (both) ---
 
-export const SevenPhasesBoth_Phase4: Story = {
-  name: '7 phases (both) - Generating images',
+export const FivePhasesBoth_Phase4: Story = {
+  name: '5 phases (both) - Generating images',
   args: {
-    generationState: withPhaseProgress(sevenPhasesBoth, 4),
+    generationState: withPhaseProgress(fivePhasesBoth, 4),
     isProcessing: true,
     startedAt: new Date(Date.now() - 90_000),
   },
 };
 
-export const SevenPhasesBoth_Phase7: Story = {
-  name: '7 phases (both) - Video & Music',
+export const FivePhasesBoth_Phase5: Story = {
+  name: '5 phases (both) - Video & Music',
   args: {
-    generationState: withPhaseProgress(sevenPhasesBoth, 7),
+    generationState: withPhaseProgress(fivePhasesBoth, 5),
     isProcessing: true,
     startedAt: new Date(Date.now() - 150_000),
   },
@@ -171,13 +162,13 @@ export const SevenPhasesBoth_Phase7: Story = {
 // --- Edge cases ---
 
 export const AllComplete: Story = {
-  name: 'All phases complete (6 phases)',
+  name: 'All phases complete (4 phases)',
   args: {
     generationState: makeState({
-      ...sixPhases,
-      currentPhase: 7,
+      ...fourPhases,
+      currentPhase: 5,
       isComplete: true,
-      phases: sixPhases.phases.map((p) => ({ ...p, status: 'completed' })),
+      phases: fourPhases.phases.map((p) => ({ ...p, status: 'completed' })),
     }),
     isProcessing: true,
     startedAt: new Date(Date.now() - 180_000),
@@ -188,7 +179,7 @@ export const WithScenes: Story = {
   name: 'With streamed scenes',
   args: {
     generationState: {
-      ...withPhaseProgress(sixPhases, 4),
+      ...withPhaseProgress(fourPhases, 4),
       scenes: [
         {
           sceneId: 's1',
