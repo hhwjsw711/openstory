@@ -4,11 +4,11 @@
  */
 
 const PHASE_BUDGETS = [
-  { base: 30, perScene: 5 }, // 1. Script analysis (single streaming LLM call)
-  { base: 200, perScene: 5 }, // 2. Casting (parallel talent + location matching LLM calls)
-  { base: 85, perScene: 0 }, // 3. Sheets + visual prompts (parallel; visual prompts scale with scenes)
-  { base: 240, perScene: 0 }, // 4. Images + motion/music prompts (parallel; image gen is bottleneck)
-  { base: 360, perScene: 0 }, // 5. Motion/music generation (optional; video gen is slow per scene)
+  { base: 30, perScene: 1.5 }, // 1. Script analysis (streaming LLM output scales with scenes)
+  { base: 60, perScene: 1.5 }, // 2. Casting (LLM input scales with scenes)
+  { base: 150, perScene: 0 }, // 3. Sheets + visual prompts (all parallel per scene)
+  { base: 90, perScene: 0 }, // 4. Images + motion/music prompts (all parallel per scene)
+  { base: 210, perScene: 0 }, // 5. Motion/music generation (optional; all parallel per scene)
 ] as const;
 
 const WORDS_PER_SCENE = 120;

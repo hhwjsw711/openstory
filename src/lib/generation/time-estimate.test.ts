@@ -31,9 +31,9 @@ describe('estimateSceneCount', () => {
 describe('estimateTotalSeconds', () => {
   test('returns reasonable total for any scene count', () => {
     const total = estimateTotalSeconds(6);
-    // Phases 1-4 with parallel execution (~3-4min without phase 5)
-    expect(total).toBeGreaterThan(150);
-    expect(total).toBeLessThan(400);
+    // All 5 phases (including optional motion/music), ~7-8min
+    expect(total).toBeGreaterThan(300);
+    expect(total).toBeLessThan(600);
   });
 
   test('uses default scene count for 0', () => {
