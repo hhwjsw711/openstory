@@ -7,7 +7,6 @@ import { usdToMicros } from '@/lib/billing/money';
 import { getGenerationChannel } from '@/lib/realtime';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import { generateId } from '@/lib/db/id';
-import type { ScopedDb } from '@/lib/db/scoped';
 import { mergeVideos } from '@/lib/motion/merge-videos';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { uploadResponse } from '@/lib/storage/upload-response';
@@ -15,41 +14,10 @@ import {
   getExtensionFromUrl,
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
-import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
-import type {
-  MergeAudioVideoWorkflowInput,
-  MergeVideoWorkflowInput,
-} from '@/lib/workflow/types';
-
-/** If music is already completed, trigger the audio+video mux workflow. */
-async function triggerMuxIfMusicReady(
-  input: MergeVideoWorkflowInput,
-  mergedVideoUrl: string,
-  scopedDb: ScopedDb
-): Promise<void> {
-  if (!input.sequenceId) return;
-  const seqCtx = scopedDb.sequence(input.sequenceId);
-  const musicStatus = await seqCtx.getMusicStatus();
-
-  if (musicStatus?.musicStatus !== 'completed' || !musicStatus.musicUrl) return;
-
-  console.log(
-    `[MergeVideoWorkflow] Video + music both ready, triggering mux for sequence ${input.sequenceId}`
-  );
-
-  const muxInput: MergeAudioVideoWorkflowInput = {
-    userId: input.userId,
-    teamId: input.teamId,
-    sequenceId: input.sequenceId,
-    mergedVideoUrl,
-    musicUrl: musicStatus.musicUrl,
-  };
-
-  await triggerWorkflow('/merge-audio-video', muxInput);
-}
+import type { MergeVideoWorkflowInput } from '@/lib/workflow/types';
 
 export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
   async (context, scopedDb) => {
@@ -85,10 +53,6 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
           'generation.merge:progress',
           { step: 'video', status: 'completed', mergedVideoUrl: singleUrl }
         );
-      });
-
-      await context.run('check-mux-trigger-single', async () => {
-        await triggerMuxIfMusicReady(input, singleUrl, scopedDb);
       });
 
       return { mergedVideoUrl: singleUrl, mergedVideoPath: null };
@@ -166,10 +130,6 @@ export const mergeVideoWorkflow = createScopedWorkflow<MergeVideoWorkflowInput>(
           mergedVideoUrl: storageResult.url,
         }
       );
-    });
-
-    await context.run('check-mux-trigger', async () => {
-      await triggerMuxIfMusicReady(input, storageResult.url, scopedDb);
     });
 
     console.log(

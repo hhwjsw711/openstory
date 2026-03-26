@@ -12,6 +12,7 @@ import {
 } from '@/lib/observability/memory-profiler';
 import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
+import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
 import { frameImagesWorkflow } from '@/lib/workflows/frame-images-workflow';
@@ -52,6 +53,7 @@ function getHandler() {
     _handler = serveMany(
       {
         'analyze-script': analyzeScriptWorkflow,
+        'motion-batch': motionBatchWorkflow,
         'character-sheet-from-bible': characterBibleWorkflow,
         'character-sheet': characterSheetWorkflow,
         'frame-images': frameImagesWorkflow,

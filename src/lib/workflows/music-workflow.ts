@@ -3,14 +3,10 @@ import { uploadAudioToStorage } from '@/lib/audio/audio-storage';
 import { generateMusic } from '@/lib/audio/music-generation';
 import { ZERO_MICROS, microsToUsd } from '@/lib/billing/money';
 import { getGenerationChannel } from '@/lib/realtime';
-import { triggerWorkflow } from '@/lib/workflow/client';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
-import type {
-  MergeAudioVideoWorkflowInput,
-  MusicWorkflowInput,
-} from '@/lib/workflow/types';
+import type { MusicWorkflowInput } from '@/lib/workflow/types';
 
 export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
   async (context, scopedDb) => {
@@ -131,32 +127,6 @@ export const generateMusicWorkflow = createScopedWorkflow<MusicWorkflowInput>(
       });
 
       // TODO: Tom Mar 2026 - Add a step to generate a music track for each scene
-
-      // Check if merged video is also ready -- trigger mux if so
-      await context.run('check-mux-trigger', async () => {
-        const videoStatus = await scopedDb
-          .sequence(sequenceId)
-          .getMergedVideoStatus();
-
-        if (
-          videoStatus?.mergedVideoStatus === 'completed' &&
-          videoStatus.mergedVideoUrl
-        ) {
-          console.log(
-            `[MusicWorkflow] Music + merged video both ready, triggering mux for sequence ${sequenceId}`
-          );
-
-          const muxInput: MergeAudioVideoWorkflowInput = {
-            userId: input.userId,
-            teamId,
-            sequenceId,
-            mergedVideoUrl: videoStatus.mergedVideoUrl,
-            musicUrl: audioUrl,
-          };
-
-          await triggerWorkflow('/merge-audio-video', muxInput);
-        }
-      });
     }
 
     console.log('[MusicWorkflow]', 'Music generation workflow completed');

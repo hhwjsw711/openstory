@@ -28,7 +28,6 @@ export const GenerationProgressBanner: React.FC<
     return 0;
   });
   const startTimeRef = useRef(startedAt?.getTime() ?? Date.now());
-  const hasAutoCollapsedRef = useRef(false);
 
   // Tick elapsed time every second
   useEffect(() => {
@@ -37,18 +36,6 @@ export const GenerationProgressBanner: React.FC<
     }, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  // Auto-collapse when first image arrives
-  useEffect(() => {
-    if (hasAutoCollapsedRef.current) return;
-    for (const frame of generationState.frames.values()) {
-      if (frame.imageStatus === 'completed') {
-        hasAutoCollapsedRef.current = true;
-        setIsOpen(false);
-        return;
-      }
-    }
-  }, [generationState.frames]);
 
   // Don't render before generation starts or after exit
   if (!isProcessing && generationState.currentPhase === 0) return null;

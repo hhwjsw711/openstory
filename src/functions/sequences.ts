@@ -106,6 +106,8 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
             musicModel && isValidAudioModel(musicModel)
               ? musicModel
               : DEFAULT_MUSIC_MODEL,
+          autoGenerateMotion,
+          autoGenerateMusic,
         });
 
         const workflowInput: StoryboardWorkflowInput = {
@@ -194,6 +196,8 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
           aiProvider: 'openrouter',
           regenerateAll: true,
         },
+        autoGenerateMotion: sequence.autoGenerateMotion,
+        autoGenerateMusic: sequence.autoGenerateMusic,
       } satisfies StoryboardWorkflowInput);
     }
 
@@ -255,6 +259,8 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
         aiProvider: 'openrouter',
         regenerateAll: true,
       },
+      autoGenerateMotion: sequence.autoGenerateMotion,
+      autoGenerateMusic: sequence.autoGenerateMusic,
     };
 
     // No deduplication ID — explicit user retry should always run

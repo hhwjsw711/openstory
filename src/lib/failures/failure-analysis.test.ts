@@ -75,6 +75,8 @@ function makeSequence(overrides: Partial<Sequence> = {}): Sequence {
     musicPrompt: 'Epic cinematic music',
     musicTags: 'epic,cinematic',
     statusError: null,
+    autoGenerateMotion: false,
+    autoGenerateMusic: false,
     ...overrides,
   };
 }

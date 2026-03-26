@@ -12,15 +12,13 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   AnalyzeScriptWorkflowInput,
+  BatchMotionMusicWorkflowInput,
   FrameImagesWorkflowInput,
   MotionMusicPromptsWorkflowInput,
-  MotionWorkflowInput,
-  MusicWorkflowInput,
 } from '@/lib/workflow/types';
 
 import { assembleMotionPrompt } from '@/lib/motion/assemble-motion-prompt';
-import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
-import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
+import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
 import { getFalFlowControl } from './constants';
 import { frameImagesWorkflow } from './frame-images-workflow';
@@ -259,99 +257,66 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
     const { completeScenes, musicPrompt, musicTags } = motionMusicResult.body;
 
     // Auto-generate motion + music if enabled
-    const scenesWithMusic = completeScenes.filter(
-      (scene) =>
-        scene.musicDesign?.presence && scene.musicDesign.presence !== 'none'
-    );
-
     const shouldGenerateMotion =
       autoGenerateMotion && videoModel && imageUrls.length > 0;
-    const shouldGenerateMusic =
-      autoGenerateMusic && sequenceId && scenesWithMusic.length > 0;
+    const shouldGenerateMusic = Boolean(
+      autoGenerateMusic &&
+      sequenceId &&
+      completeScenes.some(
+        (s) => s.musicDesign?.presence && s.musicDesign.presence !== 'none'
+      )
+    );
 
-    if (shouldGenerateMotion || shouldGenerateMusic) {
+    if (shouldGenerateMotion) {
       let totalDuration = 0;
-      for (const scene of scenesWithMusic) {
+      for (const scene of completeScenes) {
         totalDuration += scene.metadata?.durationSeconds || 5;
       }
 
-      // Phase 5 START
-      await context.run('phase-5-start', async () => {
-        const phaseName =
-          shouldGenerateMotion && shouldGenerateMusic
-            ? 'Generating motion & music\u2026'
-            : shouldGenerateMotion
-              ? 'Generating motion\u2026'
-              : 'Generating music\u2026';
-        await getGenerationChannel(sequenceId).emit('generation.phase:start', {
-          phase: 5,
-          phaseName,
-        });
-      });
-
-      // Generate motion for each scene
-      if (shouldGenerateMotion) {
-        await Promise.all(
-          completeScenes.map(async (scene, index) => {
-            const motionPromptData = scene.prompts?.motion;
-            if (!motionPromptData?.fullPrompt) {
-              throw new WorkflowValidationError(
-                `Scene ${scene.sceneId} has no motion prompt`
-              );
-            }
-
-            const matchedFrame = frameMapping.find(
-              (f) => f.sceneId === scene.sceneId
-            );
-
-            const prompt = assembleMotionPrompt({
-              motionPrompt: motionPromptData,
-              model: videoModel,
-            });
-
-            await context.invoke('motion', {
-              workflow: generateMotionWorkflow,
-              body: {
-                userId: input.userId,
-                teamId: input.teamId,
-                frameId: matchedFrame?.frameId,
-                sequenceId,
-                imageUrl: imageUrls[index],
-                prompt,
-                model: videoModel,
-                aspectRatio,
-                duration: scene.metadata?.durationSeconds || 3,
-              } satisfies MotionWorkflowInput,
-              retries: 3,
-              retryDelay: 'pow(2, retried) * 1000',
-              flowControl: getFalFlowControl(),
-            });
-          })
-        );
-      }
-
-      // Generate music for whole movie
-      if (shouldGenerateMusic) {
-        if (!input.userId || !input.teamId) {
-          throw new Error('userId and teamId required for music generation');
+      const batchFrames = completeScenes.map((scene, index) => {
+        const motionPromptData = scene.prompts?.motion;
+        if (!motionPromptData?.fullPrompt) {
+          throw new WorkflowValidationError(
+            `Scene ${scene.sceneId} has no motion prompt`
+          );
         }
 
-        await context.invoke('music', {
-          workflow: generateMusicWorkflow,
-          body: {
-            userId: input.userId,
-            teamId: input.teamId,
-            sequenceId,
-            prompt: musicPrompt,
-            tags: musicTags,
-            duration: totalDuration,
-            model: musicModel,
-          } satisfies MusicWorkflowInput,
-          retries: 3,
-          retryDelay: 'pow(2, retried) * 1000',
-          flowControl: getFalFlowControl(),
-        });
-      }
+        const matchedFrame = frameMapping.find(
+          (f) => f.sceneId === scene.sceneId
+        );
+
+        return {
+          frameId: matchedFrame?.frameId ?? '',
+          imageUrl: imageUrls[index],
+          prompt: assembleMotionPrompt({
+            motionPrompt: motionPromptData,
+            model: videoModel,
+          }),
+          model: videoModel,
+          duration: scene.metadata?.durationSeconds || 3,
+          aspectRatio,
+        };
+      });
+
+      // Phase 5: single orchestrator for motion + optional music + merge
+      await context.invoke('motion-batch', {
+        workflow: motionBatchWorkflow,
+        body: {
+          userId: input.userId,
+          teamId: input.teamId,
+          sequenceId,
+          includeMusic: shouldGenerateMusic,
+          frames: batchFrames,
+          music: shouldGenerateMusic
+            ? {
+                prompt: musicPrompt,
+                tags: musicTags,
+                duration: totalDuration,
+                model: musicModel,
+              }
+            : undefined,
+        } satisfies BatchMotionMusicWorkflowInput,
+      });
     }
 
     if (sequenceId) {

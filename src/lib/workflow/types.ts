@@ -574,6 +574,34 @@ export interface MergeAudioVideoWorkflowResult {
 }
 
 /**
+ * Batch motion + music workflow input
+ * Orchestrates parallel motion generation for all frames + optional music,
+ * then merges videos and muxes audio.
+ */
+export interface BatchMotionMusicWorkflowInput extends SequenceWorkflowContext {
+  /** Per-frame motion inputs (ordered by scene) */
+  frames: Array<{
+    frameId: string;
+    imageUrl: string;
+    prompt: string;
+    model?: ImageToVideoModel;
+    duration?: number;
+    fps?: number;
+    motionBucket?: number;
+    aspectRatio?: AspectRatio;
+  }>;
+  /** When true, generate music in parallel and mux into final video */
+  includeMusic: boolean;
+  /** Music config (required when includeMusic=true) */
+  music?: {
+    prompt: string;
+    tags: string;
+    duration: number;
+    model?: keyof typeof AUDIO_MODELS;
+  };
+}
+
+/**
  * Frame images workflow input
  * Orchestrates frame image generation + automatic variant generation
  */

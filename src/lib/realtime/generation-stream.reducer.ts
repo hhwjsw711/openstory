@@ -184,17 +184,29 @@ export function generationStreamReducer(
         return state;
       }
 
-      return {
-        ...state,
-        currentPhase: phase,
-        phases: state.phases.map((p) =>
-          p.phase === phase
-            ? { ...p, phaseName, status: 'active' }
-            : p.phase < phase
-              ? { ...p, status: 'completed' }
-              : p
-        ),
-      };
+      const phaseExists = state.phases.some((p) => p.phase === phase);
+      const updatedPhases = state.phases.map((p) =>
+        p.phase === phase
+          ? { ...p, phaseName, status: 'active' as const }
+          : p.phase < phase
+            ? { ...p, status: 'completed' as const }
+            : p
+      );
+
+      // Add phase dynamically if it wasn't in initial state
+      // (e.g. phase 5 when settings loaded after reducer init due to hydration)
+      if (!phaseExists) {
+        updatedPhases.push({
+          phase,
+          phaseName,
+          shortName: phaseName
+            .replace(/Generating\s+/i, '')
+            .replace(/\u2026$/, ''),
+          status: 'active',
+        });
+      }
+
+      return { ...state, currentPhase: phase, phases: updatedPhases };
     }
 
     case 'PHASE_COMPLETE': {
