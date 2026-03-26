@@ -19,7 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLibraryLocations } from '@/hooks/use-sequence-locations';
 import type { LibraryLocation } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
-import { Check, MapPin, Plus, Search, X } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Check, MapPin, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
 type LocationSuggestionSelectorProps = {
@@ -156,11 +157,11 @@ export const LocationSuggestionSelector: React.FC<
         {/* Locations button */}
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setIsDialogOpen(true)}
           disabled={disabled}
-          className="gap-2"
+          className="gap-2 text-muted-foreground"
         >
           <MapPin className="h-4 w-4" />
           <span>Locations</span>
@@ -183,18 +184,6 @@ export const LocationSuggestionSelector: React.FC<
             )}
           </div>
         )}
-
-        {/* Add more button when some are selected */}
-        {selectedLocations.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setIsDialogOpen(true)}
-            disabled={disabled}
-            className="flex h-10 w-10 items-center justify-center rounded border-2 border-dashed border-muted-foreground/50 text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {/* Multi-select dialog */}
@@ -210,8 +199,8 @@ export const LocationSuggestionSelector: React.FC<
               )}
             </DialogTitle>
             <DialogDescription>
-              Select locations from your library. The AI will use these as
-              visual references when matching locations from your script.
+              Optionally select locations as visual references. The AI will
+              match them to locations in your script.
             </DialogDescription>
           </DialogHeader>
 
@@ -244,11 +233,16 @@ export const LocationSuggestionSelector: React.FC<
                 <p className="mt-4 text-sm text-muted-foreground">
                   {searchQuery
                     ? 'No locations matching your search'
-                    : 'No locations in library'}
+                    : 'Your location library is empty'}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Locations will appear here from your sequences
-                </p>
+                {!searchQuery && (
+                  <Link
+                    to="/locations"
+                    className="mt-2 text-sm text-primary hover:underline"
+                  >
+                    Go to Location Library to add locations
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 p-1 sm:grid-cols-3">

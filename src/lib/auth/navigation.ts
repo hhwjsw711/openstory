@@ -4,13 +4,12 @@
  */
 
 import { Route as loginRoute } from '@/routes/_auth/login';
-import { Route as sequencesRoute } from '@/routes/_protected/sequences/index';
 
 /**
  * Get the redirect URL from query params
  * For use in auth pages to read the intended destination
  * @param searchParams - URLSearchParams or query params object
- * @returns Redirect path or default (/sequences)
+ * @returns Redirect path or default (/sequences/new)
  */
 export function getRedirectFromParams(
   searchParams: URLSearchParams | Record<string, string | string[] | undefined>
@@ -35,5 +34,5 @@ export function getRedirectFromParams(
     }
   }
 
-  return sequencesRoute.fullPath;
+  return '/sequences/new';
 }
