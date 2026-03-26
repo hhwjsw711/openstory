@@ -20,7 +20,7 @@ import { useTalent } from '@/hooks/use-talent';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
 import { Link } from '@tanstack/react-router';
-import { Check, Plus, Search, User, Users, X } from 'lucide-react';
+import { Check, Search, User, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 type TalentSuggestionSelectorProps = {
@@ -152,11 +152,11 @@ export const TalentSuggestionSelector: React.FC<
         {/* Talent button */}
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setIsDialogOpen(true)}
           disabled={disabled}
-          className="gap-2"
+          className="gap-2 text-muted-foreground"
         >
           <Users className="h-4 w-4" />
           <span>Talent</span>
@@ -178,18 +178,6 @@ export const TalentSuggestionSelector: React.FC<
               </div>
             )}
           </div>
-        )}
-
-        {/* Add more button when some are selected */}
-        {selectedTalent.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setIsDialogOpen(true)}
-            disabled={disabled}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/50 text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
         )}
       </div>
 
