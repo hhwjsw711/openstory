@@ -29,7 +29,7 @@ type VerifyFormProps = {
 
 export function VerifyForm({
   email,
-  redirectTo = '/sequences',
+  redirectTo = '/sequences/new',
 }: VerifyFormProps) {
   const navigate = useNavigate();
   const hydrated = useHydrated();
