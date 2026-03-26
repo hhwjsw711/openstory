@@ -16,9 +16,15 @@ import type {
   Scene,
 } from '@/lib/ai/scene-analysis.schema';
 import type { AspectRatio, ImageSize } from '@/lib/constants/aspect-ratios';
-import type { StyleConfig } from '@/lib/db/schema';
+import type {
+  CharacterMinimal,
+  SequenceLocationMinimal,
+  StyleConfig,
+} from '@/lib/db/schema';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
 import type { Json } from '@/types/database';
+import { z } from 'zod';
+import type { musicDesignResultSchema } from '../ai/response-schemas';
 
 /**
  * Base workflow context that includes authentication
@@ -102,7 +108,7 @@ export interface AnalyzeScriptWorkflowInput extends SequenceWorkflowContext {
   aspectRatio: AspectRatio;
   styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
-  imageModel?: TextToImageModel;
+  imageModel: TextToImageModel;
   videoModel?: ImageToVideoModel;
   autoGenerateMotion?: boolean;
   autoGenerateMusic?: boolean;
@@ -239,6 +245,8 @@ export interface CharacterBibleWorkflowInput extends SequenceWorkflowContext {
   talentMatches?: TalentCharacterMatch[];
 }
 
+export type FrameMapping = Array<{ sceneId: string; frameId: string }>;
+
 export interface VisualPromptWorkflowInput extends SequenceWorkflowContext {
   scenes: Scene[];
   aspectRatio: AspectRatio;
@@ -246,24 +254,42 @@ export interface VisualPromptWorkflowInput extends SequenceWorkflowContext {
   locationBible: LocationBibleEntry[];
   styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
-  imageModel?: TextToImageModel;
+  /** Maps sceneId to frameId for DB persistence after visual prompt generation */
+  frameMapping?: FrameMapping;
 }
 
-export interface VisualPromptSceneWorkflowInput extends VisualPromptWorkflowInput {
-  sceneIndex: number;
+export interface VisualPromptSceneWorkflowInput extends SequenceWorkflowContext {
+  scene: Scene;
+  sceneBefore?: Scene;
+  sceneAfter?: Scene;
+  aspectRatio: AspectRatio;
+  characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
+  styleConfig: StyleConfig;
+  analysisModelId: AnalysisModelId;
+  frameId?: string;
 }
 
 export interface MotionPromptWorkflowInput extends SequenceWorkflowContext {
   scenes: Scene[];
   aspectRatio: AspectRatio;
   characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
   styleConfig: StyleConfig;
   analysisModelId: AnalysisModelId;
-  videoModel?: ImageToVideoModel;
+  frameMapping?: FrameMapping;
 }
 
-export interface MotionPromptSceneWorkflowInput extends MotionPromptWorkflowInput {
-  sceneIndex: number;
+export interface MotionPromptSceneWorkflowInput extends SequenceWorkflowContext {
+  scene: Scene;
+  sceneBefore?: Scene;
+  sceneAfter?: Scene;
+  aspectRatio: AspectRatio;
+  characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
+  styleConfig: StyleConfig;
+  analysisModelId: AnalysisModelId;
+  frameId?: string;
 }
 /**
  * Workflow result types
@@ -486,28 +512,40 @@ export interface RecastLocationWorkflowInput extends SequenceWorkflowContext {
  * Compact scene summary passed to the music workflow for AI prompt generation
  */
 export type MusicSceneSummary = {
+  sceneId: string;
   title: string;
   storyBeat: string;
   durationSeconds: number;
-  musicStyle: string;
-  musicMood: string;
-  musicPresence: string;
-  atmosphere?: string;
+  location: string;
+  timeOfDay: string;
+  visualSummary: string;
 };
 
 /**
  * Music generation workflow input
  * Generates background music for an entire sequence using musicDesign specs
  */
-export interface MusicWorkflowInput extends SequenceWorkflowContext {
+export interface MusicPromptWorkflowInput extends SequenceWorkflowContext {
   /** Compact scene summaries for AI prompt generation (legacy fallback) */
-  scenes?: MusicSceneSummary[];
-  /** Pre-generated prompt. If provided with tags, skip LLM step. */
-  prompt?: string;
-  /** Pre-generated tags. If provided with prompt, skip LLM step. */
-  tags?: string;
-  /** Duration in seconds */
+  sceneSummaries: MusicSceneSummary[];
+
+  analysisModelId: AnalysisModelId;
+
   duration?: number;
+}
+
+export type MusicPromptWorkflowResult = z.infer<typeof musicDesignResultSchema>;
+/**
+ * Music generation workflow input
+ * Generates background music for an entire sequence using musicDesign specs
+ */
+export interface MusicWorkflowInput extends SequenceWorkflowContext {
+  /** Pre-generated prompt. If provided with tags, skip LLM step. */
+  prompt: string;
+  /** Pre-generated tags. If provided with prompt, skip LLM step. */
+  tags: string;
+  /** Duration in seconds */
+  duration: number;
   /** Audio model to use */
   model?: keyof typeof AUDIO_MODELS;
 }
@@ -533,4 +571,70 @@ export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
 export interface MergeAudioVideoWorkflowResult {
   mergedVideoUrl: string;
   mergedVideoPath: string | null;
+}
+
+/**
+ * Batch motion + music workflow input
+ * Orchestrates parallel motion generation for all frames + optional music,
+ * then merges videos and muxes audio.
+ */
+export interface BatchMotionMusicWorkflowInput extends SequenceWorkflowContext {
+  /** Per-frame motion inputs (ordered by scene) */
+  frames: Array<{
+    frameId: string;
+    imageUrl: string;
+    prompt: string;
+    model?: ImageToVideoModel;
+    duration?: number;
+    fps?: number;
+    motionBucket?: number;
+    aspectRatio?: AspectRatio;
+  }>;
+  /** When true, generate music in parallel and mux into final video */
+  includeMusic: boolean;
+  /** Music config (required when includeMusic=true) */
+  music?: {
+    prompt: string;
+    tags: string;
+    duration: number;
+    model?: keyof typeof AUDIO_MODELS;
+  };
+}
+
+/**
+ * Frame images workflow input
+ * Orchestrates frame image generation + automatic variant generation
+ */
+export interface FrameImagesWorkflowInput extends SequenceWorkflowContext {
+  scenesWithVisualPrompts: Scene[];
+  charactersWithSheets: CharacterMinimal[];
+  locationsWithSheets: SequenceLocationMinimal[];
+  frameMapping: FrameMapping;
+  imageModel?: TextToImageModel;
+  aspectRatio: AspectRatio;
+}
+
+export interface FrameImagesWorkflowResult {
+  imageUrls: string[];
+}
+
+/**
+ * Motion + music prompts workflow input
+ * Orchestrates motion prompt generation + music design in parallel
+ */
+export interface MotionMusicPromptsWorkflowInput extends SequenceWorkflowContext {
+  scenesWithVisualPrompts: Scene[];
+  frameMapping: FrameMapping;
+  aspectRatio: AspectRatio;
+  characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
+  styleConfig: StyleConfig;
+  analysisModelId: AnalysisModelId;
+  videoModel?: ImageToVideoModel;
+}
+
+export interface MotionMusicPromptsWorkflowResult {
+  completeScenes: Scene[];
+  musicPrompt: string;
+  musicTags: string;
 }

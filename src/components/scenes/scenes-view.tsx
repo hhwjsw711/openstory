@@ -13,7 +13,6 @@ import { batchGenerateMotionFn } from '@/functions/motion-functions';
 import { smartRetryFn } from '@/functions/smart-retry';
 import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useFramesBySequence } from '@/hooks/use-frames';
-import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequence } from '@/hooks/use-sequences';
 import {
   DEFAULT_ASPECT_RATIO,
@@ -102,17 +101,13 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   const aspectRatio = sequence?.aspectRatio || DEFAULT_ASPECT_RATIO;
   const isProcessing = sequence?.status === 'processing';
 
-  // Read generation settings to determine which phases to show
-  const { settings: generationSettings } = useGenerationSettings();
+  // Phase config from DB — set in stone when the workflow was triggered
   const phaseConfig = useMemo<GenerationPhaseConfig>(
     () => ({
-      autoGenerateMotion: generationSettings.autoGenerateMotion,
-      autoGenerateMusic: generationSettings.autoGenerateMusic,
+      autoGenerateMotion: sequence?.autoGenerateMotion ?? false,
+      autoGenerateMusic: sequence?.autoGenerateMusic ?? false,
     }),
-    [
-      generationSettings.autoGenerateMotion,
-      generationSettings.autoGenerateMusic,
-    ]
+    [sequence?.autoGenerateMotion, sequence?.autoGenerateMusic]
   );
 
   // Subscribe to real-time generation events when sequence is processing

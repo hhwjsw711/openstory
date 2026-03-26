@@ -4,13 +4,11 @@
  */
 
 const PHASE_BUDGETS = [
-  { base: 30, perScene: 5 }, // 1. Script analysis (scales with script length)
-  { base: 200, perScene: 5 }, // 2. Casting (scales with scene count, parallel character+location)
-  { base: 85, perScene: 0 }, // 3. Sheets + visual prompts (parallel, flat)
-  { base: 115, perScene: 0 }, // 4. Images (parallel per scene, flat)
-  { base: 45, perScene: 0 }, // 5. Motion prompts (parallel, flat)
-  { base: 10, perScene: 3 }, // 6. Music design (scales with scene count)
-  { base: 120, perScene: 0 }, // 7. Motion/music generation (no data, keep as-is)
+  { base: 30, perScene: 1.5 }, // 1. Script analysis (streaming LLM output scales with scenes)
+  { base: 60, perScene: 1.5 }, // 2. Casting (LLM input scales with scenes)
+  { base: 150, perScene: 0 }, // 3. Sheets + visual prompts (all parallel per scene)
+  { base: 90, perScene: 0 }, // 4. Images + motion/music prompts (all parallel per scene)
+  { base: 210, perScene: 0 }, // 5. Motion/music generation (optional; all parallel per scene)
 ] as const;
 
 const WORDS_PER_SCENE = 120;

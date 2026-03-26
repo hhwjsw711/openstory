@@ -25,6 +25,7 @@ import { requireCredits } from '@/lib/billing/preflight';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import type { Character } from '@/lib/db/schema';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
+import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
@@ -35,7 +36,6 @@ import type {
   MusicWorkflowInput,
   StoryboardWorkflowInput,
 } from '@/lib/workflow/types';
-import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
@@ -258,7 +258,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         teamId,
         sequenceId: sequence.id,
         prompt: sequence.musicPrompt,
-        tags: sequence.musicTags ?? undefined,
+        tags: sequence.musicTags ?? '',
         duration: totalDuration || 30,
       };
 
@@ -289,15 +289,15 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         return sum + seconds;
       }, 0);
 
-      const musicInput: MusicWorkflowInput = {
+      // Generate music prompt
+      await triggerWorkflow('/music-prompt', {
         userId: user.id,
         teamId,
         sequenceId: sequence.id,
-        scenes,
+        sceneSummaries: scenes,
+        analysisModelId: sequence.analysisModel,
         duration: totalDuration || 30,
-      };
-
-      await triggerWorkflow('/music', musicInput);
+      });
 
       retried.push('music prompt');
     }

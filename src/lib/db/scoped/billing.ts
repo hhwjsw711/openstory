@@ -264,6 +264,7 @@ export function createBillingMethods(
 
     const chargedAmount = applyMarkup(rawCostMicros);
 
+    // TODO: TB Mar 26 2026: I really don't like this. SQLite is a pain for doing credits... this should be a transaction.
     await db
       .insert(credits)
       .values({ teamId, balance: 0 })

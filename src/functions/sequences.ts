@@ -106,6 +106,8 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
             musicModel && isValidAudioModel(musicModel)
               ? musicModel
               : DEFAULT_MUSIC_MODEL,
+          autoGenerateMotion,
+          autoGenerateMusic,
         });
 
         const workflowInput: StoryboardWorkflowInput = {
@@ -194,6 +196,8 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
           aiProvider: 'openrouter',
           regenerateAll: true,
         },
+        autoGenerateMotion: sequence.autoGenerateMotion,
+        autoGenerateMusic: sequence.autoGenerateMusic,
       } satisfies StoryboardWorkflowInput);
     }
 
@@ -255,6 +259,8 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
         aiProvider: 'openrouter',
         regenerateAll: true,
       },
+      autoGenerateMotion: sequence.autoGenerateMotion,
+      autoGenerateMusic: sequence.autoGenerateMusic,
     };
 
     // No deduplication ID — explicit user retry should always run
@@ -278,6 +284,7 @@ export const archiveSequenceFn = createServerFn({ method: 'POST' })
 export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
   return frames.map((frame) => {
     const md = frame.metadata?.musicDesign;
+    const prompts = frame.metadata?.prompts;
     const legacyMusic = frame.metadata?.audioDesign?.music;
     const meta = frame.metadata?.metadata;
     const durationSeconds = frame.durationMs
@@ -285,14 +292,17 @@ export function buildSceneSummaries(frames: Frame[]): MusicSceneSummary[] {
       : (meta?.durationSeconds ?? 10);
 
     return {
+      sceneId: frame.id,
+      location: meta?.location || '',
+      timeOfDay: meta?.timeOfDay || '',
+      visualSummary: prompts?.visual?.components.sceneDescription || '',
       title: meta?.title || 'Untitled Scene',
       storyBeat: meta?.storyBeat || '',
       durationSeconds,
       musicStyle: md?.style || legacyMusic?.style || '',
       musicMood: md?.mood || legacyMusic?.mood || '',
       musicPresence: md?.presence || legacyMusic?.presence || 'none',
-      atmosphere:
-        md?.atmosphere || frame.metadata?.audioDesign?.ambient?.atmosphere,
+      atmosphere: prompts?.visual?.components?.atmosphere,
     };
   });
 }
@@ -349,10 +359,15 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
         data.model && isValidAudioModel(data.model) ? data.model : undefined,
     };
 
-    const musicInput: MusicWorkflowInput =
-      effectivePrompt && effectiveTags
-        ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
-        : { ...baseInput, scenes: buildSceneSummaries(allFrames) };
+    if (!effectivePrompt || !effectiveTags) {
+      throw new Error('No music prompt or tags found');
+    }
+
+    const musicInput: MusicWorkflowInput = {
+      ...baseInput,
+      prompt: effectivePrompt,
+      tags: effectiveTags,
+    };
 
     await context.scopedDb.sequence(sequence.id).updateMusicFields({
       musicStatus: 'generating',

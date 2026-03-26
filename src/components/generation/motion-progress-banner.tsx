@@ -35,6 +35,7 @@ const MERGE_AUDIO_VIDEO_BUDGET_SECONDS = 30;
 // Fal.ai queues frames with limited concurrency — observed ~2x overhead
 // vs model estimate (e.g. 9 frames × 15s model = 135s, actual ~300s).
 const QUEUE_OVERHEAD_FACTOR = 2;
+const MIN_MOTION_BUDGET_SECONDS = 210; // ~3.5 min floor — queue startup overhead
 
 function getMotionBudget(sequence: Sequence, frameCount: number): number {
   const modelKey = safeImageToVideoModel(
@@ -43,7 +44,10 @@ function getMotionBudget(sequence: Sequence, frameCount: number): number {
   );
   const config = IMAGE_TO_VIDEO_MODELS[modelKey];
   const perFrame = config?.performance.estimatedGenerationTime ?? 20;
-  return perFrame * frameCount * QUEUE_OVERHEAD_FACTOR;
+  return Math.max(
+    perFrame * frameCount * QUEUE_OVERHEAD_FACTOR,
+    MIN_MOTION_BUDGET_SECONDS
+  );
 }
 
 function isTerminal(status: string | null): boolean {

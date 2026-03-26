@@ -117,6 +117,8 @@ export function createSequencesMethods(
       imageModel?: string;
       videoModel?: string;
       musicModel?: string;
+      autoGenerateMotion?: boolean;
+      autoGenerateMusic?: boolean;
     }): Promise<Sequence> => {
       const sequenceData: NewSequence = {
         teamId,
@@ -130,6 +132,8 @@ export function createSequencesMethods(
         imageModel: params.imageModel,
         videoModel: params.videoModel,
         musicModel: params.musicModel,
+        autoGenerateMotion: params.autoGenerateMotion ?? false,
+        autoGenerateMusic: params.autoGenerateMusic ?? false,
         status: 'draft',
       };
 

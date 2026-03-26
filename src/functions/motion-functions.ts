@@ -8,23 +8,21 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 
 import { DEFAULT_VIDEO_MODEL, safeImageToVideoModel } from '@/lib/ai/models';
-import { snapDuration } from '@/lib/motion/motion-generation';
 import { estimateVideoCost } from '@/lib/billing/cost-estimation';
 import { multiplyMicros, usdToMicros } from '@/lib/billing/money';
 import { requireCredits } from '@/lib/billing/preflight';
+import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
 import type {
+  BatchMotionMusicWorkflowInput,
   MergeVideoWorkflowInput,
-  MotionWorkflowInput,
-  MusicWorkflowInput,
 } from '@/lib/workflow/types';
 
 import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 
 import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
-import { buildSceneSummaries } from './sequences';
 
 // -- Generate Motion for Frame -------------------------------------------
 
@@ -56,23 +54,30 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
       errorMessage: 'Insufficient credits for motion generation',
     });
 
-    const workflowInput: MotionWorkflowInput = {
+    const workflowInput: BatchMotionMusicWorkflowInput = {
       userId: context.user.id,
       teamId,
-      frameId: frame.id,
       sequenceId: sequence.id,
-      imageUrl: frame.thumbnailUrl,
-      prompt,
-      model,
-      duration: data.duration,
-      fps: data.fps,
-      motionBucket: data.motionBucket,
-      aspectRatio: sequence.aspectRatio,
+      includeMusic: false,
+      frames: [
+        {
+          frameId: frame.id,
+          imageUrl: frame.thumbnailUrl,
+          prompt,
+          model,
+          duration: data.duration,
+          fps: data.fps,
+          motionBucket: data.motionBucket,
+          aspectRatio: sequence.aspectRatio,
+        },
+      ],
     };
 
-    const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
-      deduplicationId: `motion-${frame.id}-${Date.now()}`,
-    });
+    const workflowRunId = await triggerWorkflow(
+      '/motion-batch',
+      workflowInput,
+      { deduplicationId: `motion-batch-${frame.id}-${Date.now()}` }
+    );
 
     return { workflowRunId, frameId: frame.id };
   });
@@ -87,17 +92,6 @@ const batchGenerateMotionInputSchema = z.object({
   fps: generateMotionSchema.shape.fps,
   motionBucket: generateMotionSchema.shape.motionBucket,
 });
-
-type BatchMotionWorkflow = {
-  frameId: string;
-  workflowRunId: string;
-  orderIndex: number;
-};
-
-type BatchMotionError = {
-  frameId: string;
-  error: string;
-};
 
 export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
   .middleware([sequenceAccessMiddleware])
@@ -132,57 +126,15 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       }
     );
 
-    const workflows: BatchMotionWorkflow[] = [];
-    const errors: BatchMotionError[] = [];
+    const includeMusic =
+      (data.includeMusic ?? false) && sequence.musicStatus !== 'generating';
 
-    for (const frame of eligibleFrames) {
-      try {
-        if (!frame.thumbnailUrl) continue;
-
-        const frameModel = safeImageToVideoModel(
-          data.model || frame.motionModel || sequence.videoModel,
-          DEFAULT_VIDEO_MODEL
-        );
-
-        const workflowInput: MotionWorkflowInput = {
-          userId: user.id,
-          teamId,
-          frameId: frame.id,
-          sequenceId: sequence.id,
-          imageUrl: frame.thumbnailUrl,
-          prompt: resolveMotionPrompt(frame, frameModel),
-          model: frameModel,
-          duration:
-            data.duration || frame.metadata?.metadata?.durationSeconds || 3,
-          fps: data.fps,
-          motionBucket: data.motionBucket,
-        };
-
-        const workflowRunId = await triggerWorkflow('/motion', workflowInput, {
-          deduplicationId: `motion-${frame.id}-${Date.now()}`,
-        });
-
-        workflows.push({
-          frameId: frame.id,
-          workflowRunId,
-          orderIndex: frame.orderIndex,
-        });
-      } catch (error) {
-        errors.push({
-          frameId: frame.id,
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to start motion generation',
-        });
+    // Build music config if requested
+    let musicConfig: BatchMotionMusicWorkflowInput['music'];
+    if (includeMusic) {
+      if (!sequence.musicPrompt || !sequence.musicTags) {
+        throw new Error('No music prompt or tags found');
       }
-    }
-
-    // Optionally trigger music generation
-    let musicTriggered = false;
-    if (data.includeMusic && sequence.musicStatus !== 'generating') {
-      const effectivePrompt = sequence.musicPrompt;
-      const effectiveTags = sequence.musicTags;
 
       const totalDuration = allFrames.reduce((sum, frame) => {
         const seconds = frame.durationMs
@@ -191,39 +143,50 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
         return sum + seconds;
       }, 0);
 
-      const baseInput = {
-        userId: context.user.id,
-        teamId: sequence.teamId,
-        sequenceId: sequence.id,
+      musicConfig = {
+        prompt: sequence.musicPrompt,
+        tags: sequence.musicTags,
         duration: totalDuration || 30,
       };
-
-      const musicInput: MusicWorkflowInput =
-        effectivePrompt && effectiveTags
-          ? { ...baseInput, prompt: effectivePrompt, tags: effectiveTags }
-          : { ...baseInput, scenes: buildSceneSummaries(allFrames) };
-
-      try {
-        await triggerWorkflow('/music', musicInput);
-      } catch (error) {
-        errors.push({
-          frameId: 'music',
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to start music generation',
-        });
-      }
     }
+
+    const workflowInput: BatchMotionMusicWorkflowInput = {
+      userId: user.id,
+      teamId,
+      sequenceId: sequence.id,
+      includeMusic,
+      frames: eligibleFrames.map((frame) => {
+        const frameModel = safeImageToVideoModel(
+          data.model || frame.motionModel || sequence.videoModel,
+          DEFAULT_VIDEO_MODEL
+        );
+        return {
+          frameId: frame.id,
+          imageUrl: frame.thumbnailUrl ?? '',
+          prompt: resolveMotionPrompt(frame, frameModel),
+          model: frameModel,
+          duration:
+            data.duration || frame.metadata?.metadata?.durationSeconds || 3,
+          fps: data.fps,
+          motionBucket: data.motionBucket,
+          aspectRatio: sequence.aspectRatio,
+        };
+      }),
+      music: musicConfig,
+    };
+
+    const workflowRunId = await triggerWorkflow(
+      '/motion-batch',
+      workflowInput,
+      { deduplicationId: `motion-batch-${sequence.id}-${Date.now()}` }
+    );
 
     return {
       sequenceId: sequence.id,
       totalFrames: allFrames.length,
       eligibleFrames: eligibleFrames.length,
-      workflowsStarted: workflows.length,
-      workflows,
-      musicTriggered,
-      errors: errors.length > 0 ? errors : undefined,
+      workflowRunId,
+      includeMusic,
     };
   });
 
