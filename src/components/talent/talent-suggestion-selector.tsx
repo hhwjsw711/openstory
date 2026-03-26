@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTalent } from '@/hooks/use-talent';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
+import { Link } from '@tanstack/react-router';
 import { Check, Plus, Search, User, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -205,8 +206,8 @@ export const TalentSuggestionSelector: React.FC<
               )}
             </DialogTitle>
             <DialogDescription>
-              Select talent from your library. The AI will match them to
-              character roles based on physical descriptions.
+              Optionally select talent to guide casting. The AI will match them
+              to character roles based on physical descriptions.
             </DialogDescription>
           </DialogHeader>
 
@@ -239,8 +240,16 @@ export const TalentSuggestionSelector: React.FC<
                 <p className="mt-4 text-sm text-muted-foreground">
                   {searchQuery
                     ? 'No talent matching your search'
-                    : 'No talent in library'}
+                    : 'Your talent library is empty'}
                 </p>
+                {!searchQuery && (
+                  <Link
+                    to="/talent"
+                    className="mt-2 text-sm text-primary hover:underline"
+                  >
+                    Go to Talent Library to add talent
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-4 p-1 sm:grid-cols-4">

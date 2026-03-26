@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLibraryLocations } from '@/hooks/use-sequence-locations';
 import type { LibraryLocation } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
+import { Link } from '@tanstack/react-router';
 import { Check, MapPin, Plus, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
@@ -210,8 +211,8 @@ export const LocationSuggestionSelector: React.FC<
               )}
             </DialogTitle>
             <DialogDescription>
-              Select locations from your library. The AI will use these as
-              visual references when matching locations from your script.
+              Optionally select locations as visual references. The AI will
+              match them to locations in your script.
             </DialogDescription>
           </DialogHeader>
 
@@ -244,11 +245,16 @@ export const LocationSuggestionSelector: React.FC<
                 <p className="mt-4 text-sm text-muted-foreground">
                   {searchQuery
                     ? 'No locations matching your search'
-                    : 'No locations in library'}
+                    : 'Your location library is empty'}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Locations will appear here from your sequences
-                </p>
+                {!searchQuery && (
+                  <Link
+                    to="/locations"
+                    className="mt-2 text-sm text-primary hover:underline"
+                  >
+                    Go to Location Library to add locations
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-4 p-1 sm:grid-cols-3">
