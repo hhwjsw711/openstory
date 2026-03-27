@@ -68,7 +68,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           disabled={disabled}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-[4lh] flex-1 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain [field-sizing:fixed]',
+            'min-h-[4lh] flex-1 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain [field-sizing:fixed] pb-10',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"
