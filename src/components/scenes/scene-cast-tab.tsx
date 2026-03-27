@@ -32,10 +32,12 @@ function matchCharactersToTags(
 
     return characterTags.some((tag) => {
       const tagLower = tag.toLowerCase();
-      // Match by consistency tag
+      // Match by consistency tag (either direction — tag may be a substring of the full tag or vice versa)
       if (consistencyTag && tagLower.includes(consistencyTag)) return true;
-      // Match by character name
+      if (consistencyTag && consistencyTag.includes(tagLower)) return true;
+      // Match by character name (either direction)
       if (tagLower.includes(charName)) return true;
+      if (charName.includes(tagLower) && tagLower.length >= 3) return true;
       // Match by character ID (e.g., "char_001")
       if (tagLower.includes(charId)) return true;
       return false;

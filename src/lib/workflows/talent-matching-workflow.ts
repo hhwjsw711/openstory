@@ -85,24 +85,37 @@ export const talentMatchingWorkflow = createScopedWorkflow<
       'build-matches',
       async () => {
         const usedTalentIds = new Set<string>();
-        const usedCharacterIds = new Set<string>();
         const matches: TalentCharacterMatch[] = [];
 
         for (const match of talentMatches) {
-          // Ensure each talent and character is only cast once
-          if (usedTalentIds.has(match.talentId)) continue;
-          if (usedCharacterIds.has(match.characterId)) continue;
+          // Ensure each talent is only cast once (but characters can have multiple talents
+          // when there are more talents than characters)
+          if (usedTalentIds.has(match.talentId)) {
+            console.warn(
+              `[TalentMatching] Skipping duplicate talent ${match.talentId}`
+            );
+            continue;
+          }
 
           const talent = talentList.find((t) => t.id === match.talentId);
-          if (!talent) continue;
+          if (!talent) {
+            console.warn(
+              `[TalentMatching] Talent ${match.talentId} not found in list`
+            );
+            continue;
+          }
 
           const character = characterBible.find(
             (c) => c.characterId === match.characterId
           );
-          if (!character) continue;
+          if (!character) {
+            console.warn(
+              `[TalentMatching] Character ${match.characterId} not found in bible`
+            );
+            continue;
+          }
 
           usedTalentIds.add(match.talentId);
-          usedCharacterIds.add(match.characterId);
           matches.push({
             characterId: match.characterId,
             talentId: match.talentId,
