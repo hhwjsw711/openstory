@@ -1,0 +1,314 @@
+/**
+ * Scene Split Workflow
+ * Streaming scene split with progressive frame creation.
+ *
+ * Steps:
+ * 1. prepare-scene-splitting — fetch prompt from Langfuse
+ * 2. scene-splitting-stream — stream LLM response, create frames progressively
+ * 3. reconcile-frames — ensure all frames exist (handles cached result replay)
+ * 4. deduct-llm-credits-scene-splitting — deduct credits, emit phase complete
+ */
+
+import { callLLMStream } from '@/lib/ai/llm-client';
+import { getContextWindow } from '@/lib/ai/models.config';
+import { sceneSplittingResultSchema } from '@/lib/ai/response-schemas';
+import {
+  createStreamingSceneParser,
+  stripCodeFences,
+} from '@/lib/ai/streaming-scene-parser';
+import { ZERO_MICROS } from '@/lib/billing/money';
+import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
+import type { NewFrame } from '@/lib/db/schema';
+import { getChatPrompt } from '@/lib/prompts';
+import { getGenerationChannel } from '@/lib/realtime';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
+import type {
+  SceneSplitWorkflowInput,
+  SceneSplitWorkflowResult,
+} from '@/lib/workflow/types';
+
+export const sceneSplitWorkflow = createScopedWorkflow<
+  SceneSplitWorkflowInput,
+  SceneSplitWorkflowResult
+>(
+  async (context, scopedDb) => {
+    const input = context.requestPayload;
+    const { sequenceId, modelId, autoGenerateMotion = false } = input;
+
+    const phase = { number: 1, name: 'Analyzing script\u2026' };
+    const name = 'scene-splitting';
+    const logName = `phase-${phase.number}-${name}`;
+    const logTags = [name, `phase-${phase.number}`, 'analysis'];
+    const logMetadata = { phase: phase.number, phaseName: phase.name };
+
+    // Step 1: Prepare — fetch prompt
+    const { messages, promptReference } = await context.run(
+      'prepare-scene-splitting',
+      async () => {
+        const { prompt, messages } = await getChatPrompt(
+          input.promptName,
+          input.promptVariables
+        );
+
+        return { messages, promptReference: prompt };
+      }
+    );
+
+    // Step 2: Stream LLM response, create frames as scenes arrive
+    const streamResult = await context.run(
+      'scene-splitting-stream',
+      async () => {
+        const openRouterApiKeyInfo =
+          await scopedDb.apiKeys.resolveKey('openrouter');
+
+        console.log(`[LLM:${logName}] Starting streaming call`, {
+          model: modelId,
+          keySource: openRouterApiKeyInfo.source,
+          messageCount: messages.length,
+        });
+
+        const parser = createStreamingSceneParser();
+        const frameMapping: Array<{ sceneId: string; frameId: string }> = [];
+        let finalText = '';
+        let chunkCount = 0;
+
+        // Stream the LLM response
+        for await (const chunk of callLLMStream({
+          model: modelId,
+          messages: messages,
+          max_tokens: Math.floor(getContextWindow(modelId) * 0.5),
+          responseSchema: sceneSplittingResultSchema,
+          apiKey: openRouterApiKeyInfo.key,
+          observationName: logName,
+          prompt: promptReference,
+          tags: logTags,
+          metadata: logMetadata,
+        })) {
+          chunkCount++;
+          finalText = chunk.accumulated;
+          const events = parser.feed(chunk.accumulated);
+
+          if (chunkCount % 20 === 0) {
+            console.log(
+              `[Stream:${logName}] chunk #${chunkCount} | ${finalText.length} chars | ${frameMapping.length} frames so far`
+            );
+          }
+
+          for (const event of events) {
+            if (event.type === 'title' && sequenceId) {
+              console.log(
+                `[Stream:${logName}] Title detected: "${event.title}" (chunk #${chunkCount})`
+              );
+              await scopedDb.sequences.updateTitle(sequenceId, event.title);
+              await getGenerationChannel(sequenceId).emit(
+                'generation.updated',
+                { title: event.title }
+              );
+            }
+
+            if (event.type === 'scene:updated') {
+              console.log(
+                `[Stream:${logName}] Scene ${event.index + 1} title updated: "${event.scene.metadata?.title}" (chunk #${chunkCount})`
+              );
+
+              if (sequenceId) {
+                await scopedDb.frames.upsert({
+                  sequenceId,
+                  description: event.scene.originalScript?.extract || '',
+                  orderIndex: event.index,
+                  metadata: event.scene,
+                  durationMs: Math.round(
+                    (event.scene.metadata?.durationSeconds || 3) * 1000
+                  ),
+                  thumbnailStatus: 'generating',
+                  videoStatus: autoGenerateMotion ? 'generating' : 'pending',
+                } satisfies NewFrame);
+              }
+
+              await getGenerationChannel(sequenceId).emit(
+                'generation.scene:updated',
+                {
+                  sceneId: event.scene.sceneId,
+                  sceneNumber: event.scene.sceneNumber,
+                  title: event.scene.metadata?.title || 'Untitled Scene',
+                  scriptExtract: event.scene.originalScript?.extract || '',
+                  durationSeconds: event.scene.metadata?.durationSeconds || 3,
+                }
+              );
+            }
+
+            if (event.type === 'scene') {
+              console.log(
+                `[Stream:${logName}] Scene ${event.index + 1} complete: "${event.scene.metadata?.title}" (chunk #${chunkCount}, ${finalText.length} chars)`
+              );
+              await getGenerationChannel(sequenceId).emit(
+                'generation.scene:new',
+                {
+                  sceneId: event.scene.sceneId,
+                  sceneNumber: event.scene.sceneNumber,
+                  title: event.scene.metadata?.title || 'Untitled Scene',
+                  scriptExtract: event.scene.originalScript?.extract || '',
+                  durationSeconds: event.scene.metadata?.durationSeconds || 3,
+                }
+              );
+
+              if (sequenceId) {
+                const frame = await scopedDb.frames.upsert({
+                  sequenceId,
+                  description: event.scene.originalScript?.extract || '',
+                  orderIndex: event.index,
+                  metadata: event.scene,
+                  durationMs: Math.round(
+                    (event.scene.metadata?.durationSeconds || 3) * 1000
+                  ),
+                  thumbnailStatus: 'generating',
+                  videoStatus: autoGenerateMotion ? 'generating' : 'pending',
+                } satisfies NewFrame);
+
+                console.log(
+                  `[Stream:${logName}] Frame created: ${frame.id} for scene "${event.scene.sceneId}"`
+                );
+
+                frameMapping.push({
+                  sceneId: event.scene.sceneId,
+                  frameId: frame.id,
+                });
+
+                await getGenerationChannel(sequenceId).emit(
+                  'generation.frame:created',
+                  {
+                    frameId: frame.id,
+                    sceneId: event.scene.sceneId,
+                    orderIndex: event.index,
+                  }
+                );
+              }
+            }
+          }
+        }
+
+        // Parse final accumulated text with full schema
+        const parsed = sceneSplittingResultSchema.parse(
+          JSON.parse(stripCodeFences(finalText))
+        );
+        console.log(
+          `[Stream:${logName}] Complete | ${chunkCount} chunks | ${parsed.scenes.length} scenes | ${finalText.length} chars`
+        );
+
+        return {
+          scenes: parsed.scenes,
+          projectMetadata: parsed.projectMetadata,
+          frameMapping,
+        };
+      }
+    );
+
+    // Step 3: Reconcile — ensure all frames exist (handles QStash cached result replay)
+    const { scenes, title, frameMapping } = await context.run(
+      'reconcile-frames',
+      async () => {
+        const { scenes, projectMetadata } = streamResult;
+        const resolvedTitle = projectMetadata?.title || 'Untitled';
+
+        if (!sequenceId) {
+          return {
+            scenes,
+            title: resolvedTitle,
+            frameMapping: streamResult.frameMapping,
+          };
+        }
+
+        // Bulk upsert all frames to catch any missed during streaming
+        // (e.g., QStash replays a cached step 2 result without re-firing side effects)
+        const frameInserts = scenes.map(
+          (scene, index) =>
+            ({
+              sequenceId,
+              description: scene.originalScript?.extract || '',
+              orderIndex: index,
+              metadata: scene,
+              durationMs: Math.round(
+                (scene.metadata?.durationSeconds || 3) * 1000
+              ),
+              thumbnailStatus: 'generating',
+              videoStatus: autoGenerateMotion ? 'generating' : 'pending',
+            }) satisfies NewFrame
+        );
+
+        const reconciledFrames = await scopedDb.frames.bulkUpsert(frameInserts);
+        const reconciledMapping = reconciledFrames.map((f) => ({
+          sceneId: f.metadata?.sceneId || '',
+          frameId: f.id,
+        }));
+
+        // Ensure title, workflow, and status are set
+        await scopedDb.sequences.updateTitle(sequenceId, resolvedTitle);
+        await scopedDb.sequences.updateWorkflow(
+          sequenceId,
+          'analyze-script-shorter-prompts-batch-size-1'
+        );
+        await scopedDb.sequences.update({
+          id: sequenceId,
+          status: 'completed',
+        });
+
+        // Emit frame:created for any frames the streaming step didn't cover
+        const streamedSceneIds = new Set(
+          streamResult.frameMapping.map((f) => f.sceneId)
+        );
+        for (const { sceneId, frameId } of reconciledMapping) {
+          if (!streamedSceneIds.has(sceneId)) {
+            const scene = scenes.find((s) => s.sceneId === sceneId);
+            await getGenerationChannel(sequenceId).emit(
+              'generation.frame:created',
+              {
+                frameId,
+                sceneId,
+                orderIndex: scene?.sceneNumber ? scene.sceneNumber - 1 : 0,
+              }
+            );
+          }
+        }
+
+        return {
+          scenes,
+          title: resolvedTitle,
+          frameMapping: reconciledMapping,
+        };
+      }
+    );
+
+    // Step 4: Deduct credits
+    const openRouterKeyInfo = await scopedDb.apiKeys.resolveKey('openrouter');
+    await context.run('deduct-llm-credits-scene-splitting', async () => {
+      await deductWorkflowCredits({
+        scopedDb,
+        costMicros: ZERO_MICROS,
+        usedOwnKey: openRouterKeyInfo.source === 'team',
+        description: `LLM analysis (${modelId})`,
+        metadata: {
+          model: modelId,
+          phase: phase.number,
+          phaseName: phase.name,
+          stepName: name,
+          sequenceId,
+        },
+      });
+    });
+
+    return { scenes, title, frameMapping };
+  },
+  {
+    failureFunction: async ({ context, failResponse }) => {
+      const { sequenceId } = context.requestPayload;
+      if (!sequenceId) return;
+
+      console.error('[SceneSplitWorkflow] Failure:', failResponse);
+      await getGenerationChannel(sequenceId).emit('generation.error', {
+        message: 'Scene splitting failed',
+      });
+
+      return `Scene split workflow failed: ${failResponse}`;
+    },
+  }
+);

@@ -175,7 +175,7 @@ export const generateImageWorkflow = createScopedWorkflow<
     } else if (imageUrl && frameId && input.skipStorage) {
       // Preview mode: store fal.ai CDN URL directly, set status to 'preview'
       await context.run('store-preview-url', async () => {
-        const updatedFrame = await updateFrame(
+        const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
             thumbnailUrl: imageUrl,

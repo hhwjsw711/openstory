@@ -160,7 +160,7 @@ export function createFramesMethods(db: Database) {
       return results;
     },
 
-    bulkInsert: async (frameInserts: NewFrame[]): Promise<Frame[]> => {
+    bulkUpsert: async (frameInserts: NewFrame[]): Promise<Frame[]> => {
       const BATCH_SIZE = 5;
       const results: Frame[] = [];
 

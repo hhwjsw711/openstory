@@ -122,6 +122,22 @@ export interface AnalyzeScriptWorkflowInput extends SequenceWorkflowContext {
 }
 
 /**
+ * Scene split workflow input
+ */
+export type SceneSplitWorkflowInput = SequenceWorkflowContext & {
+  promptName: string;
+  promptVariables?: Record<string, string>;
+  modelId: AnalysisModelId;
+  autoGenerateMotion?: boolean;
+};
+
+export type SceneSplitWorkflowResult = {
+  scenes: Scene[];
+  title: string;
+  frameMapping: Array<{ sceneId: string; frameId: string }>;
+};
+
+/**
  * Motion generation workflow input
  */
 export interface MotionWorkflowInput extends SequenceWorkflowContext {

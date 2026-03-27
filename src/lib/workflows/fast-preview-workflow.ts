@@ -7,23 +7,29 @@
 import { fastSceneSplit } from '@/lib/ai/fast-scene-split';
 import { PREVIEW_IMAGE_MODEL } from '@/lib/ai/models';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
-import { bulkInsertFrames } from '@/lib/db/helpers/frames';
 import type { NewFrame } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
+import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   FastPreviewWorkflowInput,
   ImageWorkflowInput,
 } from '@/lib/workflow/types';
-import type { WorkflowContext } from '@upstash/workflow';
-import { createWorkflow } from '@upstash/workflow/tanstack';
 
-import { generateImageWorkflow } from './image-workflow';
 import { getFalFlowControl } from './constants';
+import { generateImageWorkflow } from './image-workflow';
 
-export const fastPreviewWorkflow = createWorkflow(
-  async (context: WorkflowContext<FastPreviewWorkflowInput>) => {
+export const fastPreviewWorkflow = createScopedWorkflow<
+  FastPreviewWorkflowInput,
+  Array<{ sceneId: string; frameId: string }>
+>(
+  async (context, scopedDb) => {
     const input = context.requestPayload;
-    const { sequenceId, script, aspectRatio } = input;
+    const { script, aspectRatio } = input;
+
+    if (!input.sequenceId) {
+      throw new Error('sequenceId is required for fast preview');
+    }
+    const sequenceId = input.sequenceId;
 
     // Step 1: Fast text-based scene split (runs inline, ~0ms)
     const scenes = await context.run('fast-split', () => {
@@ -59,7 +65,7 @@ export const fastPreviewWorkflow = createWorkflow(
             }) satisfies NewFrame
         );
 
-        const createdFrames = await bulkInsertFrames(frameInserts);
+        const createdFrames = await scopedDb.frames.bulkUpsert(frameInserts);
         const mapping = createdFrames.map((f) => ({
           sceneId: f.metadata?.sceneId ?? '',
           frameId: f.id,

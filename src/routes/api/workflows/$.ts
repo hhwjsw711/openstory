@@ -31,6 +31,7 @@ import { motionPromptWorkflow } from '@/lib/workflows/motion-prompt-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
 import { generateMusicPromptWorflow } from '@/lib/workflows/music-prompt-workflow';
 import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
+import { sceneSplitWorkflow } from '@/lib/workflows/scene-split-workflow';
 import { recastCharacterWorkflow } from '@/lib/workflows/recast-character-workflow';
 import { recastLocationWorkflow } from '@/lib/workflows/recast-location-workflow';
 import { regenerateFramesWorkflow } from '@/lib/workflows/regenerate-frames-workflow';
@@ -73,6 +74,7 @@ function getHandler() {
         motion: generateMotionWorkflow,
         'music-prompt': generateMusicPromptWorflow,
         music: generateMusicWorkflow,
+        'scene-split': sceneSplitWorkflow,
         'recast-character': recastCharacterWorkflow,
         'recast-location': recastLocationWorkflow,
         'regenerate-frames': regenerateFramesWorkflow,
