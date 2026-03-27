@@ -115,6 +115,9 @@ export const sequences = sqliteTable(
     musicPrompt: text('music_prompt'),
     musicTags: text('music_tags'),
 
+    // Poster image (sequence-level preview from script, ephemeral CDN URL)
+    posterUrl: text('poster_url'),
+
     // Auto-generation flags (set at sequence creation, read by UI for phase display)
     autoGenerateMotion: integer('auto_generate_motion', { mode: 'boolean' })
       .default(false)

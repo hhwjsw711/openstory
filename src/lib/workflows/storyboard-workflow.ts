@@ -6,6 +6,7 @@
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
+  PREVIEW_IMAGE_MODEL,
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
@@ -13,7 +14,10 @@ import {
   DEFAULT_ANALYSIS_MODEL,
   getAnalysisModelById,
 } from '@/lib/ai/models.config';
+import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { StyleConfigSchema } from '@/lib/db/schema';
+import { generateImageWithProvider } from '@/lib/image/image-generation';
+import { buildPosterPrompt } from '@/lib/prompts/poster-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
@@ -42,6 +46,7 @@ export const generateStoryboardWorkflow =
     const seq = scopedDb.sequence(sequenceId);
 
     const {
+      title,
       script,
       aspectRatio,
       styleConfig,
@@ -78,6 +83,7 @@ export const generateStoryboardWorkflow =
 
       return {
         sequenceId: sequence.id,
+        title: sequence.title,
         script: sequence.script,
         aspectRatio: sequence.aspectRatio,
         styleConfig: StyleConfigSchema.parse(style.config),
@@ -93,6 +99,31 @@ export const generateStoryboardWorkflow =
           DEFAULT_VIDEO_MODEL
         ),
       };
+    });
+
+    // Generate a poster image from the script for the video player empty state.
+    // Non-critical — failures are logged and swallowed.
+    await context.run('generate-poster', async () => {
+      try {
+        const prompt = buildPosterPrompt(title, script, styleConfig);
+        const result = await generateImageWithProvider({
+          model: PREVIEW_IMAGE_MODEL,
+          prompt,
+          imageSize: aspectRatioToImageSize(aspectRatio),
+          traceName: 'poster-image',
+        });
+
+        const posterUrl = result.imageUrls[0];
+        if (posterUrl) {
+          await scopedDb.sequences.update({ id: sequenceId, posterUrl });
+          await getGenerationChannel(sequenceId).emit(
+            'generation.poster:ready',
+            { posterUrl }
+          );
+        }
+      } catch (error) {
+        console.warn('[StoryboardWorkflow] Poster generation failed:', error);
+      }
     });
 
     const label = buildWorkflowLabel(sequenceId);

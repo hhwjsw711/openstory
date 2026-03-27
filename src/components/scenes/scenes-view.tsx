@@ -361,6 +361,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
                 generationState.phases.find((p) => p.status === 'active')
                   ?.phaseName
               }
+              posterUrl={sequence?.posterUrl ?? undefined}
               className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
             />
           </div>

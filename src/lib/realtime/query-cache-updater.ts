@@ -200,6 +200,17 @@ export function updateQueryCacheFromEvent(
       break;
     }
 
+    case 'generation.poster:ready': {
+      const posterUrl = getOptionalString(data, 'posterUrl');
+      if (posterUrl) {
+        queryClient.setQueryData<Sequence>(
+          sequenceKeys.detail(sequenceId),
+          (old) => (old ? { ...old, posterUrl } : old)
+        );
+      }
+      break;
+    }
+
     case 'generation.preview:replaced':
       // Preview frames replaced by AI-analyzed frames — refetch frame list
       void queryClient.invalidateQueries({

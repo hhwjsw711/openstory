@@ -270,6 +270,7 @@ export function useGenerationStream(
       'generation.talent:matched',
       'generation.talent:unmatched',
       'generation.location:matched',
+      'generation.poster:ready',
       'generation.preview:replaced',
       'generation.complete',
       'generation.failed',

@@ -187,6 +187,11 @@ export const realtimeSchema = {
       unusedTalentNames: z.array(z.string()),
     }),
 
+    // Poster image ready (sequence-level preview from script)
+    'poster:ready': z.object({
+      posterUrl: z.string(),
+    }),
+
     // Sequence events
     updated: z.object({
       title: z.string().optional(),
@@ -212,7 +217,9 @@ function createRealtime() {
   return new Realtime({
     schema: realtimeSchema,
     redis,
-    history: true,
+    history: {
+      expireAfterSecs: 60 * 60 * 24 * 30, // 30 days
+    },
   });
 }
 
