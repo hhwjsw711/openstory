@@ -205,6 +205,31 @@ export function updateQueryCacheFromEvent(
       }
       break;
 
+    case 'generation.scene:updated': {
+      // Update frame metadata title in cache by matching sceneId
+      const sceneId = getString(data, 'sceneId');
+      const title = getString(data, 'title');
+      if (sceneId && title) {
+        queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
+          old?.map((f) => {
+            if (f.metadata?.sceneId !== sceneId || !f.metadata.metadata)
+              return f;
+            return {
+              ...f,
+              metadata: {
+                ...f.metadata,
+                metadata: {
+                  ...f.metadata.metadata,
+                  title,
+                },
+              },
+            };
+          })
+        );
+      }
+      break;
+    }
+
     // Phase events don't need cache updates (UI-only via reducer state)
     // scene:new events don't need cache updates (analysis phase, no frames yet)
   }

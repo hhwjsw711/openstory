@@ -24,24 +24,29 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  PRESET_TOPUP_AMOUNTS_USD,
-  MIN_TOPUP_AMOUNT_USD,
-} from '@/lib/billing/constants';
+import { Switch } from '@/components/ui/switch';
 import {
   createCheckoutSessionFn,
   getTransactionsFn,
   updateAutoTopUpFn,
 } from '@/functions/billing';
 import {
-  useBillingBalance,
+  clearBalanceFlash,
+  prepareBalanceFlash,
+} from '@/hooks/use-balance-flash';
+import {
   BILLING_BALANCE_KEY,
+  useBillingBalance,
 } from '@/hooks/use-billing-balance';
 import { BILLING_GATE_KEY } from '@/hooks/use-billing-gate';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { LucideIcon } from 'lucide-react';
+import { useShowBalance } from '@/hooks/use-show-balance';
+import {
+  MIN_TOPUP_AMOUNT_USD,
+  PRESET_TOPUP_AMOUNTS_USD,
+} from '@/lib/billing/constants';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from '@tanstack/react-router';
 import {
   CreditCard,
   DollarSign,
@@ -49,8 +54,8 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type BillingSettingsProps = {
@@ -64,16 +69,22 @@ type SectionHeaderProps = {
   description: string;
 };
 
-function SectionHeader({ icon: Icon, title, description }: SectionHeaderProps) {
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+  action,
+}: SectionHeaderProps & { action?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <Icon className="h-5 w-5 text-primary" />
       </div>
-      <div>
+      <div className="flex-1">
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </div>
+      {action}
     </div>
   );
 }
@@ -97,18 +108,16 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   const [autoTopUpPrompt, setAutoTopUpPrompt] = useState<number | null>(null);
   const navigate = useNavigate();
 
-  // Clear success/canceled from URL after showing
+  // Handle checkout return — runs once when returning from Stripe with success or canceled params
+  const checkoutHandledRef = useRef(false);
   useEffect(() => {
-    if (success || canceled) {
-      const timer = setTimeout(() => {
-        window.history.replaceState({}, '', '/credits');
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, canceled]);
+    if (checkoutHandledRef.current || (!success && !canceled)) return;
+    checkoutHandledRef.current = true;
 
-  // Refetch balance on success + show return toast
-  useEffect(() => {
+    // Clear pending flash marker on cancel
+    if (canceled) clearBalanceFlash();
+
+    // Refetch balance + show return toast on success
     if (success) {
       void queryClient.invalidateQueries({
         queryKey: [...BILLING_BALANCE_KEY],
@@ -133,7 +142,13 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
         });
       }
     }
-  }, [success, queryClient, navigate]);
+
+    // Clear success/canceled from URL after showing
+    const timer = setTimeout(() => {
+      window.history.replaceState({}, '', '/credits');
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [success, canceled, queryClient, navigate]);
 
   const {
     data: balanceData,
@@ -215,6 +230,8 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
       'openstory:last-topup-amount',
       String(effectiveAmount)
     );
+    // Set pending marker before Stripe redirect so the flash shows on return
+    prepareBalanceFlash();
     checkoutMutation.mutate(effectiveAmount);
   };
 
@@ -283,7 +300,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
             description="Credits are used for image and video generation"
           />
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {balanceLoading ? (
             <Skeleton className="h-12 w-32" />
           ) : (
@@ -291,6 +308,7 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
               ${balanceData?.balance.toFixed(2) ?? '0.00'}
             </p>
           )}
+          <ShowBalanceToggle />
         </CardContent>
       </Card>
 
@@ -343,8 +361,6 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
                 ))}
               </div>
 
-              <Separator />
-
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                   $
@@ -389,37 +405,12 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
           </Card>
 
           {/* Auto Top-Up Card */}
-          <Card>
-            <CardHeader>
-              <SectionHeader
-                icon={RefreshCw}
-                title="Auto Top-Up"
-                description="Automatically add credits when your balance is low"
-              />
-            </CardHeader>
-            <CardContent>
-              {balanceLoading ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : !balanceData?.hasPaymentMethod ? (
-                <p className="text-sm text-muted-foreground">
-                  Make your first top-up to save a payment method and enable
-                  auto top-up.
-                </p>
-              ) : (
-                <AutoTopUpForm
-                  key={`${balanceData.autoTopUp.enabled}-${balanceData.autoTopUp.amountUsd}`}
-                  enabled={balanceData.autoTopUp.enabled}
-                  thresholdUsd={balanceData.autoTopUp.thresholdUsd ?? 5}
-                  amountUsd={balanceData.autoTopUp.amountUsd ?? 100}
-                  isPending={autoTopUpMutation.isPending}
-                  onSave={(settings) => autoTopUpMutation.mutate(settings)}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <AutoTopUpCard
+            balanceLoading={balanceLoading}
+            balanceData={balanceData}
+            isPending={autoTopUpMutation.isPending}
+            onSave={(settings) => autoTopUpMutation.mutate(settings)}
+          />
 
           {/* Invoices */}
           <Card>
@@ -494,10 +485,25 @@ export function BillingSettings({ success, canceled }: BillingSettingsProps) {
   );
 }
 
-type AutoTopUpFormProps = {
-  enabled: boolean;
-  thresholdUsd: number;
-  amountUsd: number;
+function ShowBalanceToggle() {
+  const { showBalance, setShowBalance } = useShowBalance();
+
+  return (
+    <div className="flex items-center justify-between border-t pt-4">
+      <div>
+        <p className="text-sm font-medium">Show balance in header</p>
+        <p className="text-xs text-muted-foreground">
+          Always display your credit balance
+        </p>
+      </div>
+      <Switch checked={showBalance} onCheckedChange={setShowBalance} />
+    </div>
+  );
+}
+
+type AutoTopUpCardProps = {
+  balanceLoading: boolean;
+  balanceData: ReturnType<typeof useBillingBalance>['data'];
   isPending: boolean;
   onSave: (settings: {
     enabled: boolean;
@@ -506,16 +512,20 @@ type AutoTopUpFormProps = {
   }) => void;
 };
 
-function AutoTopUpForm({
-  enabled: initialEnabled,
-  thresholdUsd: initialThreshold,
-  amountUsd: initialAmount,
+function AutoTopUpCard({
+  balanceLoading,
+  balanceData,
   isPending,
   onSave,
-}: AutoTopUpFormProps) {
+}: AutoTopUpCardProps) {
+  const initialEnabled = balanceData?.autoTopUp.enabled ?? false;
   const [enabled, setEnabled] = useState(initialEnabled);
-  const [threshold, setThreshold] = useState(String(initialThreshold));
-  const [amount, setAmount] = useState(String(initialAmount));
+  const [threshold, setThreshold] = useState(
+    String(balanceData?.autoTopUp.thresholdUsd ?? 5)
+  );
+  const [amount, setAmount] = useState(
+    String(balanceData?.autoTopUp.amountUsd ?? 100)
+  );
 
   const save = (overrides?: { enabled?: boolean }) => {
     onSave({
@@ -530,74 +540,86 @@ function AutoTopUpForm({
     save({ enabled: value });
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <Button
-          variant={enabled ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handleToggle(true)}
-          disabled={isPending}
-        >
-          On
-        </Button>
-        <Button
-          variant={!enabled ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => handleToggle(false)}
-          disabled={isPending}
-        >
-          Off
-        </Button>
-        {isPending && (
-          <span className="text-xs text-muted-foreground">Saving…</span>
-        )}
-      </div>
+  const hasPaymentMethod = balanceData?.hasPaymentMethod ?? false;
 
-      {enabled && (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="threshold">When balance drops below</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                id="threshold"
-                type="text"
-                inputMode="decimal"
-                value={threshold}
-                onChange={(e) =>
-                  setThreshold(e.target.value.replace(/[^0-9.]/g, ''))
-                }
-                onBlur={() => save()}
-                className="pl-7 tabular-nums"
-                autoComplete="off"
+  return (
+    <Card>
+      <CardHeader>
+        <SectionHeader
+          icon={RefreshCw}
+          title="Auto Top-Up"
+          description="Automatically add credits when your balance is low"
+          action={
+            hasPaymentMethod && !balanceLoading ? (
+              <Switch
+                checked={enabled}
+                onCheckedChange={handleToggle}
+                disabled={isPending}
               />
+            ) : undefined
+          }
+        />
+      </CardHeader>
+      {balanceLoading ? (
+        <CardContent>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      ) : !hasPaymentMethod ? (
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Make your first top-up to save a payment method and enable auto
+            top-up.
+          </p>
+        </CardContent>
+      ) : enabled ? (
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="threshold">When balance drops below</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="threshold"
+                  type="text"
+                  inputMode="decimal"
+                  value={threshold}
+                  onChange={(e) =>
+                    setThreshold(e.target.value.replace(/[^0-9.]/g, ''))
+                  }
+                  onBlur={() => save()}
+                  className="pl-7 tabular-nums"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recharge">Top up with</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="recharge"
+                  type="text"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) =>
+                    setAmount(e.target.value.replace(/[^0-9.]/g, ''))
+                  }
+                  onBlur={() => save()}
+                  className="pl-7 tabular-nums"
+                  autoComplete="off"
+                />
+              </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="recharge">Top up with</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                $
-              </span>
-              <Input
-                id="recharge"
-                type="text"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) =>
-                  setAmount(e.target.value.replace(/[^0-9.]/g, ''))
-                }
-                onBlur={() => save()}
-                className="pl-7 tabular-nums"
-                autoComplete="off"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        </CardContent>
+      ) : null}
+    </Card>
   );
 }

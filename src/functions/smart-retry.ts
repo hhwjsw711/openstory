@@ -7,7 +7,6 @@
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  IMAGE_TO_VIDEO_MODELS,
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
@@ -25,11 +24,12 @@ import {
 import { requireCredits } from '@/lib/billing/preflight';
 import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import type { Character } from '@/lib/db/schema';
-import type { Frame } from '@/lib/db/schema/frames';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
+import { resolveMotionPrompt } from '@/lib/motion/resolve-motion-prompt';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type {
   ImageWorkflowInput,
   MergeVideoWorkflowInput,
@@ -42,15 +42,6 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
 import { sequenceAccessMiddleware } from './middleware';
 import { buildSceneSummaries } from './sequences';
-
-function resolveMotionPrompt(frame: Frame): string {
-  return (
-    frame.motionPrompt ||
-    frame.metadata?.prompts?.motion?.fullPrompt ||
-    frame.description ||
-    ''
-  );
-}
 
 function getSceneCharacterReferenceImages(
   allCharacters: Character[],
@@ -126,7 +117,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         },
       };
 
-      await triggerWorkflow('/storyboard', workflowInput);
+      await triggerWorkflow('/storyboard', workflowInput, {
+        label: buildWorkflowLabel(sequence.id),
+      });
 
       return { retryType: 'full' as const, retriedItems: ['full storyboard'] };
     }
@@ -168,8 +161,8 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
     }
 
     if (failedMotionFrames.length > 0) {
-      const duration =
-        IMAGE_TO_VIDEO_MODELS[videoModel].capabilities.defaultDuration;
+      const { snapDuration } = await import('@/lib/motion/motion-generation');
+      const duration = snapDuration(undefined, videoModel);
       totalCost = addMicros(
         totalCost,
         multiplyMicros(
@@ -223,7 +216,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           referenceImages,
         };
 
-        await triggerWorkflow('/image', workflowInput);
+        await triggerWorkflow('/image', workflowInput, {
+          label: buildWorkflowLabel(sequence.id),
+        });
       }
 
       retried.push(`${failedImageFrames.length} image(s)`);
@@ -240,12 +235,14 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           frameId: frame.id,
           sequenceId: sequence.id,
           imageUrl: frame.thumbnailUrl,
-          prompt: resolveMotionPrompt(frame),
+          prompt: resolveMotionPrompt(frame, videoModel),
           model: videoModel,
           aspectRatio: sequence.aspectRatio,
         };
 
-        await triggerWorkflow('/motion', workflowInput);
+        await triggerWorkflow('/motion', workflowInput, {
+          label: buildWorkflowLabel(sequence.id),
+        });
       }
 
       retried.push(`${failedMotionFrames.length} motion video(s)`);
@@ -268,7 +265,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         teamId,
         sequenceId: sequence.id,
         prompt: sequence.musicPrompt,
-        tags: sequence.musicTags ?? undefined,
+        tags: sequence.musicTags ?? '',
         duration: totalDuration || 30,
       };
 
@@ -277,7 +274,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         musicError: null,
       });
 
-      await triggerWorkflow('/music', musicInput);
+      await triggerWorkflow('/music', musicInput, {
+        label: buildWorkflowLabel(sequence.id),
+      });
 
       retried.push('music');
     }
@@ -299,15 +298,19 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         return sum + seconds;
       }, 0);
 
-      const musicInput: MusicWorkflowInput = {
-        userId: user.id,
-        teamId,
-        sequenceId: sequence.id,
-        scenes,
-        duration: totalDuration || 30,
-      };
-
-      await triggerWorkflow('/music', musicInput);
+      // Generate music prompt
+      await triggerWorkflow(
+        '/music-prompt',
+        {
+          userId: user.id,
+          teamId,
+          sequenceId: sequence.id,
+          sceneSummaries: scenes,
+          analysisModelId: sequence.analysisModel,
+          duration: totalDuration || 30,
+        },
+        { label: buildWorkflowLabel(sequence.id) }
+      );
 
       retried.push('music prompt');
     }
@@ -339,7 +342,9 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           videoUrls,
         };
 
-        await triggerWorkflow('/merge-video', mergeInput);
+        await triggerWorkflow('/merge-video', mergeInput, {
+          label: buildWorkflowLabel(sequence.id),
+        });
 
         retried.push('video merge');
       }

@@ -1,3 +1,5 @@
+import { GenerationProgressBanner } from '@/components/generation/generation-progress-banner';
+import { MotionProgressBanner } from '@/components/generation/motion-progress-banner';
 import { ScenePlayer } from '@/components/motion/scene-player';
 import { MobileSceneDrawer } from '@/components/scenes/mobile-scene-drawer';
 import { SceneList } from '@/components/scenes/scene-list';
@@ -7,6 +9,9 @@ import {
 } from '@/components/scenes/scene-script-prompts';
 import { FailureSummaryBanner } from '@/components/sequence/failure-summary-banner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { batchGenerateMotionFn } from '@/functions/motion-functions';
+import { smartRetryFn } from '@/functions/smart-retry';
+import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useFramesBySequence } from '@/hooks/use-frames';
 import { useSequence } from '@/hooks/use-sequences';
 import {
@@ -14,17 +19,15 @@ import {
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
 import { analyzeFailures } from '@/lib/failures/failure-analysis';
+import type { GenerationPhaseConfig } from '@/lib/realtime/generation-stream.reducer';
 import { useGenerationStream } from '@/lib/realtime/use-generation-stream';
-import { batchGenerateMotionFn } from '@/functions/motion-functions';
-import { smartRetryFn } from '@/functions/smart-retry';
-import { toast } from 'sonner';
-import { BILLING_BALANCE_KEY } from '@/hooks/use-billing-balance';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 type ScenesViewProps = {
-  sequenceId?: string;
+  sequenceId: string;
 };
 
 // Full class names required for Tailwind JIT to detect at build time
@@ -87,16 +90,29 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
     Set<string>
   >(() => new Set());
 
-  // Initial fetch to determine sequence status - disable default polling
+  const [motionStartedAt, setMotionStartedAt] = useState<number | null>(null);
+  const [motionIncludesMusic, setMotionIncludesMusic] = useState(false);
+  const handleMotionComplete = useCallback(() => setMotionStartedAt(null), []);
+
+  // Initial fetch to determine sequence status - poll during motion generation
   const { data: sequence } = useSequence(sequenceId, {
-    refetchInterval: false,
+    refetchInterval: motionStartedAt !== null ? 2000 : false,
   });
   const aspectRatio = sequence?.aspectRatio || DEFAULT_ASPECT_RATIO;
   const isProcessing = sequence?.status === 'processing';
 
+  // Phase config from DB — set in stone when the workflow was triggered
+  const phaseConfig = useMemo<GenerationPhaseConfig>(
+    () => ({
+      autoGenerateMotion: sequence?.autoGenerateMotion ?? false,
+      autoGenerateMusic: sequence?.autoGenerateMusic ?? false,
+    }),
+    [sequence?.autoGenerateMotion, sequence?.autoGenerateMusic]
+  );
+
   // Subscribe to real-time generation events when sequence is processing
   const { state: generationState, status: realtimeStatus } =
-    useGenerationStream(sequenceId);
+    useGenerationStream(sequenceId, phaseConfig);
 
   // Hybrid polling: only poll when processing AND realtime has failed
   // - 'connecting' → wait for connection, don't poll
@@ -104,12 +120,14 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   // - 'disconnected'/'error' → poll as fallback
   const realtimeFailed = realtimeStatus === 'error';
   const shouldPoll = isProcessing && realtimeFailed;
-  const pollInterval = shouldPoll ? 2000 : false;
 
-  // Fetch sequence and frames with hybrid polling
-  const { data: frames } = useFramesBySequence(sequenceId, {
-    refetchInterval: pollInterval,
-  });
+  // Fetch frames — only override refetchInterval when we need explicit polling
+  // (realtime failed during image generation). Otherwise let useFramesBySequence's
+  // smart polling handle it (auto-polls at 2s when any frame has generating status).
+  const { data: frames } = useFramesBySequence(
+    sequenceId,
+    shouldPoll ? { refetchInterval: 2000 } : undefined
+  );
 
   const curSelectedFrameId = selectedFrameId || frames?.[0]?.id;
   const selectedFrame = useMemo(
@@ -179,12 +197,10 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   );
 
   const handleFullRetry = useCallback(() => {
-    if (!sequenceId) return;
     void navigate({ to: '/sequences/$id/script', params: { id: sequenceId } });
   }, [sequenceId, navigate]);
 
   const handleSmartRetry = useCallback(async () => {
-    if (!sequenceId) return;
     setIsRetrying(true);
     try {
       const result = await smartRetryFn({ data: { sequenceId } });
@@ -220,8 +236,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   // Handler for batch motion generation (server determines eligible frames)
   const handleBatchMotionGeneration = useCallback(
     async (includeMusic: boolean) => {
-      if (!sequenceId) return;
-
       // Optimistic: compute eligible frames locally (same filter as backend)
       const eligibleFrameIds = (frames ?? [])
         .filter(
@@ -232,6 +246,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         .map((f) => f.id);
 
       setRegeneratingMotion((prev) => addAllToSet(prev, eligibleFrameIds));
+      setMotionStartedAt(Date.now());
+      setMotionIncludesMusic(includeMusic);
 
       try {
         await batchGenerateMotionFn({
@@ -241,6 +257,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         setRegeneratingMotion((prev) =>
           removeAllFromSet(prev, eligibleFrameIds)
         );
+        setMotionStartedAt(null);
 
         if (isInsufficientCreditsError(error)) {
           toast.error('Insufficient credits', {
@@ -267,6 +284,31 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Generation progress banner */}
+      {(isProcessing || generationState.currentPhase > 0) && (
+        <div className="pl-4 pr-4 pt-4 md:pr-8">
+          <GenerationProgressBanner
+            generationState={generationState}
+            isProcessing={isProcessing}
+            startedAt={sequence?.updatedAt}
+            script={sequence?.script ?? undefined}
+          />
+        </div>
+      )}
+
+      {/* Motion generation progress banner */}
+      {motionStartedAt !== null && sequence && frames && (
+        <div className="pl-4 pr-4 pt-4 md:pr-8">
+          <MotionProgressBanner
+            frames={frames}
+            sequence={sequence}
+            includeMusic={motionIncludesMusic}
+            startedAt={motionStartedAt}
+            onComplete={handleMotionComplete}
+          />
+        </div>
+      )}
+
       {/* Failure summary with smart retry */}
       {failureSummary?.hasFailed && (
         <FailureSummaryBanner
@@ -307,7 +349,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
         </div>
 
         {/* Main content area */}
-        <ScrollArea className="flex-1 px-4 md:px-8 gap-8 flex flex-col pb-20 md:pb-0">
+        <ScrollArea className="flex-1 px-4 md:px-8 gap-8 flex flex-col pb-20 md:pb-0 pt-4">
           <div className="flex flex-1 min-h-0 justify-center pb-8">
             <ScenePlayer
               frames={frames}
@@ -324,7 +366,7 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
           </div>
           <SceneScriptPrompts
             frame={selectedFrame}
-            sequenceId={sequenceId ?? ''}
+            sequenceId={sequenceId}
             selectedTab={selectedTab}
             onTabChange={setSelectedTab}
             regeneratingImages={regeneratingImages}

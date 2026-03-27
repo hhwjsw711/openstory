@@ -103,7 +103,7 @@ export const LargeSize: Story = {
 };
 
 export const InteractiveButton: Story = {
-  render: () => {
+  render: function RenderInteractiveButton() {
     const [clicks, setClicks] = useState(0);
 
     return (
@@ -126,7 +126,7 @@ export const InteractiveButton: Story = {
 };
 
 export const WithDialogIntegration: Story = {
-  render: () => {
+  render: function RenderWithDialogIntegration() {
     const InteractiveDemo = () => {
       const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
         MOCK_SYSTEM_STYLES[0].id

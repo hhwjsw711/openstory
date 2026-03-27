@@ -23,7 +23,6 @@ import type {
 } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import { buildLocationSheetPrompt } from '@/lib/prompts/location-prompt';
-import { getGenerationChannel } from '@/lib/realtime';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
@@ -44,17 +43,6 @@ export const locationBibleWorkflow = createScopedWorkflow<
     const matchMap = new Map<string, LibraryLocationMatch>(
       libraryLocationMatches.map((m) => [m.locationId, m])
     );
-
-    // Phase start event
-    await context.run('location-bible-start', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:start',
-        {
-          phase: 4,
-          phaseName: 'Designing locations…',
-        }
-      );
-    });
 
     // Step 1: Insert locations into database
     const createdLocations = await context.run(
@@ -203,28 +191,11 @@ export const locationBibleWorkflow = createScopedWorkflow<
       })
     );
 
-    // Phase complete event
-    await context.run('location-bible-complete', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: 4 }
-      );
-    });
-
     return seqLocations;
   },
   {
-    failureFunction: async ({ context, failResponse }) => {
-      const input = context.requestPayload;
+    failureFunction: async ({ failResponse }) => {
       const error = sanitizeFailResponse(failResponse);
-
-      // Emit failure event for phase completion
-      if (input.sequenceId) {
-        await getGenerationChannel(input.sequenceId).emit(
-          'generation.phase:complete',
-          { phase: 4 }
-        );
-      }
 
       console.error(
         '[LocationBibleWorkflow]',

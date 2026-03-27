@@ -22,7 +22,14 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { enhanceScriptStreamFn } from '@/functions/ai';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { useBillingGate } from '@/hooks/use-billing-gate';
 import { useGenerationSettings } from '@/hooks/use-generation-settings';
 import { useSequenceDraft } from '@/hooks/use-sequence-draft';
@@ -53,6 +60,14 @@ import { ScriptEditor } from './script-editor';
 
 const SCRIPT_SHORT_THRESHOLD = 1000;
 
+const DURATION_PRESETS = [
+  { value: '15', label: '15s', seconds: 15 },
+  { value: '30', label: '30s', seconds: 30 },
+  { value: '60', label: '1m', seconds: 60 },
+  { value: '120', label: '2m', seconds: 120 },
+  { value: '180', label: '3m', seconds: 180 },
+] as const;
+
 export const ScriptView: FC<{
   teamId?: string;
   sequence?: Sequence;
@@ -60,23 +75,20 @@ export const ScriptView: FC<{
   loading?: boolean;
   onSuccess?: (sequenceIds: string[]) => void;
   onCancel?: () => void;
-  autoFocus?: boolean;
-}> = ({
-  teamId,
-  sequence,
-  loading = false,
-  onSuccess,
-  flat,
-  onCancel,
-  autoFocus = false,
-}) => {
-  // Local state - undefined until user makes an edit
-  const [script, setScript] = useState<string | null | undefined>(
-    sequence?.script
-  );
-  const [styleId, setStyleId] = useState<string | null>(
-    sequence?.styleId || null
-  );
+}> = ({ teamId, sequence, loading = false, onSuccess, flat, onCancel }) => {
+  // Local content state - undefined until user makes an edit
+  const [contentState, setContentState] = useState<{
+    script: string | null | undefined;
+    styleId: string | null;
+  }>({
+    script: sequence?.script,
+    styleId: sequence?.styleId || null,
+  });
+  const { script, styleId } = contentState;
+  const setScript = (v: string | null | undefined) =>
+    setContentState((s) => ({ ...s, script: v }));
+  const setStyleId = (v: string | null) =>
+    setContentState((s) => ({ ...s, styleId: v }));
 
   // Load saved settings from localStorage
   const {
@@ -106,37 +118,54 @@ export const ScriptView: FC<{
     return savedSettings.analysisModels;
   }, [isEditing, sequence?.analysisModel, savedSettings.analysisModels]);
 
-  const [analysisModels, setAnalysisModels] = useState<AnalysisModelId[]>(
-    sequenceAnalysisModels
-  );
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(
-    isEditing && sequence?.aspectRatio
-      ? sequence.aspectRatio
-      : savedSettings.aspectRatio
-  );
-  const [imageModel, setImageModel] = useState<TextToImageModel>(
-    isEditing && sequence?.imageModel
-      ? safeTextToImageModel(sequence.imageModel, DEFAULT_IMAGE_MODEL)
-      : savedSettings.imageModel
-  );
-  const [motionModel, setMotionModel] = useState<ImageToVideoModel>(
-    isEditing && sequence?.videoModel
-      ? safeImageToVideoModel(sequence.videoModel, DEFAULT_VIDEO_MODEL)
-      : savedSettings.motionModel
-  );
-  const [autoGenerateMotion, setAutoGenerateMotion] = useState<boolean>(
-    isEditing ? false : savedSettings.autoGenerateMotion
-  );
-  const [musicModel, setMusicModel] = useState<AudioModel>(
-    isEditing && sequence?.musicModel
-      ? safeAudioModel(sequence.musicModel, DEFAULT_MUSIC_MODEL)
-      : savedSettings.musicModel
-  );
-  const [autoGenerateMusic, setAutoGenerateMusic] = useState<boolean>(
-    isEditing ? false : savedSettings.autoGenerateMusic
-  );
-  const [selectedTalentIds, setSelectedTalentIds] = useState<string[]>([]);
-  const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
+  const [genSettings, setGenSettings] = useState<{
+    analysisModels: AnalysisModelId[];
+    aspectRatio: AspectRatio;
+    imageModel: TextToImageModel;
+    motionModel: ImageToVideoModel;
+    autoGenerateMotion: boolean;
+    musicModel: AudioModel;
+    autoGenerateMusic: boolean;
+  }>(() => ({
+    analysisModels: sequenceAnalysisModels,
+    aspectRatio:
+      isEditing && sequence?.aspectRatio
+        ? sequence.aspectRatio
+        : savedSettings.aspectRatio,
+    imageModel:
+      isEditing && sequence?.imageModel
+        ? safeTextToImageModel(sequence.imageModel, DEFAULT_IMAGE_MODEL)
+        : savedSettings.imageModel,
+    motionModel:
+      isEditing && sequence?.videoModel
+        ? safeImageToVideoModel(sequence.videoModel, DEFAULT_VIDEO_MODEL)
+        : savedSettings.motionModel,
+    autoGenerateMotion: isEditing ? false : savedSettings.autoGenerateMotion,
+    musicModel:
+      isEditing && sequence?.musicModel
+        ? safeAudioModel(sequence.musicModel, DEFAULT_MUSIC_MODEL)
+        : savedSettings.musicModel,
+    autoGenerateMusic: isEditing ? false : savedSettings.autoGenerateMusic,
+  }));
+  const {
+    analysisModels,
+    aspectRatio,
+    imageModel,
+    motionModel,
+    autoGenerateMotion,
+    musicModel,
+    autoGenerateMusic,
+  } = genSettings;
+  const updateGen = <K extends keyof typeof genSettings>(
+    key: K,
+    value: (typeof genSettings)[K]
+  ) => setGenSettings((s) => ({ ...s, [key]: value }));
+  const [selections, setSelections] = useState({
+    talentIds: [] as string[],
+    locationIds: [] as string[],
+  });
+  const { talentIds: selectedTalentIds, locationIds: selectedLocationIds } =
+    selections;
 
   const { data: styles = [], isLoading: isLoadingStyles } = useStyles();
 
@@ -161,12 +190,20 @@ export const ScriptView: FC<{
     }
     if (!draftLoaded) return;
     if (!hasSyncedDraftRef.current && draft.script) {
-      setScript(draft.script);
-      if (draft.styleId) setStyleId(draft.styleId);
-      if (draft.selectedTalentIds.length > 0)
-        setSelectedTalentIds(draft.selectedTalentIds);
-      if (draft.selectedLocationIds.length > 0)
-        setSelectedLocationIds(draft.selectedLocationIds);
+      setContentState((s) => ({
+        script: draft.script,
+        styleId: draft.styleId || s.styleId,
+      }));
+      setSelections((s) => ({
+        talentIds:
+          draft.selectedTalentIds.length > 0
+            ? draft.selectedTalentIds
+            : s.talentIds,
+        locationIds:
+          draft.selectedLocationIds.length > 0
+            ? draft.selectedLocationIds
+            : s.locationIds,
+      }));
       hasSyncedDraftRef.current = true;
     }
   }, [isEditing, loading, draftLoaded, draft]);
@@ -186,13 +223,15 @@ export const ScriptView: FC<{
     }
     // Sync once when creating new sequence
     if (!hasSyncedRef.current) {
-      setAspectRatio(savedSettings.aspectRatio);
-      setAnalysisModels(savedSettings.analysisModels);
-      setImageModel(savedSettings.imageModel);
-      setMotionModel(savedSettings.motionModel);
-      setAutoGenerateMotion(savedSettings.autoGenerateMotion);
-      setMusicModel(savedSettings.musicModel);
-      setAutoGenerateMusic(savedSettings.autoGenerateMusic);
+      setGenSettings({
+        aspectRatio: savedSettings.aspectRatio,
+        analysisModels: savedSettings.analysisModels,
+        imageModel: savedSettings.imageModel,
+        motionModel: savedSettings.motionModel,
+        autoGenerateMotion: savedSettings.autoGenerateMotion,
+        musicModel: savedSettings.musicModel,
+        autoGenerateMusic: savedSettings.autoGenerateMusic,
+      });
       hasSyncedRef.current = true;
     }
   }, [isEditing, settingsLoaded, savedSettings]);
@@ -201,28 +240,9 @@ export const ScriptView: FC<{
   // Only save after initial load to prevent overwriting with defaults
   useEffect(() => {
     if (!isEditing && settingsLoaded) {
-      saveSettings({
-        aspectRatio,
-        analysisModels,
-        imageModel,
-        motionModel,
-        autoGenerateMotion,
-        musicModel,
-        autoGenerateMusic,
-      });
+      saveSettings(genSettings);
     }
-  }, [
-    isEditing,
-    settingsLoaded,
-    aspectRatio,
-    analysisModels,
-    imageModel,
-    motionModel,
-    autoGenerateMotion,
-    musicModel,
-    autoGenerateMusic,
-    saveSettings,
-  ]);
+  }, [isEditing, settingsLoaded, genSettings, saveSettings]);
 
   // Persist draft to localStorage when creating new sequences
   useEffect(() => {
@@ -244,11 +264,27 @@ export const ScriptView: FC<{
     saveDraft,
   ]);
 
-  const [isEnhancing, setIsEnhancing] = useState(false);
-  const [enhanceError, setEnhanceError] = useState<string | null>(null);
-  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
-  const [showEnhanceNudge, setShowEnhanceNudge] = useState(false);
-  const [canUndoEnhance, setCanUndoEnhance] = useState(false);
+  const [targetDuration, setTargetDuration] = useState(30);
+  const [enhancePopoverOpen, setEnhancePopoverOpen] = useState(false);
+
+  const [enhanceUI, setEnhanceUI] = useState({
+    isEnhancing: false,
+    error: null as string | null,
+    showRegenerateConfirm: false,
+    showEnhanceNudge: false,
+    canUndoEnhance: false,
+  });
+  const {
+    isEnhancing,
+    error: enhanceError,
+    showRegenerateConfirm,
+    showEnhanceNudge,
+    canUndoEnhance,
+  } = enhanceUI;
+  const setEnhance = <K extends keyof typeof enhanceUI>(
+    key: K,
+    value: (typeof enhanceUI)[K]
+  ) => setEnhanceUI((s) => ({ ...s, [key]: value }));
 
   const createSequenceMutation = useCreateSequence();
   const {
@@ -293,7 +329,7 @@ export const ScriptView: FC<{
     );
   };
 
-  const handleSubmit = async (event?: React.FormEvent) => {
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
     if (event) {
       event.preventDefault();
     }
@@ -304,13 +340,13 @@ export const ScriptView: FC<{
     }
 
     if (isEditing) {
-      setShowRegenerateConfirm(true);
+      setEnhance('showRegenerateConfirm', true);
       return;
     }
 
     const scriptText = script ?? sequence?.script ?? '';
     if (scriptText.length < SCRIPT_SHORT_THRESHOLD) {
-      setShowEnhanceNudge(true);
+      setEnhance('showEnhanceNudge', true);
       return;
     }
 
@@ -326,8 +362,7 @@ export const ScriptView: FC<{
       return;
     }
 
-    setIsEnhancing(true);
-    setEnhanceError(null);
+    setEnhanceUI((s) => ({ ...s, isEnhancing: true, error: null }));
     previousScriptRef.current = scriptValue;
     setScript('');
 
@@ -340,6 +375,7 @@ export const ScriptView: FC<{
       for await (const chunk of await enhanceScriptStreamFn({
         data: {
           script: scriptValue,
+          targetDuration,
           styleConfig: selectedStyle?.config ?? undefined,
           analysisModel: analysisModels[0],
           aspectRatio,
@@ -349,17 +385,18 @@ export const ScriptView: FC<{
         accumulated += chunk.delta;
         setScript(accumulated);
       }
-      setCanUndoEnhance(true);
+      setEnhance('canUndoEnhance', true);
     } catch (error) {
       if (!abortController.signal.aborted) {
-        setEnhanceError(
+        setEnhance(
+          'error',
           error instanceof Error ? error.message : 'Failed to enhance script'
         );
         setScript(previousScriptRef.current);
       }
     } finally {
       enhanceAbortRef.current = null;
-      setIsEnhancing(false);
+      setEnhance('isEnhancing', false);
     }
   };
 
@@ -369,7 +406,7 @@ export const ScriptView: FC<{
 
   const handleUndoEnhance = () => {
     setScript(previousScriptRef.current);
-    setCanUndoEnhance(false);
+    setEnhance('canUndoEnhance', false);
   };
 
   useEffect(() => {
@@ -395,6 +432,10 @@ export const ScriptView: FC<{
     !isFormValid || isSubmitting || isProcessing || isEnhancing;
 
   const scriptValue = script ?? sequence?.script ?? '';
+  const { ref: textareaRef } = useAutoScroll({
+    enabled: isEnhancing,
+    content: scriptValue,
+  });
 
   return (
     <Card
@@ -415,24 +456,36 @@ export const ScriptView: FC<{
             autoGenerateMotion={autoGenerateMotion}
             musicModel={musicModel}
             autoGenerateMusic={autoGenerateMusic}
-            onAspectRatioChange={setAspectRatio}
-            onAnalysisModelsChange={setAnalysisModels}
-            onImageModelChange={setImageModel}
-            onMotionModelChange={setMotionModel}
-            onAutoGenerateMotionChange={setAutoGenerateMotion}
-            onMusicModelChange={setMusicModel}
-            onAutoGenerateMusicChange={setAutoGenerateMusic}
+            onAspectRatioChange={(v) => updateGen('aspectRatio', v)}
+            onAnalysisModelsChange={(v) => updateGen('analysisModels', v)}
+            onImageModelChange={(v) => updateGen('imageModel', v)}
+            onMotionModelChange={(v) => updateGen('motionModel', v)}
+            onAutoGenerateMotionChange={(v) =>
+              updateGen('autoGenerateMotion', v)
+            }
+            onMusicModelChange={(v) => updateGen('musicModel', v)}
+            onAutoGenerateMusicChange={(v) => updateGen('autoGenerateMusic', v)}
             disabled={loading}
           />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {selectedTalentIds.length === 0 &&
+              selectedLocationIds.length === 0 && (
+                <span className="text-[10px] text-muted-foreground/40 mr-0.5">
+                  optional
+                </span>
+              )}
             <TalentSuggestionSelector
               selectedTalentIds={selectedTalentIds}
-              onSelectionChange={setSelectedTalentIds}
+              onSelectionChange={(v) =>
+                setSelections((s) => ({ ...s, talentIds: v }))
+              }
               disabled={loading}
             />
             <LocationSuggestionSelector
               selectedLocationIds={selectedLocationIds}
-              onSelectionChange={setSelectedLocationIds}
+              onSelectionChange={(v) =>
+                setSelections((s) => ({ ...s, locationIds: v }))
+              }
               disabled={loading}
             />
           </div>
@@ -441,15 +494,15 @@ export const ScriptView: FC<{
         <CardContent className="min-h-0 @container flex flex-col gap-4 py-6 overflow-hidden">
           <div className="relative min-h-0 flex flex-col">
             <ScriptEditor
+              ref={textareaRef}
               value={scriptValue}
               onValueChange={(val) => {
                 setScript(val);
-                if (canUndoEnhance) setCanUndoEnhance(false);
+                if (canUndoEnhance) setEnhance('canUndoEnhance', false);
               }}
               maxLength={50000}
-              placeholder="Describe your sequence… Write a script, outline scenes, or paste your screenplay."
+              placeholder="A one-liner or website URL is all you need — click Enhance Script to do the rest. Or paste a full screenplay and generate directly."
               disabled={loading}
-              autoFocus={autoFocus}
               showCharacterCount={false}
             />
             <div className="absolute bottom-2 right-2 flex items-center gap-1">
@@ -480,22 +533,65 @@ export const ScriptView: FC<{
                   Stop
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 text-muted-foreground"
-                  disabled={
-                    !scriptValue ||
-                    scriptValue.length < 10 ||
-                    isSubmitting ||
-                    isProcessing
-                  }
-                  onClick={() => void handleEnhance()}
+                <Popover
+                  open={enhancePopoverOpen}
+                  onOpenChange={setEnhancePopoverOpen}
                 >
-                  <Sparkles className="size-3.5" />
-                  Enhance Script
-                </Button>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-muted-foreground"
+                      disabled={
+                        !scriptValue ||
+                        scriptValue.length < 10 ||
+                        isSubmitting ||
+                        isProcessing
+                      }
+                    >
+                      <Sparkles className="size-3.5" />
+                      Enhance Script
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" side="top" className="w-auto">
+                    <div className="flex flex-col gap-3">
+                      <p className="text-sm font-medium">
+                        Target video duration
+                      </p>
+                      <ToggleGroup
+                        type="single"
+                        value={String(targetDuration)}
+                        onValueChange={(v) => {
+                          if (v) setTargetDuration(Number(v));
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {DURATION_PRESETS.map((preset) => (
+                          <ToggleGroupItem
+                            key={preset.value}
+                            value={preset.value}
+                          >
+                            {preset.label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setEnhancePopoverOpen(false);
+                          void handleEnhance();
+                        }}
+                      >
+                        <Sparkles className="size-3.5" />
+                        Enhance
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
@@ -569,7 +665,7 @@ export const ScriptView: FC<{
       />
       <AlertDialog
         open={showRegenerateConfirm}
-        onOpenChange={setShowRegenerateConfirm}
+        onOpenChange={(v) => setEnhance('showRegenerateConfirm', v)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -582,7 +678,7 @@ export const ScriptView: FC<{
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setShowRegenerateConfirm(false);
+                setEnhance('showRegenerateConfirm', false);
                 executeRegeneration();
               }}
             >
@@ -591,8 +687,20 @@ export const ScriptView: FC<{
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog open={showEnhanceNudge} onOpenChange={setShowEnhanceNudge}>
-        <AlertDialogContent>
+      <AlertDialog
+        open={showEnhanceNudge}
+        onOpenChange={(v) => setEnhance('showEnhanceNudge', v)}
+      >
+        <AlertDialogContent
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              setEnhance('showEnhanceNudge', false);
+              void handleEnhance();
+            }
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               Your script is just a starting point
@@ -604,13 +712,31 @@ export const ScriptView: FC<{
               style.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <p className="text-sm font-medium">Target video duration</p>
+            <ToggleGroup
+              type="single"
+              value={String(targetDuration)}
+              onValueChange={(v) => {
+                if (v) setTargetDuration(Number(v));
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {DURATION_PRESETS.map((preset) => (
+                <ToggleGroupItem key={preset.value} value={preset.value}>
+                  {preset.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <div className="flex-1" />
             <AlertDialogAction
               className={buttonVariants({ variant: 'secondary' })}
               onClick={() => {
-                setShowEnhanceNudge(false);
+                setEnhance('showEnhanceNudge', false);
                 executeRegeneration();
               }}
             >
@@ -618,7 +744,7 @@ export const ScriptView: FC<{
             </AlertDialogAction>
             <AlertDialogAction
               onClick={() => {
-                setShowEnhanceNudge(false);
+                setEnhance('showEnhanceNudge', false);
                 void handleEnhance();
               }}
             >

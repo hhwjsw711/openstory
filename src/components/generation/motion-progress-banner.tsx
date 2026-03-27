@@ -1,0 +1,173 @@
+import {
+  type BannerPhase,
+  ProgressBanner,
+} from '@/components/generation/progress-banner';
+import {
+  DEFAULT_VIDEO_MODEL,
+  IMAGE_TO_VIDEO_MODELS,
+  safeImageToVideoModel,
+} from '@/lib/ai/models';
+import type { Frame } from '@/lib/db/schema/frames';
+import type { Sequence } from '@/lib/db/schema/sequences';
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+type MotionProgressBannerProps = {
+  frames: Frame[];
+  sequence: Sequence;
+  includeMusic: boolean;
+  startedAt: number;
+  onComplete: () => void;
+};
+
+type Phase = {
+  key: string;
+  name: string;
+  shortName: string;
+  status: 'pending' | 'active' | 'completed';
+  budgetSeconds: number;
+  description: string;
+};
+
+const MUSIC_BUDGET_SECONDS = 30;
+const MERGE_VIDEO_BUDGET_SECONDS = 30;
+const MERGE_AUDIO_VIDEO_BUDGET_SECONDS = 30;
+
+// Fal.ai queues frames with limited concurrency — observed ~2x overhead
+// vs model estimate (e.g. 9 frames × 15s model = 135s, actual ~300s).
+const QUEUE_OVERHEAD_FACTOR = 2;
+const MIN_MOTION_BUDGET_SECONDS = 210; // ~3.5 min floor — queue startup overhead
+
+function getMotionBudget(sequence: Sequence, frameCount: number): number {
+  const modelKey = safeImageToVideoModel(
+    sequence.videoModel,
+    DEFAULT_VIDEO_MODEL
+  );
+  const config = IMAGE_TO_VIDEO_MODELS[modelKey];
+  const perFrame = config?.performance.estimatedGenerationTime ?? 20;
+  return Math.max(
+    perFrame * frameCount * QUEUE_OVERHEAD_FACTOR,
+    MIN_MOTION_BUDGET_SECONDS
+  );
+}
+
+function isTerminal(status: string | null): boolean {
+  return status === 'completed' || status === 'failed';
+}
+
+function derivePhases(
+  frames: Frame[],
+  sequence: Sequence,
+  includeMusic: boolean
+): Phase[] {
+  const allMotionDone =
+    frames.length > 0 && frames.every((f) => isTerminal(f.videoStatus));
+  const musicDone = isTerminal(sequence.musicStatus);
+
+  const motionMusicComplete = includeMusic
+    ? allMotionDone && musicDone
+    : allMotionDone;
+  const motionMusicStatus: Phase['status'] = motionMusicComplete
+    ? 'completed'
+    : 'active';
+
+  const motionBudget = getMotionBudget(sequence, frames.length);
+  const phase1Budget = includeMusic
+    ? Math.max(motionBudget, MUSIC_BUDGET_SECONDS)
+    : motionBudget;
+
+  const phases: Phase[] = [
+    {
+      key: 'motion-music',
+      name: includeMusic
+        ? 'Generating motion & music\u2026'
+        : 'Generating motion\u2026',
+      shortName: includeMusic ? 'Motion & Music' : 'Motion',
+      status: motionMusicStatus,
+      budgetSeconds: phase1Budget,
+      description: includeMusic
+        ? 'Animating scenes and composing music in parallel.'
+        : 'Animating each scene with camera movement and motion effects.',
+    },
+  ];
+
+  if (frames.length > 1) {
+    const mergeDone =
+      sequence.mergedVideoStatus === 'completed' && motionMusicComplete;
+    const mergeActive =
+      sequence.mergedVideoStatus === 'merging' ||
+      (motionMusicComplete && !mergeDone);
+    const mergeStatus: Phase['status'] = mergeDone
+      ? 'completed'
+      : mergeActive
+        ? 'active'
+        : 'pending';
+
+    const mergeBudget = includeMusic
+      ? MERGE_VIDEO_BUDGET_SECONDS + MERGE_AUDIO_VIDEO_BUDGET_SECONDS
+      : MERGE_VIDEO_BUDGET_SECONDS;
+
+    phases.push({
+      key: 'merge',
+      name: 'Merging video\u2026',
+      shortName: 'Merge',
+      status: mergeStatus,
+      budgetSeconds: mergeBudget,
+      description: includeMusic
+        ? 'Stitching scenes and audio together into the final video.'
+        : 'Stitching all scenes together into the final video.',
+    });
+  }
+
+  return phases;
+}
+
+export const MotionProgressBanner: React.FC<MotionProgressBannerProps> = ({
+  frames,
+  sequence,
+  includeMusic,
+  startedAt,
+  onComplete,
+}) => {
+  const [isOpen, setIsOpen] = useState(true);
+  const [elapsedSeconds, setElapsedSeconds] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+  );
+  const startTimeRef = useRef(startedAt);
+
+  // Tick elapsed time every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const phases = useMemo(
+    () => derivePhases(frames, sequence, includeMusic),
+    [frames, sequence, includeMusic]
+  );
+
+  const allComplete = phases.every((p) => p.status === 'completed');
+  const totalBudget = phases.reduce((sum, p) => sum + p.budgetSeconds, 0);
+  const remaining = Math.max(0, totalBudget - elapsedSeconds);
+
+  const bannerPhases: BannerPhase[] = phases.map(
+    ({ budgetSeconds: _, ...phase }) => phase
+  );
+
+  return (
+    <ProgressBanner
+      phases={bannerPhases}
+      remaining={remaining}
+      isComplete={allComplete}
+      defaultLabel="Generating&#xa0;motion"
+      ariaPrefix="Motion"
+      completedLabel="Motion complete"
+      completedBadge="Done"
+      exitDelayMs={1500}
+      onExitComplete={onComplete}
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+    />
+  );
+};

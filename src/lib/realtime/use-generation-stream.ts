@@ -2,8 +2,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useReducer } from 'react';
 import { useRealtime } from './client';
 import {
+  createInitialState,
   generationStreamReducer,
-  initialGenerationStreamState,
+  type GenerationPhaseConfig,
   type GenerationStreamAction,
 } from './generation-stream.reducer';
 import { updateQueryCacheFromEvent } from './query-cache-updater';
@@ -71,6 +72,18 @@ function mapEventToAction(
     case 'generation.scene:new':
       return {
         type: 'SCENE_NEW',
+        payload: {
+          sceneId: asString(data.sceneId),
+          sceneNumber: asNumber(data.sceneNumber),
+          title: asString(data.title),
+          scriptExtract: asString(data.scriptExtract),
+          durationSeconds: asNumber(data.durationSeconds),
+        },
+      };
+
+    case 'generation.scene:updated':
+      return {
+        type: 'SCENE_UPDATED',
         payload: {
           sceneId: asString(data.sceneId),
           sceneNumber: asNumber(data.sceneNumber),
@@ -203,11 +216,15 @@ function mapEventToAction(
  * ))}
  * ```
  */
-export function useGenerationStream(sequenceId?: string) {
+export function useGenerationStream(
+  sequenceId: string,
+  phaseConfig?: GenerationPhaseConfig
+) {
   const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(
     generationStreamReducer,
-    initialGenerationStreamState
+    phaseConfig,
+    createInitialState
   );
 
   // Handle incoming events
@@ -216,9 +233,7 @@ export function useGenerationStream(sequenceId?: string) {
       const { event: eventName, data } = event;
 
       // Update TanStack Query cache for data-related events
-      if (sequenceId) {
-        updateQueryCacheFromEvent(queryClient, sequenceId, eventName, data);
-      }
+      updateQueryCacheFromEvent(queryClient, sequenceId, eventName, data);
 
       // Map event to typed action and dispatch
       const action = mapEventToAction(eventName, data);
@@ -229,14 +244,16 @@ export function useGenerationStream(sequenceId?: string) {
     [queryClient, sequenceId]
   );
 
-  // Subscribe to realtime events
-  // Only include the channel if sequenceId is defined to avoid invalid subscriptions
+  // Subscribe to realtime events with history replay.
+  // History replays past events on mount so progress persists across navigation.
+  // https://upstash.com/docs/realtime/features/history#subscribe-with-history
   const { status } = useRealtime({
-    channels: sequenceId ? [sequenceId] : [],
+    channels: [sequenceId],
     events: [
       'generation.phase:start',
       'generation.phase:complete',
       'generation.scene:new',
+      'generation.scene:updated',
       'generation.frame:created',
       'generation.frame:updated',
       'generation.image:progress',
@@ -251,8 +268,10 @@ export function useGenerationStream(sequenceId?: string) {
       'generation.updated',
       'generation.error',
     ] as const,
+    // @ts-expect-error history supported at runtime, not yet in SDK types
+    history: true,
     onData: handleEvent,
-    enabled: !!sequenceId, // Only subscribe if sequenceId is defined
+    enabled: true,
   });
 
   const reset = useCallback(() => {

@@ -24,7 +24,7 @@ export const Default: Story = {
     selectedStyleId: mockStyles[0].id,
     onStyleSelect: fn(),
   },
-  render: () => {
+  render: function RenderDefault() {
     const [selectedStyleId, setSelectedStyleId] = useState<string | null>(
       mockStyles[0].id
     );

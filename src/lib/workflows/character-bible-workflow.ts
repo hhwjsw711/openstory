@@ -21,7 +21,6 @@ import {
   buildCastingAttributes,
   buildCharacterSheetPrompt,
 } from '@/lib/prompts/character-prompt';
-import { getGenerationChannel } from '@/lib/realtime';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
@@ -41,17 +40,6 @@ export const characterBibleWorkflow = createScopedWorkflow<
     const matchMap = new Map<string, TalentCharacterMatch>(
       talentMatches.map((m) => [m.characterId, m])
     );
-
-    // Emit Phase 3 start
-    await context.run('character-bible-start', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:start',
-        {
-          phase: 3,
-          phaseName: 'Drawing characters…',
-        }
-      );
-    });
 
     const seqCharacters: CharacterMinimal[] = await Promise.all(
       input.characterBible.map(async (character) => {
@@ -188,13 +176,6 @@ export const characterBibleWorkflow = createScopedWorkflow<
       })
     );
 
-    // Emit Phase 3 complete
-    await context.run('character-bible-complete', async () => {
-      await getGenerationChannel(input.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: 3 }
-      );
-    });
     return seqCharacters;
   },
   {

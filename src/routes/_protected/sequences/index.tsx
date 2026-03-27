@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SequencesList } from '@/components/sequence/sequences-list';
 import { useBillingGate } from '@/hooks/use-billing-gate';
-import { useSequences } from '@/hooks/use-sequences';
+import { sequenceKeys, useSequences } from '@/hooks/use-sequences';
+import { getSequencesFn } from '@/functions/sequences';
 import { Route as sequencesNewRoute } from '@/routes/_protected/sequences/new';
 import { createFileRoute, Link } from '@tanstack/react-router';
 
@@ -35,6 +36,13 @@ function dismissBillingPrompt() {
 
 export const Route = createFileRoute('/_protected/sequences/')({
   component: SequencesPage,
+  beforeLoad: async ({ context: { queryClient } }) => {
+    await queryClient.ensureQueryData({
+      queryKey: sequenceKeys.list(),
+      queryFn: () => getSequencesFn(),
+      staleTime: 5 * 60 * 1000,
+    });
+  },
 });
 
 function SequencesPage() {

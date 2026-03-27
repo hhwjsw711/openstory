@@ -95,7 +95,6 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
                 defaultValue={talent.name}
                 placeholder="Talent name…"
                 autoComplete="off"
-                autoFocus
                 required
               />
             </div>
@@ -124,6 +123,7 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
                         <video
                           src={media.url}
                           className="size-full object-cover"
+                          muted
                         />
                       ) : (
                         <img

@@ -7,6 +7,7 @@
 
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
 import { visualPromptSceneWorkflow } from './visual-prompt-scene-workflow';
@@ -15,7 +16,7 @@ export const visualPromptWorkflow = createScopedWorkflow<
   VisualPromptWorkflowInput,
   Scene[]
 >(
-  async (context, _scopedDb) => {
+  async (context) => {
     const input = context.requestPayload;
     const {
       scenes,
@@ -24,7 +25,10 @@ export const visualPromptWorkflow = createScopedWorkflow<
       locationBible,
       styleConfig,
       analysisModelId,
+      frameMapping,
     } = input;
+
+    const label = buildWorkflowLabel(input.sequenceId);
 
     console.log(
       `[VisualPromptWorkflow] Starting visual prompt generation for ${scenes.length} scenes`
@@ -33,26 +37,35 @@ export const visualPromptWorkflow = createScopedWorkflow<
     // PHASE 3: Visual Prompt Generation (using durableLLMCall helper)
     // ============================================================
     const visualPromptResults = await Promise.all(
-      scenes.map(
-        async (_scene, sceneIndex) =>
-          await context.invoke('visual-prompt-scene', {
-            workflow: visualPromptSceneWorkflow,
-            body: {
-              scenes,
-              sceneIndex: sceneIndex,
-              aspectRatio,
-              characterBible,
-              locationBible,
-              styleConfig,
-              analysisModelId,
-              teamId: input.teamId,
-              userId: input.userId,
-              sequenceId: input.sequenceId,
-            },
-          })
-      )
+      scenes.map(async (scene, sceneIndex) => {
+        const sceneBefore = sceneIndex > 0 ? scenes[sceneIndex - 1] : undefined;
+        const sceneAfter =
+          sceneIndex < scenes.length - 1 ? scenes[sceneIndex + 1] : undefined;
+
+        return await context.invoke('visual-prompt-scene', {
+          workflow: visualPromptSceneWorkflow,
+          label,
+          body: {
+            scene,
+            sceneBefore,
+            sceneAfter,
+            aspectRatio,
+            characterBible,
+            locationBible,
+            styleConfig,
+            analysisModelId,
+            teamId: input.teamId,
+            userId: input.userId,
+            sequenceId: input.sequenceId,
+            // Frame id of the scene to save the visual prompt to
+            frameId: frameMapping?.find((f) => f.sceneId === scene.sceneId)
+              ?.frameId,
+          },
+        });
+      })
     );
 
+    // Not sure this actually needs to be a workflow step, but it's here for now
     // Merge in the response (visual prompts AND continuity)
     const { scenes: scenesWithVisualPrompts } = await context.run(
       'merge-visual-prompts',

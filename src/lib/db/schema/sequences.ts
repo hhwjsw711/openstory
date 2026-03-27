@@ -114,6 +114,14 @@ export const sequences = sqliteTable(
     musicModel: text('music_model', { length: 100 }),
     musicPrompt: text('music_prompt'),
     musicTags: text('music_tags'),
+
+    // Auto-generation flags (set at sequence creation, read by UI for phase display)
+    autoGenerateMotion: integer('auto_generate_motion', { mode: 'boolean' })
+      .default(false)
+      .notNull(),
+    autoGenerateMusic: integer('auto_generate_music', { mode: 'boolean' })
+      .default(false)
+      .notNull(),
   },
   (table) => [
     index('idx_sequences_created_at').on(table.createdAt),

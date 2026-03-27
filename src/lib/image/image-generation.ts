@@ -1,11 +1,11 @@
 import { calculateImageCost } from '@/lib/ai/fal-cost';
-import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   getEditEndpoint,
   getTextToImageModelId,
   IMAGE_MODELS,
   type TextToImageModel,
 } from '@/lib/ai/models';
+import { type Microdollars, microsToUsd } from '@/lib/billing/money';
 import {
   DEFAULT_IMAGE_SIZE,
   type ImageSize,
@@ -14,9 +14,9 @@ import { type ImageDto, imagesCreate, imagesGet } from '@/lib/letzai/sdk';
 import { startObservation } from '@langfuse/tracing';
 
 import { getEnv } from '#env';
+import type { ScopedDb } from '@/lib/db/scoped';
 import { generateImage } from '@tanstack/ai';
 import { falImage } from '@tanstack/ai-fal';
-import type { ScopedDb } from '@/lib/db/scoped';
 
 export type ImageGenerationParams = {
   model: TextToImageModel;
@@ -335,6 +335,7 @@ function buildFalModelOptions(
         aspect_ratio: imageSizeToAspectRatio(
           params.imageSize ?? DEFAULT_IMAGE_SIZE
         ),
+        safety_tolerance: '6',
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
         sync_mode: false,
@@ -347,6 +348,7 @@ function buildFalModelOptions(
           params.imageSize ?? DEFAULT_IMAGE_SIZE
         ),
         resolution: params.resolution ?? '2K',
+        safety_tolerance: '6',
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
         ...(params.referenceImageUrls?.length && {

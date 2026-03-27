@@ -3,28 +3,28 @@ import { cn } from '@/lib/utils';
 import type * as React from 'react';
 import { useCallback } from 'react';
 
-interface ScriptEditorProps {
+type ScriptEditorProps = {
   value: string;
   onValueChange: (value: string) => void;
+  ref?: React.Ref<HTMLTextAreaElement>;
   error?: string;
   maxLength?: number;
   placeholder?: string;
   disabled?: boolean;
   showCharacterCount?: boolean;
   loading?: boolean;
-  autoFocus?: boolean;
-}
+};
 
 export const ScriptEditor: React.FC<ScriptEditorProps> = ({
   value,
   onValueChange,
+  ref,
   error,
   maxLength = 5000,
   placeholder = 'Enter your script here...',
   disabled = false,
   showCharacterCount = true,
   loading = false,
-  autoFocus = false,
 }) => {
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -58,6 +58,7 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
     <>
       <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
         <Textarea
+          ref={ref}
           name="script"
           id="script"
           value={loading ? 'Loading...' : value}
@@ -65,10 +66,9 @@ export const ScriptEditor: React.FC<ScriptEditorProps> = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
-          autoFocus={autoFocus}
           aria-invalid={hasError ? 'true' : 'false'}
           className={cn(
-            'min-h-[4lh] flex-1 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain [field-sizing:fixed]',
+            'min-h-[4lh] flex-1 resize-none overflow-y-auto bg-transparent dark:bg-transparent border-none shadow-none focus-visible:ring-0 overscroll-contain [field-sizing:fixed] pb-10',
             hasError && 'border-destructive focus-visible:ring-destructive/20'
           )}
           data-testid="script-editor-textarea"

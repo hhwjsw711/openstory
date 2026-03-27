@@ -10,6 +10,7 @@ import {
   IMAGE_TO_VIDEO_MODELS,
   type TextToImageModel,
   type ImageToVideoModel,
+  videoModelSupportsAudio,
 } from '@/lib/ai/models';
 import { aspectRatioToDimensions } from '@/lib/constants/aspect-ratios';
 import type { AspectRatio } from '@/lib/constants/aspect-ratios';
@@ -58,7 +59,7 @@ export function estimateVideoCost(
   return calculateVideoCost({
     endpointId,
     durationSeconds,
-    audioEnabled: opts?.audioEnabled ?? modelConfig.capabilities.supportsAudio,
+    audioEnabled: opts?.audioEnabled ?? videoModelSupportsAudio(model),
     resolution: opts?.resolution,
   });
 }

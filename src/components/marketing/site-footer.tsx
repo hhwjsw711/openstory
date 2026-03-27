@@ -28,7 +28,9 @@ function YouTubeIcon() {
   );
 }
 
-const duplicatedFilmstrip = [...FILMSTRIP_IMAGES, ...FILMSTRIP_IMAGES];
+const duplicatedFilmstrip = [...FILMSTRIP_IMAGES, ...FILMSTRIP_IMAGES].map(
+  (src, idx) => ({ src, id: `film-${idx}` })
+);
 
 export function SiteFooter() {
   return (
@@ -62,9 +64,9 @@ export function SiteFooter() {
           className="flex w-max gap-3 will-change-transform"
           style={{ animation: 'marquee 45s linear infinite' }}
         >
-          {duplicatedFilmstrip.map((src, i) => (
+          {duplicatedFilmstrip.map(({ src, id }) => (
             <Image
-              key={i}
+              key={id}
               src={src}
               alt=""
               width={228}

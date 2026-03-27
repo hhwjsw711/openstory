@@ -68,8 +68,11 @@ function TalentDetailPage() {
             <Skeleton className="h-4 w-96" />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="aspect-square rounded-lg" />
+            {[1, 2, 3, 4].map((n) => (
+              <Skeleton
+                key={`skeleton-${n}`}
+                className="aspect-square rounded-lg"
+              />
             ))}
           </div>
         </PageContainer>
@@ -176,6 +179,7 @@ function TalentDetailPage() {
                       <video
                         src={media.url}
                         className="w-full h-full object-cover"
+                        muted
                       />
                     )}
                   </div>

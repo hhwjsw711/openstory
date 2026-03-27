@@ -8,6 +8,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -18,7 +19,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useTalent } from '@/hooks/use-talent';
 import type { TalentWithSheets } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
-import { Check, Plus, Search, User, Users, X } from 'lucide-react';
+import { Link } from '@tanstack/react-router';
+import { Check, Search, User, Users, X } from 'lucide-react';
 import { useState } from 'react';
 
 type TalentSuggestionSelectorProps = {
@@ -150,11 +152,11 @@ export const TalentSuggestionSelector: React.FC<
         {/* Talent button */}
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => setIsDialogOpen(true)}
           disabled={disabled}
-          className="gap-2"
+          className="gap-2 text-muted-foreground"
         >
           <Users className="h-4 w-4" />
           <span>Talent</span>
@@ -177,18 +179,6 @@ export const TalentSuggestionSelector: React.FC<
             )}
           </div>
         )}
-
-        {/* Add more button when some are selected */}
-        {selectedTalent.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setIsDialogOpen(true)}
-            disabled={disabled}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/50 text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {/* Multi-select dialog */}
@@ -203,12 +193,11 @@ export const TalentSuggestionSelector: React.FC<
                 </span>
               )}
             </DialogTitle>
+            <DialogDescription>
+              Optionally select talent to guide casting. The AI will match them
+              to character roles based on physical descriptions.
+            </DialogDescription>
           </DialogHeader>
-
-          <p className="text-sm text-muted-foreground">
-            Select talent from your library. The AI will match them to character
-            roles based on physical descriptions.
-          </p>
 
           {/* Search input */}
           <div className="relative">
@@ -239,8 +228,16 @@ export const TalentSuggestionSelector: React.FC<
                 <p className="mt-4 text-sm text-muted-foreground">
                   {searchQuery
                     ? 'No talent matching your search'
-                    : 'No talent in library'}
+                    : 'Your talent library is empty'}
                 </p>
+                {!searchQuery && (
+                  <Link
+                    to="/talent"
+                    className="mt-2 text-sm text-primary hover:underline"
+                  >
+                    Go to Talent Library to add talent
+                  </Link>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-4 p-1 sm:grid-cols-4">

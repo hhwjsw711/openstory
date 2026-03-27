@@ -19,7 +19,7 @@ import {
   Music,
   Volume2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type GenerateMusicArgs = {
   prompt?: string;
@@ -141,12 +141,17 @@ export const MusicView: React.FC<MusicViewProps> = ({
   } = sequence;
 
   const [editPrompt, setEditPrompt] = useState(musicPrompt ?? '');
-  const [editModel, setEditModel] = useState<AudioModel>(
+  const [editModel, setEditModel] = useState<AudioModel>(() =>
     safeAudioModel(musicModel, DEFAULT_MUSIC_MODEL)
   );
   const [editDuration, setEditDuration] = useState<number | undefined>(
-    videoDuration
+    () => videoDuration
   );
+  const prevVideoDurationRef = useRef(videoDuration);
+  if (videoDuration !== prevVideoDurationRef.current) {
+    prevVideoDurationRef.current = videoDuration;
+    setEditDuration(videoDuration);
+  }
 
   const durationLimits = getAudioModelDurationLimits(editModel);
   const effectiveDuration =

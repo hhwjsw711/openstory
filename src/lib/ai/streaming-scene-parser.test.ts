@@ -173,6 +173,56 @@ describe('createStreamingSceneParser', () => {
     expect(events[0]).toEqual({ type: 'title', title: 'Test Movie' });
   });
 
+  test('emits scene:updated when title changes on subsequent feeds', () => {
+    const parser = createStreamingSceneParser();
+
+    // Feed scene with truncated title (simulates partial-json completing a partial string)
+    const truncatedScene = {
+      ...makeScene(1),
+      metadata: { ...makeScene(1).metadata, title: 'City' },
+    };
+    const partial1 = JSON.stringify({
+      projectMetadata: fullResponse.projectMetadata,
+      scenes: [truncatedScene],
+    });
+    const events1 = parser.feed(partial1);
+    expect(events1.filter((e) => e.type === 'scene')).toHaveLength(1);
+
+    // Feed same scene with full title
+    const fullScene = {
+      ...makeScene(1),
+      metadata: { ...makeScene(1).metadata, title: 'City Skyline at Dawn' },
+    };
+    const partial2 = JSON.stringify({
+      projectMetadata: fullResponse.projectMetadata,
+      scenes: [fullScene],
+    });
+    const events2 = parser.feed(partial2);
+    const updateEvents = events2.filter((e) => e.type === 'scene:updated');
+    expect(updateEvents).toHaveLength(1);
+    expect(
+      updateEvents[0].type === 'scene:updated' &&
+        updateEvents[0].scene.metadata?.title
+    ).toBe('City Skyline at Dawn');
+    expect(
+      updateEvents[0].type === 'scene:updated' && updateEvents[0].index
+    ).toBe(0);
+  });
+
+  test('does not emit scene:updated when title is unchanged', () => {
+    const parser = createStreamingSceneParser();
+
+    const data = JSON.stringify({
+      projectMetadata: fullResponse.projectMetadata,
+      scenes: [makeScene(1)],
+    });
+
+    parser.feed(data);
+    const events2 = parser.feed(data);
+    // No update events since title hasn't changed
+    expect(events2.filter((e) => e.type === 'scene:updated')).toHaveLength(0);
+  });
+
   test('handles partial JSON inside code fences', () => {
     const parser = createStreamingSceneParser();
     const partial =

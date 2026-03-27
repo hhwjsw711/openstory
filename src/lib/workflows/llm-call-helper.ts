@@ -17,7 +17,6 @@ import {
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import type { ScopedDb } from '@/lib/db/scoped';
-import type { PromptReference } from '@/lib/observability/langfuse';
 import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { chat } from '@tanstack/ai';
@@ -67,31 +66,16 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     ...config.additionalMetadata,
   };
 
-  // Step 1: Prepare -- fetch prompt and emit phase start
+  // Step 1: Prepare -- fetch prompt
   const { messages, promptReference } = await context.run(
     `prepare-${name}`,
     async () => {
-      if (callContext.sequenceId) {
-        await getGenerationChannel(callContext.sequenceId).emit(
-          'generation.phase:start',
-          { phase: phase.number, phaseName: phase.name }
-        );
-      }
-
-      const { prompt, messages } = await getChatPrompt(
+      const { messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      const promptReference: PromptReference | undefined = prompt
-        ? {
-            name: prompt.name,
-            version: prompt.version,
-            isFallback: prompt.isFallback,
-          }
-        : undefined;
-
-      return { messages, promptReference };
+      return { messages, promptReference: undefined };
     }
   );
 
@@ -167,16 +151,6 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     });
   }
 
-  // Step 3: Emit phase complete
-  await context.run(`log-${name}`, async () => {
-    if (callContext.sequenceId) {
-      await getGenerationChannel(callContext.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: phase.number }
-      );
-    }
-  });
-
   return jsonResponse;
 }
 
@@ -222,31 +196,16 @@ export async function durableStreamingSceneSplit<TInput>(
   const logTags = [name, `phase-${phase.number}`, 'analysis'];
   const logMetadata = { phase: phase.number, phaseName: phase.name };
 
-  // Step 1: Prepare — fetch prompt and emit phase start
+  // Step 1: Prepare — fetch prompt
   const { messages, promptReference } = await context.run(
     'prepare-scene-splitting',
     async () => {
-      if (callContext.sequenceId) {
-        await getGenerationChannel(callContext.sequenceId).emit(
-          'generation.phase:start',
-          { phase: phase.number, phaseName: phase.name }
-        );
-      }
-
       const { prompt, messages } = await getChatPrompt(
         config.promptName,
         config.promptVariables
       );
 
-      const promptReference: PromptReference | undefined = prompt
-        ? {
-            name: prompt.name,
-            version: prompt.version,
-            isFallback: prompt.isFallback,
-          }
-        : undefined;
-
-      return { messages, promptReference };
+      return { messages, promptReference: prompt };
     }
   );
 
@@ -307,6 +266,38 @@ export async function durableStreamingSceneSplit<TInput>(
           await getGenerationChannel(config.sequenceId).emit(
             'generation.updated',
             { title: event.title }
+          );
+        }
+
+        if (event.type === 'scene:updated') {
+          console.log(
+            `[Stream:${logName}] 🔄 Scene ${event.index + 1} title updated: "${event.scene.metadata?.title}" (chunk #${chunkCount})`
+          );
+
+          // Update frame in DB so refetches get correct data
+          if (config.sequenceId && callContext.scopedDb) {
+            await callContext.scopedDb.frames.upsert({
+              sequenceId: config.sequenceId,
+              description: event.scene.originalScript?.extract || '',
+              orderIndex: event.index,
+              metadata: event.scene,
+              durationMs: Math.round(
+                (event.scene.metadata?.durationSeconds || 3) * 1000
+              ),
+              thumbnailStatus: 'generating',
+              videoStatus: config.autoGenerateMotion ? 'generating' : 'pending',
+            } satisfies NewFrame);
+          }
+
+          await getGenerationChannel(config.sequenceId).emit(
+            'generation.scene:updated',
+            {
+              sceneId: event.scene.sceneId,
+              sceneNumber: event.scene.sceneNumber,
+              title: event.scene.metadata?.title || 'Untitled Scene',
+              scriptExtract: event.scene.originalScript?.extract || '',
+              durationSeconds: event.scene.metadata?.durationSeconds || 3,
+            }
           );
         }
 
@@ -472,15 +463,6 @@ export async function durableStreamingSceneSplit<TInput>(
       });
     });
   }
-
-  await context.run('log-scene-splitting', async () => {
-    if (callContext.sequenceId) {
-      await getGenerationChannel(callContext.sequenceId).emit(
-        'generation.phase:complete',
-        { phase: phase.number }
-      );
-    }
-  });
 
   return { scenes, title, frameMapping };
 }

@@ -70,7 +70,7 @@ export const talentMatchingWorkflow = createScopedWorkflow<
             context,
             {
               name: 'talent-matching',
-              phase: { number: 3, name: 'Casting characters…' },
+              phase: { number: 2, name: 'Casting characters…' },
 
               promptName: 'phase/talent-matching-chat',
               promptVariables: matchingPromptVariables,

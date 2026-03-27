@@ -99,7 +99,6 @@ export const AddLocationDialog: React.FC<AddLocationDialogProps> = ({
                 name="name"
                 placeholder="Coffee Shop, City Park, Office Building…"
                 autoComplete="off"
-                autoFocus
                 required
               />
             </div>

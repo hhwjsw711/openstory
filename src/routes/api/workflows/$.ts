@@ -4,6 +4,7 @@
  */
 
 import { initAIEventBridge } from '@/lib/observability/ai-event-bridge';
+import { withApiLogging } from '@/lib/observability/api-logger';
 import { flushTracing, initTracing } from '@/lib/observability/langfuse';
 import {
   initMemoryProfiler,
@@ -11,8 +12,10 @@ import {
 } from '@/lib/observability/memory-profiler';
 import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
+import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
+import { frameImagesWorkflow } from '@/lib/workflows/frame-images-workflow';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryLocationSheetWorkflow } from '@/lib/workflows/library-location-sheet-workflow';
 import { libraryTalentSheetWorkflow } from '@/lib/workflows/library-talent-sheet-workflow';
@@ -21,9 +24,11 @@ import { locationMatchingWorkflow } from '@/lib/workflows/location-matching-work
 import { locationSheetWorkflow } from '@/lib/workflows/location-sheet-workflow';
 import { mergeAudioVideoWorkflow } from '@/lib/workflows/merge-audio-video-workflow';
 import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
+import { motionMusicPromptsWorkflow } from '@/lib/workflows/motion-music-prompts-workflow';
 import { motionPromptSceneWorkflow } from '@/lib/workflows/motion-prompt-scene-workflow';
 import { motionPromptWorkflow } from '@/lib/workflows/motion-prompt-workflow';
 import { generateMotionWorkflow } from '@/lib/workflows/motion-workflow';
+import { generateMusicPromptWorflow } from '@/lib/workflows/music-prompt-workflow';
 import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { recastCharacterWorkflow } from '@/lib/workflows/recast-character-workflow';
 import { recastLocationWorkflow } from '@/lib/workflows/recast-location-workflow';
@@ -34,7 +39,6 @@ import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow
 import { generateVariantWorkflow } from '@/lib/workflows/variant-workflow';
 import { visualPromptSceneWorkflow } from '@/lib/workflows/visual-prompt-scene-workflow';
 import { visualPromptWorkflow } from '@/lib/workflows/visual-prompt-workflow';
-import { withApiLogging } from '@/lib/observability/api-logger';
 import { createFileRoute } from '@tanstack/react-router';
 import { serveMany } from '@upstash/workflow/tanstack';
 
@@ -48,30 +52,34 @@ function getHandler() {
 
     _handler = serveMany(
       {
-        storyboard: generateStoryboardWorkflow,
+        'analyze-script': analyzeScriptWorkflow,
+        'motion-batch': motionBatchWorkflow,
+        'character-sheet-from-bible': characterBibleWorkflow,
+        'character-sheet': characterSheetWorkflow,
+        'frame-images': frameImagesWorkflow,
         image: generateImageWorkflow,
-        motion: generateMotionWorkflow,
+        'library-location-sheet': libraryLocationSheetWorkflow,
+        'library-talent-sheet': libraryTalentSheetWorkflow,
+        'location-matching': locationMatchingWorkflow,
+        'location-sheet-from-bible': locationBibleWorkflow,
+        'location-sheet': locationSheetWorkflow,
         'merge-audio-video': mergeAudioVideoWorkflow,
         'merge-video': mergeVideoWorkflow,
-        'analyze-script': analyzeScriptWorkflow,
-        'character-sheet': characterSheetWorkflow,
-        'character-sheet-from-bible': characterBibleWorkflow,
-        'library-talent-sheet': libraryTalentSheetWorkflow,
-        'visual-prompts': visualPromptWorkflow,
-        'variant-image': generateVariantWorkflow,
-        'upscale-variant': upscaleVariantWorkflow,
+        'motion-music-prompts': motionMusicPromptsWorkflow,
+        'motion-prompt-scene': motionPromptSceneWorkflow,
+        'motion-prompts': motionPromptWorkflow,
+        motion: generateMotionWorkflow,
+        'music-prompt': generateMusicPromptWorflow,
+        music: generateMusicWorkflow,
         'recast-character': recastCharacterWorkflow,
         'recast-location': recastLocationWorkflow,
-        'location-matching': locationMatchingWorkflow,
-        'location-sheet': locationSheetWorkflow,
-        'location-sheet-from-bible': locationBibleWorkflow,
-        'library-location-sheet': libraryLocationSheetWorkflow,
         'regenerate-frames': regenerateFramesWorkflow,
+        storyboard: generateStoryboardWorkflow,
         'talent-matching': talentMatchingWorkflow,
+        'upscale-variant': upscaleVariantWorkflow,
+        'variant-image': generateVariantWorkflow,
         'visual-prompt-scene': visualPromptSceneWorkflow,
-        'motion-prompts': motionPromptWorkflow,
-        'motion-prompt-scene': motionPromptSceneWorkflow,
-        music: generateMusicWorkflow,
+        'visual-prompts': visualPromptWorkflow,
       },
       {
         qstashClient: getQStashClient(),

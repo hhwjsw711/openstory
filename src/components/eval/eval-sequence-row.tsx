@@ -48,7 +48,7 @@ export const EvalSequenceRow: React.FC<EvalSequenceRowProps> = ({
 
         return (
           <div
-            key={i}
+            key={frame?.id ?? `empty-${i}`}
             className="shrink-0 h-full"
             style={{ width: CELL_WIDTH }}
           >

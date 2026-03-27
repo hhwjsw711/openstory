@@ -3,10 +3,6 @@
  * End-to-end type-safe functions for AI operations
  */
 
-import { createServerFn } from '@tanstack/react-start';
-import { getRequest } from '@tanstack/react-start/server';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
 import { getEnv } from '#env';
 import {
   callLLM,
@@ -23,12 +19,16 @@ import {
   RateLimiter,
   scriptEnhancementRateLimiter,
 } from '@/lib/ai/script-enhancer';
+import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import { aspectRatioSchema } from '@/lib/constants/aspect-ratios';
 import { StyleConfigSchema } from '@/lib/db/schema/libraries';
-import { getPrompt } from '@/lib/prompts';
-import { estimateLLMCost } from '@/lib/billing/cost-estimation';
 import type { ScopedDb } from '@/lib/db/scoped';
 import { InsufficientCreditsError } from '@/lib/errors';
+import { getPrompt } from '@/lib/prompts';
+import { createServerFn } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
 import { authWithTeamMiddleware } from './middleware';
 
 const promptShorteningRateLimiter = new RateLimiter(10, 60_000);
@@ -157,7 +157,7 @@ const enhanceScriptInputSchema = z.object({
     .string()
     .min(10, 'Script must be at least 10 characters')
     .max(50000, 'Script too long'),
-  targetDuration: z.number().min(15).max(60).optional(),
+  targetDuration: z.number().min(5).max(180).optional(),
   tone: z.enum(['dramatic', 'comedic', 'documentary', 'action']).optional(),
   style: z.string().optional(),
   styleConfig: StyleConfigSchema.partial().optional(),
@@ -182,6 +182,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
     const userPrompt = createUserPrompt(sanitized, {
       styleConfig: data.styleConfig,
       aspectRatio: data.aspectRatio,
+      targetDuration: data.targetDuration,
     });
 
     const model =
@@ -199,6 +200,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
       ],
       max_tokens: 4000,
       temperature: 0.7,
+      plugins: [{ id: 'web' }],
     })) {
       if (chunk.delta) {
         yield { delta: chunk.delta };

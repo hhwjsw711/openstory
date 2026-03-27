@@ -29,7 +29,7 @@ type VerifyFormProps = {
 
 export function VerifyForm({
   email,
-  redirectTo = '/sequences',
+  redirectTo = '/sequences/new',
 }: VerifyFormProps) {
   const navigate = useNavigate();
   const hydrated = useHydrated();
@@ -127,7 +127,8 @@ export function VerifyForm({
               value={otp}
               onChange={setOtp}
               disabled={!hydrated || isPending}
-              autoFocus
+              // oxlint-disable-next-line no-autofocus - autofocus is appropriate for the input-otp component
+              autoFocus={true}
             >
               <InputOTPGroup>
                 <InputOTPSlot index={0} />

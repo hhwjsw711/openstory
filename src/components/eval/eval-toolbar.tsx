@@ -215,7 +215,7 @@ export const EvalToolbar: React.FC<EvalToolbarProps> = ({
 
             return (
               <Badge
-                key={index}
+                key={criteria.field}
                 variant="secondary"
                 className="flex items-center gap-1 px-2 py-1"
               >
