@@ -416,7 +416,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
 
         await triggerWorkflow('/merge-video', mergeInput, {
           deduplicationId: `merge-${input.sequenceId}-${Date.now()}`,
-          label: buildWorkflowLabel(undefined, input.sequenceId),
+          label: buildWorkflowLabel(input.sequenceId),
         });
       });
     }

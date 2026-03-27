@@ -53,7 +53,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       suggestedLocationIds,
     } = input;
 
-    const label = buildWorkflowLabel(undefined, sequenceId);
+    const label = buildWorkflowLabel(sequenceId);
 
     // Phase 1: Scene splitting
     if (!script) {

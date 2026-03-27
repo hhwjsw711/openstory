@@ -18,7 +18,7 @@ export const recastLocationWorkflow =
   createScopedWorkflow<RecastLocationWorkflowInput>(
     async (context, _scopedDb) => {
       const input = context.requestPayload;
-      const label = buildWorkflowLabel(input.locationName, input.sequenceId);
+      const label = buildWorkflowLabel(input.sequenceId);
 
       console.log(
         '[RecastLocationWorkflow]',

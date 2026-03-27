@@ -123,7 +123,7 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
         libraryLocationDescription: data.description,
         affectedFrameIds,
       } satisfies RecastLocationWorkflowInput,
-      { label: buildWorkflowLabel(location.name, location.sequenceId) }
+      { label: buildWorkflowLabel(location.sequenceId) }
     );
 
     return {

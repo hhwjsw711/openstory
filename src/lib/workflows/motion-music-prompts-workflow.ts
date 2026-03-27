@@ -40,7 +40,7 @@ export const motionMusicPromptsWorkflow = createScopedWorkflow<
       frameMapping,
     } = input;
 
-    const label = buildWorkflowLabel(undefined, sequenceId);
+    const label = buildWorkflowLabel(sequenceId);
 
     const modelKey = videoModel || DEFAULT_VIDEO_MODEL;
 

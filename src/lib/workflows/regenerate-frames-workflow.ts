@@ -66,7 +66,7 @@ export const regenerateFramesWorkflow = createScopedWorkflow<
     const input = context.requestPayload;
     const { sequenceId, frameIds, userId, teamId, triggeringCharacterId } =
       input;
-    const label = buildWorkflowLabel(undefined, sequenceId);
+    const label = buildWorkflowLabel(sequenceId);
 
     if (!sequenceId) {
       throw new WorkflowValidationError('Sequence ID is required');

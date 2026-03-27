@@ -126,7 +126,7 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/storyboard', workflowInput, {
       deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
-      label: buildWorkflowLabel(sequence.title, sequence.id),
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { workflowRunId, frames: [] };
@@ -198,7 +198,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {
       deduplicationId: `image-${frame.id}-${Date.now()}`,
-      label: buildWorkflowLabel(sequence.title, sequence.id),
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { workflowRunId, frameId: frame.id };
@@ -274,7 +274,7 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
       workflowInput,
       {
         deduplicationId: `variant-${frame.id}-${Date.now()}`,
-        label: buildWorkflowLabel(sequence.title, sequence.id),
+        label: buildWorkflowLabel(sequence.id),
       }
     );
 
@@ -397,7 +397,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       workflowInput,
       {
         deduplicationId: `upscale-variant-${frame.id}-${Date.now()}`,
-        label: buildWorkflowLabel(sequence.title, sequence.id),
+        label: buildWorkflowLabel(sequence.id),
       }
     );
 

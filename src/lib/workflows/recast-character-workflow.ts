@@ -18,7 +18,7 @@ export const recastCharacterWorkflow =
   createScopedWorkflow<RecastCharacterWorkflowInput>(
     async (context, _scopedDb) => {
       const input = context.requestPayload;
-      const label = buildWorkflowLabel(input.characterName, input.sequenceId);
+      const label = buildWorkflowLabel(input.sequenceId);
 
       console.log(
         '[RecastCharacterWorkflow]',

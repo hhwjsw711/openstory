@@ -79,7 +79,7 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
       workflowInput,
       {
         deduplicationId: `motion-batch-${frame.id}-${Date.now()}`,
-        label: buildWorkflowLabel(sequence.title, sequence.id),
+        label: buildWorkflowLabel(sequence.id),
       }
     );
 
@@ -184,7 +184,7 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
       workflowInput,
       {
         deduplicationId: `motion-batch-${sequence.id}-${Date.now()}`,
-        label: buildWorkflowLabel(sequence.title, sequence.id),
+        label: buildWorkflowLabel(sequence.id),
       }
     );
 
@@ -243,7 +243,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/merge-video', workflowInput, {
       deduplicationId: `merge-${sequence.id}-${Date.now()}`,
-      label: buildWorkflowLabel(sequence.title, sequence.id),
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { workflowRunId, sequenceId: sequence.id };

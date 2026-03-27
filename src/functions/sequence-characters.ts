@@ -139,7 +139,7 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/recast-character',
       workflowInput,
-      { label: buildWorkflowLabel(character.name, character.sequenceId) }
+      { label: buildWorkflowLabel(character.sequenceId) }
     );
 
     return {

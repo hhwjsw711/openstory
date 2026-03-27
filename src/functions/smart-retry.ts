@@ -118,7 +118,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       };
 
       await triggerWorkflow('/storyboard', workflowInput, {
-        label: buildWorkflowLabel(sequence.title, sequence.id),
+        label: buildWorkflowLabel(sequence.id),
       });
 
       return { retryType: 'full' as const, retriedItems: ['full storyboard'] };
@@ -217,7 +217,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         };
 
         await triggerWorkflow('/image', workflowInput, {
-          label: buildWorkflowLabel(sequence.title, sequence.id),
+          label: buildWorkflowLabel(sequence.id),
         });
       }
 
@@ -241,7 +241,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         };
 
         await triggerWorkflow('/motion', workflowInput, {
-          label: buildWorkflowLabel(sequence.title, sequence.id),
+          label: buildWorkflowLabel(sequence.id),
         });
       }
 
@@ -275,7 +275,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
       });
 
       await triggerWorkflow('/music', musicInput, {
-        label: buildWorkflowLabel(sequence.title, sequence.id),
+        label: buildWorkflowLabel(sequence.id),
       });
 
       retried.push('music');
@@ -309,7 +309,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
           analysisModelId: sequence.analysisModel,
           duration: totalDuration || 30,
         },
-        { label: buildWorkflowLabel(sequence.title, sequence.id) }
+        { label: buildWorkflowLabel(sequence.id) }
       );
 
       retried.push('music prompt');
@@ -343,7 +343,7 @@ export const smartRetryFn = createServerFn({ method: 'POST' })
         };
 
         await triggerWorkflow('/merge-video', mergeInput, {
-          label: buildWorkflowLabel(sequence.title, sequence.id),
+          label: buildWorkflowLabel(sequence.id),
         });
 
         retried.push('video merge');

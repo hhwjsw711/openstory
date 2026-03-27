@@ -139,7 +139,7 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
       };
 
       await triggerWorkflow('/library-location-sheet', workflowInput, {
-        label: buildWorkflowLabel(data.name, newLocation.id),
+        label: buildWorkflowLabel(newLocation.id),
       });
     }
 
@@ -312,7 +312,7 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/library-location-sheet',
       workflowInput,
-      { label: buildWorkflowLabel(location.name, data.locationId) }
+      { label: buildWorkflowLabel(data.locationId) }
     );
 
     return { sheets: newSheets, workflowRunId };

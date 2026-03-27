@@ -190,7 +190,7 @@ async function main() {
         teamId: values['team-id'] ?? 'cli-team',
         sequenceId: values['sequence-id'],
       },
-      { label: 'CLI analyze-script' }
+      { label: 'cli-analyze-script' }
     );
 
     console.log('✅ Workflow triggered successfully');

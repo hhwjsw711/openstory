@@ -134,7 +134,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
 
         await triggerWorkflow('/storyboard', workflowInput, {
           deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
-          label: buildWorkflowLabel(sequence.title, sequence.id),
+          label: buildWorkflowLabel(sequence.id),
         });
 
         return sequence;
@@ -203,7 +203,7 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
           autoGenerateMotion: sequence.autoGenerateMotion,
           autoGenerateMusic: sequence.autoGenerateMusic,
         } satisfies StoryboardWorkflowInput,
-        { label: buildWorkflowLabel(sequence.title, sequence.id) }
+        { label: buildWorkflowLabel(sequence.id) }
       );
     }
 
@@ -271,7 +271,7 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
 
     // No deduplication ID — explicit user retry should always run
     await triggerWorkflow('/storyboard', workflowInput, {
-      label: buildWorkflowLabel(sequence.title, sequence.id),
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { success: true };
@@ -383,7 +383,7 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
     });
 
     await triggerWorkflow('/music', musicInput, {
-      label: buildWorkflowLabel(sequence.title, sequence.id),
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { success: true };
@@ -441,7 +441,7 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
         sequenceId: sequence.id,
         videoUrls,
       } satisfies MergeVideoWorkflowInput,
-      { label: buildWorkflowLabel(sequence.title, sequence.id) }
+      { label: buildWorkflowLabel(sequence.id) }
     );
 
     return { success: true };

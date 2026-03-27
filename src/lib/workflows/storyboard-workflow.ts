@@ -42,7 +42,6 @@ export const generateStoryboardWorkflow =
     const seq = scopedDb.sequence(sequenceId);
 
     const {
-      title,
       script,
       aspectRatio,
       styleConfig,
@@ -78,7 +77,6 @@ export const generateStoryboardWorkflow =
       await seq.updateStatus('processing');
 
       return {
-        title: sequence.title,
         sequenceId: sequence.id,
         script: sequence.script,
         aspectRatio: sequence.aspectRatio,
@@ -97,7 +95,7 @@ export const generateStoryboardWorkflow =
       };
     });
 
-    const label = buildWorkflowLabel(title, sequenceId);
+    const label = buildWorkflowLabel(sequenceId);
 
     await context.invoke('analyze-script', {
       workflow: analyzeScriptWorkflow,

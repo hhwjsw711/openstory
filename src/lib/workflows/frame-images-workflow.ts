@@ -41,7 +41,7 @@ export const frameImagesWorkflow = createScopedWorkflow<
       sequenceId,
     } = input;
 
-    const label = buildWorkflowLabel(undefined, sequenceId);
+    const label = buildWorkflowLabel(sequenceId);
 
     // Build per-scene character and location maps for reference image lookup
     const { sceneCharacterMap, sceneLocationMap } = await context.run(

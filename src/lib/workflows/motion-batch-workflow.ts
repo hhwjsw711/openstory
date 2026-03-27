@@ -28,7 +28,7 @@ export const motionBatchWorkflow =
     async (context, scopedDb) => {
       const input = context.requestPayload;
       const { sequenceId, includeMusic } = input;
-      const label = buildWorkflowLabel(undefined, sequenceId);
+      const label = buildWorkflowLabel(sequenceId);
 
       if (!sequenceId) {
         throw new WorkflowValidationError('sequenceId is required');

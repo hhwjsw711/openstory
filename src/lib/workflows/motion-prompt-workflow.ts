@@ -27,7 +27,7 @@ export const motionPromptWorkflow = createScopedWorkflow<
       frameMapping,
     } = input;
 
-    const label = buildWorkflowLabel(undefined, input.sequenceId);
+    const label = buildWorkflowLabel(input.sequenceId);
 
     console.log(
       `[MotionPromptWorkflow] Starting motion prompt generation for ${scenes.length} scenes`

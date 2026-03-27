@@ -28,7 +28,7 @@ export const visualPromptWorkflow = createScopedWorkflow<
       frameMapping,
     } = input;
 
-    const label = buildWorkflowLabel(undefined, input.sequenceId);
+    const label = buildWorkflowLabel(input.sequenceId);
 
     console.log(
       `[VisualPromptWorkflow] Starting visual prompt generation for ${scenes.length} scenes`

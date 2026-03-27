@@ -141,7 +141,7 @@ export const createTalentFn = createServerFn({ method: 'POST' })
     };
 
     void triggerWorkflow('/library-talent-sheet', workflowInput, {
-      label: buildWorkflowLabel(newTalent.name, newTalent.id),
+      label: buildWorkflowLabel(newTalent.id),
     }).catch((error) => {
       console.error(
         '[createTalentFn]',
@@ -414,7 +414,7 @@ export const generateTalentSheetFn = createServerFn({ method: 'POST' })
       '/library-talent-sheet',
       workflowInput,
       {
-        label: buildWorkflowLabel(talentRecord.name, talentRecord.id),
+        label: buildWorkflowLabel(talentRecord.id),
       }
     );
     return { runId };
