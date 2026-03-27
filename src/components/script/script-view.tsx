@@ -22,6 +22,12 @@ import {
   CardHeader,
 } from '@/components/ui/card';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { enhanceScriptStreamFn } from '@/functions/ai';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { useBillingGate } from '@/hooks/use-billing-gate';
@@ -53,6 +59,14 @@ import React, { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { ScriptEditor } from './script-editor';
 
 const SCRIPT_SHORT_THRESHOLD = 1000;
+
+const DURATION_PRESETS = [
+  { value: '15', label: '15s', seconds: 15 },
+  { value: '30', label: '30s', seconds: 30 },
+  { value: '60', label: '1m', seconds: 60 },
+  { value: '120', label: '2m', seconds: 120 },
+  { value: '180', label: '3m', seconds: 180 },
+] as const;
 
 export const ScriptView: FC<{
   teamId?: string;
@@ -250,6 +264,9 @@ export const ScriptView: FC<{
     saveDraft,
   ]);
 
+  const [targetDuration, setTargetDuration] = useState(30);
+  const [enhancePopoverOpen, setEnhancePopoverOpen] = useState(false);
+
   const [enhanceUI, setEnhanceUI] = useState({
     isEnhancing: false,
     error: null as string | null,
@@ -358,6 +375,7 @@ export const ScriptView: FC<{
       for await (const chunk of await enhanceScriptStreamFn({
         data: {
           script: scriptValue,
+          targetDuration,
           styleConfig: selectedStyle?.config ?? undefined,
           analysisModel: analysisModels[0],
           aspectRatio,
@@ -515,22 +533,65 @@ export const ScriptView: FC<{
                   Stop
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1.5 text-muted-foreground"
-                  disabled={
-                    !scriptValue ||
-                    scriptValue.length < 10 ||
-                    isSubmitting ||
-                    isProcessing
-                  }
-                  onClick={() => void handleEnhance()}
+                <Popover
+                  open={enhancePopoverOpen}
+                  onOpenChange={setEnhancePopoverOpen}
                 >
-                  <Sparkles className="size-3.5" />
-                  Enhance Script
-                </Button>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-muted-foreground"
+                      disabled={
+                        !scriptValue ||
+                        scriptValue.length < 10 ||
+                        isSubmitting ||
+                        isProcessing
+                      }
+                    >
+                      <Sparkles className="size-3.5" />
+                      Enhance Script
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" side="top" className="w-auto">
+                    <div className="flex flex-col gap-3">
+                      <p className="text-sm font-medium">
+                        Target video duration
+                      </p>
+                      <ToggleGroup
+                        type="single"
+                        value={String(targetDuration)}
+                        onValueChange={(v) => {
+                          if (v) setTargetDuration(Number(v));
+                        }}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {DURATION_PRESETS.map((preset) => (
+                          <ToggleGroupItem
+                            key={preset.value}
+                            value={preset.value}
+                          >
+                            {preset.label}
+                          </ToggleGroupItem>
+                        ))}
+                      </ToggleGroup>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setEnhancePopoverOpen(false);
+                          void handleEnhance();
+                        }}
+                      >
+                        <Sparkles className="size-3.5" />
+                        Enhance
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
@@ -651,6 +712,24 @@ export const ScriptView: FC<{
               style.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="flex flex-col gap-2 py-2">
+            <p className="text-sm font-medium">Target video duration</p>
+            <ToggleGroup
+              type="single"
+              value={String(targetDuration)}
+              onValueChange={(v) => {
+                if (v) setTargetDuration(Number(v));
+              }}
+              variant="outline"
+              size="sm"
+            >
+              {DURATION_PRESETS.map((preset) => (
+                <ToggleGroupItem key={preset.value} value={preset.value}>
+                  {preset.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <div className="flex-1" />

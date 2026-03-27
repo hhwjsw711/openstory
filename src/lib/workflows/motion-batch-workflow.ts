@@ -6,6 +6,7 @@
 
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
@@ -27,6 +28,7 @@ export const motionBatchWorkflow =
     async (context, scopedDb) => {
       const input = context.requestPayload;
       const { sequenceId, includeMusic } = input;
+      const label = buildWorkflowLabel(sequenceId);
 
       if (!sequenceId) {
         throw new WorkflowValidationError('sequenceId is required');
@@ -55,6 +57,7 @@ export const motionBatchWorkflow =
       const motionInvocations = input.frames.map((frame, index) =>
         context.invoke(`motion-${index}`, {
           workflow: generateMotionWorkflow,
+          label,
           body: {
             userId: input.userId,
             teamId: input.teamId,
@@ -78,6 +81,7 @@ export const motionBatchWorkflow =
         includeMusic && input.music
           ? context.invoke('music', {
               workflow: generateMusicWorkflow,
+              label,
               body: {
                 userId: input.userId,
                 teamId: input.teamId,
@@ -116,6 +120,7 @@ export const motionBatchWorkflow =
       // Step 4: Merge all frame videos into one
       await context.invoke('merge-video', {
         workflow: mergeVideoWorkflow,
+        label,
         body: {
           userId: input.userId,
           teamId: input.teamId,
@@ -152,6 +157,7 @@ export const motionBatchWorkflow =
 
         await context.invoke('merge-audio-video', {
           workflow: mergeAudioVideoWorkflow,
+          label,
           body: {
             userId: input.userId,
             teamId: input.teamId,

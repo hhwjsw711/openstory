@@ -9,6 +9,7 @@ import { DEFAULT_VIDEO_MODEL } from '@/lib/ai/models';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { snapDuration } from '@/lib/motion/motion-generation';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   MotionMusicPromptsWorkflowInput,
@@ -38,6 +39,8 @@ export const motionMusicPromptsWorkflow = createScopedWorkflow<
       teamId,
       frameMapping,
     } = input;
+
+    const label = buildWorkflowLabel(sequenceId);
 
     const modelKey = videoModel || DEFAULT_VIDEO_MODEL;
 
@@ -77,6 +80,7 @@ export const motionMusicPromptsWorkflow = createScopedWorkflow<
     const [motionPromptsResults, musicDesignResult] = await Promise.all([
       context.invoke('motion-prompts', {
         workflow: motionPromptWorkflow,
+        label,
         body: {
           userId,
           teamId,
@@ -92,6 +96,7 @@ export const motionMusicPromptsWorkflow = createScopedWorkflow<
       }),
       context.invoke('music-prompt', {
         workflow: generateMusicPromptWorflow,
+        label,
         body: {
           userId,
           teamId,

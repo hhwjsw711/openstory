@@ -6,6 +6,7 @@
  */
 
 import type { MotionPrompt } from '@/lib/ai/scene-analysis.schema';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { MotionPromptWorkflowInput } from '@/lib/workflow/types';
 import { motionPromptSceneWorkflow } from './motion-prompt-scene-workflow';
@@ -26,6 +27,8 @@ export const motionPromptWorkflow = createScopedWorkflow<
       frameMapping,
     } = input;
 
+    const label = buildWorkflowLabel(input.sequenceId);
+
     console.log(
       `[MotionPromptWorkflow] Starting motion prompt generation for ${scenes.length} scenes`
     );
@@ -40,6 +43,7 @@ export const motionPromptWorkflow = createScopedWorkflow<
 
         return await context.invoke('motion-prompt-scene', {
           workflow: motionPromptSceneWorkflow,
+          label,
           body: {
             scene,
             sceneBefore,

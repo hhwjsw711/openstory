@@ -17,6 +17,7 @@ import { StyleConfigSchema } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { validateSequenceAuth } from '@/lib/workflow/auth';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
@@ -94,9 +95,12 @@ export const generateStoryboardWorkflow =
       };
     });
 
+    const label = buildWorkflowLabel(sequenceId);
+
     await context.invoke('analyze-script', {
       workflow: analyzeScriptWorkflow,
       workflowRunId: `analyze-script-${sequenceId}-${Date.now()}`,
+      label,
       body: {
         userId: input.userId,
         teamId: input.teamId,

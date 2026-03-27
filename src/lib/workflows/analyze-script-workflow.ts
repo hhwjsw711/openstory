@@ -8,6 +8,7 @@ import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import type {
   AnalyzeScriptWorkflowInput,
@@ -50,6 +51,8 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       suggestedTalentIds,
       suggestedLocationIds,
     } = input;
+
+    const label = buildWorkflowLabel(sequenceId);
 
     // Phase 1: Scene splitting
     if (!script) {
@@ -100,6 +103,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       [
         context.invoke('talent-matching', {
           workflow: talentMatchingWorkflow,
+          label,
           body: {
             sequenceId,
             userId: input.userId,
@@ -111,6 +115,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
         }),
         context.invoke('location-matching', {
           workflow: locationMatchingWorkflow,
+          label,
           body: {
             sequenceId,
             userId: input.userId,
@@ -144,6 +149,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
     const [charResult, locationResult, visualResult] = await Promise.all([
       context.invoke('character-sheet-from-bible', {
         workflow: characterBibleWorkflow,
+        label,
         body: {
           sequenceId,
           userId: input.userId,
@@ -156,6 +162,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       }),
       context.invoke('location-sheet-from-bible', {
         workflow: locationBibleWorkflow,
+        label,
         body: {
           sequenceId,
           userId: input.userId,
@@ -167,6 +174,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       }),
       context.invoke('visual-prompts', {
         workflow: visualPromptWorkflow,
+        label,
         body: {
           userId: input.userId,
           teamId: input.teamId,
@@ -205,6 +213,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
     const [frameImagesResult, motionMusicResult] = await Promise.all([
       context.invoke('frame-images', {
         workflow: frameImagesWorkflow,
+        label,
         body: {
           userId: input.userId,
           teamId: input.teamId,
@@ -219,6 +228,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       }),
       context.invoke('motion-music-prompts', {
         workflow: motionMusicPromptsWorkflow,
+        label,
         body: {
           userId: input.userId,
           teamId: input.teamId,
@@ -298,6 +308,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       // Phase 5: single orchestrator for motion + optional music + merge
       await context.invoke('motion-batch', {
         workflow: motionBatchWorkflow,
+        label,
         body: {
           userId: input.userId,
           teamId: input.teamId,

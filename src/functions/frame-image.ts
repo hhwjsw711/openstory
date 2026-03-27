@@ -26,6 +26,7 @@ import {
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type {
   ImageWorkflowInput,
   StoryboardWorkflowInput,
@@ -125,6 +126,7 @@ export const generateFramesFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/storyboard', workflowInput, {
       deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { workflowRunId, frames: [] };
@@ -196,6 +198,7 @@ export const generateFrameImageFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/image', workflowInput, {
       deduplicationId: `image-${frame.id}-${Date.now()}`,
+      label: buildWorkflowLabel(sequence.id),
     });
 
     return { workflowRunId, frameId: frame.id };
@@ -269,7 +272,10 @@ export const generateFrameVariantsFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/variant-image',
       workflowInput,
-      { deduplicationId: `variant-${frame.id}-${Date.now()}` }
+      {
+        deduplicationId: `variant-${frame.id}-${Date.now()}`,
+        label: buildWorkflowLabel(sequence.id),
+      }
     );
 
     return { workflowRunId, frameId: frame.id };
@@ -389,7 +395,10 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/upscale-variant',
       workflowInput,
-      { deduplicationId: `upscale-variant-${frame.id}-${Date.now()}` }
+      {
+        deduplicationId: `upscale-variant-${frame.id}-${Date.now()}`,
+        label: buildWorkflowLabel(sequence.id),
+      }
     );
 
     return {
