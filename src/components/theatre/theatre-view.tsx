@@ -48,6 +48,16 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
     }
   }, [mergedVideoUrl]);
 
+  const handleDownloadVideo = useCallback(() => {
+    if (!mergedVideoUrl) return;
+    const a = document.createElement('a');
+    a.href = mergedVideoUrl;
+    a.download = `${sequence.title || 'sequence'}_openstory.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [mergedVideoUrl, sequence.title]);
+
   // Merging state
   if (mergedVideoStatus === 'merging') {
     return (
@@ -60,8 +70,6 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
 
   // Completed state - show video
   if (mergedVideoStatus === 'completed' && mergedVideoUrl) {
-    const downloadFilename = `${sequence.title || 'sequence'}_openstory.mp4`;
-
     return (
       <div className="relative">
         <DropdownMenu>
@@ -80,16 +88,9 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
               <Link className="h-4 w-4" />
               Copy video URL
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a
-                href={mergedVideoUrl}
-                download={downloadFilename}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Download className="h-4 w-4" />
-                Download video
-              </a>
+            <DropdownMenuItem onClick={handleDownloadVideo}>
+              <Download className="h-4 w-4" />
+              Download video
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
