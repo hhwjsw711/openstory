@@ -20,6 +20,7 @@ import {
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type { LibraryTalentSheetWorkflowInput } from '@/lib/workflow/types';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
@@ -139,15 +140,15 @@ export const createTalentFn = createServerFn({ method: 'POST' })
       sheetName: 'Default Sheet',
     };
 
-    void triggerWorkflow('/library-talent-sheet', workflowInput).catch(
-      (error) => {
-        console.error(
-          '[createTalentFn]',
-          'Failed to trigger talent sheet workflow:',
-          error
-        );
-      }
-    );
+    void triggerWorkflow('/library-talent-sheet', workflowInput, {
+      label: buildWorkflowLabel(newTalent.id),
+    }).catch((error) => {
+      console.error(
+        '[createTalentFn]',
+        'Failed to trigger talent sheet workflow:',
+        error
+      );
+    });
 
     return newTalent;
   });
@@ -409,7 +410,13 @@ export const generateTalentSheetFn = createServerFn({ method: 'POST' })
       sheetName: data.sheetName,
     };
 
-    const runId = await triggerWorkflow('/library-talent-sheet', workflowInput);
+    const runId = await triggerWorkflow(
+      '/library-talent-sheet',
+      workflowInput,
+      {
+        label: buildWorkflowLabel(talentRecord.id),
+      }
+    );
     return { runId };
   });
 

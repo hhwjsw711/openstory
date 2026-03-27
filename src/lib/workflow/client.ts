@@ -67,6 +67,7 @@ export async function triggerWorkflow<
   body: T,
   options?: {
     deduplicationId?: string;
+    label?: string;
   }
 ): Promise<string> {
   console.log('[TriggerWorkflow]', { url: urlPath, body, options });
@@ -90,6 +91,7 @@ export async function triggerWorkflow<
     body,
     workflowRunId: options?.deduplicationId,
     headers: getVercelBypassHeaders(),
+    label: options?.label,
   });
 
   console.log('[TriggerWorkflow] Response:', response);

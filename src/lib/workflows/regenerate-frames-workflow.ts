@@ -13,6 +13,7 @@ import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { RegenerateFramesWorkflowInput } from '@/lib/workflow/types';
@@ -65,6 +66,7 @@ export const regenerateFramesWorkflow = createScopedWorkflow<
     const input = context.requestPayload;
     const { sequenceId, frameIds, userId, teamId, triggeringCharacterId } =
       input;
+    const label = buildWorkflowLabel(sequenceId);
 
     if (!sequenceId) {
       throw new WorkflowValidationError('Sequence ID is required');
@@ -142,6 +144,7 @@ export const regenerateFramesWorkflow = createScopedWorkflow<
 
         const { body, isFailed, isCanceled } = await context.invoke('image', {
           workflow: generateImageWorkflow,
+          label,
           body: {
             userId,
             teamId,

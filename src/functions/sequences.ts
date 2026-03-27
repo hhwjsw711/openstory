@@ -22,6 +22,7 @@ import {
   updateSequenceSchema,
 } from '@/lib/schemas/sequence.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type {
   MergeVideoWorkflowInput,
   MusicSceneSummary,
@@ -133,6 +134,7 @@ export const createSequenceFn = createServerFn({ method: 'POST' })
 
         await triggerWorkflow('/storyboard', workflowInput, {
           deduplicationId: `storyboard-${sequence.id}-${Date.now()}`,
+          label: buildWorkflowLabel(sequence.id),
         });
 
         return sequence;
@@ -185,20 +187,24 @@ export const updateSequenceFn = createServerFn({ method: 'POST' })
         }
       );
 
-      await triggerWorkflow('/storyboard', {
-        userId: context.user.id,
-        teamId: context.teamId,
-        sequenceId,
-        options: {
-          framesPerScene: 3,
-          generateThumbnails: true,
-          generateDescriptions: true,
-          aiProvider: 'openrouter',
-          regenerateAll: true,
-        },
-        autoGenerateMotion: sequence.autoGenerateMotion,
-        autoGenerateMusic: sequence.autoGenerateMusic,
-      } satisfies StoryboardWorkflowInput);
+      await triggerWorkflow(
+        '/storyboard',
+        {
+          userId: context.user.id,
+          teamId: context.teamId,
+          sequenceId,
+          options: {
+            framesPerScene: 3,
+            generateThumbnails: true,
+            generateDescriptions: true,
+            aiProvider: 'openrouter',
+            regenerateAll: true,
+          },
+          autoGenerateMotion: sequence.autoGenerateMotion,
+          autoGenerateMusic: sequence.autoGenerateMusic,
+        } satisfies StoryboardWorkflowInput,
+        { label: buildWorkflowLabel(sequence.id) }
+      );
     }
 
     return sequence;
@@ -264,7 +270,9 @@ export const retryStoryboardFn = createServerFn({ method: 'POST' })
     };
 
     // No deduplication ID — explicit user retry should always run
-    await triggerWorkflow('/storyboard', workflowInput);
+    await triggerWorkflow('/storyboard', workflowInput, {
+      label: buildWorkflowLabel(sequence.id),
+    });
 
     return { success: true };
   });
@@ -374,7 +382,9 @@ export const generateMusicFn = createServerFn({ method: 'POST' })
       musicError: null,
     });
 
-    await triggerWorkflow('/music', musicInput);
+    await triggerWorkflow('/music', musicInput, {
+      label: buildWorkflowLabel(sequence.id),
+    });
 
     return { success: true };
   });
@@ -423,12 +433,16 @@ export const mergeVideoAndMusicFn = createServerFn({ method: 'POST' })
       .map((f) => f.videoUrl)
       .filter((url): url is string => Boolean(url));
 
-    await triggerWorkflow('/merge-video', {
-      userId: user.id,
-      teamId,
-      sequenceId: sequence.id,
-      videoUrls,
-    } satisfies MergeVideoWorkflowInput);
+    await triggerWorkflow(
+      '/merge-video',
+      {
+        userId: user.id,
+        teamId,
+        sequenceId: sequence.id,
+        videoUrls,
+      } satisfies MergeVideoWorkflowInput,
+      { label: buildWorkflowLabel(sequence.id) }
+    );
 
     return { success: true };
   });
