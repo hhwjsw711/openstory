@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { createPlayer, Poster, useMedia } from '@videojs/react';
 import { Video, VideoSkin, videoFeatures } from '@videojs/react/video';
 import { useEffect, useRef } from 'react';
-import { DownloadButton } from './download-button';
 
 const Player = createPlayer({ features: videoFeatures });
 
@@ -18,9 +17,6 @@ type VideoPlayerProps = {
   aspectRatio: AspectRatio;
   className?: string;
   autoPlay?: boolean;
-  enableDownload?: boolean;
-  downloadFilename?: string;
-  downloadUrl?: string;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
   onPause?: () => void;
@@ -34,9 +30,6 @@ const VideoPlayerInner: React.FC<
   chaptersUrl,
   posterSrc,
   autoPlay = false,
-  enableDownload = false,
-  downloadFilename,
-  downloadUrl,
   onLoadedMetadata,
   onTimeUpdate,
   onPause,
@@ -92,12 +85,6 @@ const VideoPlayerInner: React.FC<
         {chaptersUrl && <track kind="chapters" src={chaptersUrl} default />}
       </Video>
       {posterSrc && <Poster src={posterSrc} alt="Video thumbnail" />}
-      {enableDownload && downloadUrl && downloadFilename && (
-        <DownloadButton
-          downloadUrl={downloadUrl}
-          downloadFilename={downloadFilename}
-        />
-      )}
     </VideoSkin>
   );
 };
@@ -109,9 +96,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   aspectRatio,
   className,
   autoPlay = false,
-  enableDownload = false,
-  downloadFilename,
-  downloadUrl,
   onLoadedMetadata,
   onTimeUpdate,
   onPause,
@@ -130,10 +114,33 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     );
   }
 
+  // Image-only mode: VideoSkin collapses to 0px without a video src, so render
+  // the poster directly into a properly-sized aspect-ratio container instead.
+  if (!src && posterSrc) {
+    return (
+      <div
+        className={cn(
+          'relative w-full overflow-hidden',
+          className,
+          getAspectRatioClassName(aspectRatio)
+        )}
+      >
+        <img
+          src={posterSrc}
+          alt="Scene thumbnail"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={cn(className, getAspectRatioClassName(aspectRatio))}
-      style={{ position: 'relative' }}
+      className={cn(
+        'relative w-full',
+        className,
+        getAspectRatioClassName(aspectRatio)
+      )}
     >
       <Player.Provider>
         <VideoPlayerInner
@@ -141,9 +148,6 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
           chaptersUrl={chaptersUrl}
           posterSrc={posterSrc}
           autoPlay={autoPlay}
-          enableDownload={enableDownload}
-          downloadFilename={downloadFilename}
-          downloadUrl={downloadUrl}
           onLoadedMetadata={onLoadedMetadata}
           onTimeUpdate={onTimeUpdate}
           onPause={onPause}

@@ -16,7 +16,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AlertCircle, Link, Loader2, Share2, VideoIcon } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  Link,
+  Loader2,
+  Share2,
+  VideoIcon,
+} from 'lucide-react';
 import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -106,6 +113,18 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     { frameId: currentFrame?.id, sequenceId: currentFrame?.sequenceId },
     !!hasCompletedVideo
   );
+
+  const handleDownloadVideo = useCallback(() => {
+    if (!downloadData?.downloadUrl) return;
+    const a = document.createElement('a');
+    a.href = downloadData.downloadUrl;
+    a.download =
+      downloadData.filename ||
+      `scene-${currentFrame?.id ?? 'unknown'}_openstory.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [downloadData, currentFrame?.id]);
 
   // Handle video pause - disable autoplay when user manually pauses
   const handlePause = useCallback(() => {
@@ -216,7 +235,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => void handleCopyImageUrl()}>
                   <Link className="h-4 w-4" />
-                  Copy image URL
+                  Copy scene image URL
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -255,13 +274,19 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
                 {currentFrame.thumbnailUrl && (
                   <DropdownMenuItem onClick={() => void handleCopyImageUrl()}>
                     <Link className="h-4 w-4" />
-                    Copy image URL
+                    Copy scene image URL
                   </DropdownMenuItem>
                 )}
                 {currentFrame.videoUrl && (
                   <DropdownMenuItem onClick={() => void handleCopyVideoUrl()}>
                     <VideoIcon className="h-4 w-4" />
-                    Copy video URL
+                    Copy scene video URL
+                  </DropdownMenuItem>
+                )}
+                {hasCompletedVideo && downloadData?.downloadUrl && (
+                  <DropdownMenuItem onClick={handleDownloadVideo}>
+                    <Download className="h-4 w-4" />
+                    Download scene video
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -285,13 +310,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             }
             posterSrc={currentFrame.thumbnailUrl}
             aspectRatio={aspectRatio}
-            className="w-full h-full"
+            className="w-full"
             autoPlay={shouldAutoPlay}
-            enableDownload={!!currentFrame.videoUrl}
-            downloadFilename={
-              downloadData?.filename || `scene-${currentFrame.id}_openstory.mp4`
-            }
-            downloadUrl={downloadData?.downloadUrl}
             onTimeUpdate={onTimeUpdate}
             onPause={handlePause}
             onEnded={handleEnded}
