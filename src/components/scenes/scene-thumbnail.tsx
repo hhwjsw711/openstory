@@ -34,7 +34,7 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   const showLoader =
     !displayUrl && !!thumbnailStatus && thumbnailStatus !== 'failed';
 
-  const showSkeleton = !displayUrl || !thumbnailStatus;
+  const showSkeleton = !displayUrl && !thumbnailStatus;
   const isFailed = thumbnailStatus === 'failed' && !displayUrl;
 
   return (
