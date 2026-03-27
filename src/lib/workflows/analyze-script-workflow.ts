@@ -71,6 +71,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
 
     const sceneSplitResult = await context.invoke('scene-split', {
       workflow: sceneSplitWorkflow,
+      label,
       body: {
         userId: input.userId,
         teamId: input.teamId,

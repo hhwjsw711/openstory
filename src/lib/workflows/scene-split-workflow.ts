@@ -31,6 +31,7 @@ import type {
 import { PREVIEW_IMAGE_MODEL } from '../ai/models';
 import { aspectRatioToImageSize } from '../constants/aspect-ratios';
 import { triggerWorkflow } from '../workflow/client';
+import { buildWorkflowLabel } from '../workflow/labels';
 
 export const sceneSplitWorkflow = createScopedWorkflow<
   SceneSplitWorkflowInput,
@@ -210,17 +211,23 @@ export const sceneSplitWorkflow = createScopedWorkflow<
                   // Now kick off the preview generation for the previous scene
                   // Just trigger a workflow - don't await it
                   // Do this instead of context.invoke because we don't want to block the main thread
-                  await triggerWorkflow('/image', {
-                    userId: input.userId,
-                    teamId: input.teamId,
-                    sequenceId,
-                    prompt,
-                    model: PREVIEW_IMAGE_MODEL,
-                    imageSize: aspectRatioToImageSize(aspectRatio),
-                    numImages: 1,
-                    frameId: prevFrameId,
-                    skipStorage: true,
-                  } satisfies ImageWorkflowInput);
+                  await triggerWorkflow(
+                    '/image',
+                    {
+                      userId: input.userId,
+                      teamId: input.teamId,
+                      sequenceId,
+                      prompt,
+                      model: PREVIEW_IMAGE_MODEL,
+                      imageSize: aspectRatioToImageSize(aspectRatio),
+                      numImages: 1,
+                      frameId: prevFrameId,
+                      skipStorage: true,
+                    } satisfies ImageWorkflowInput,
+                    {
+                      label: buildWorkflowLabel(sequenceId),
+                    }
+                  );
                 }
 
                 prevFrameId = frame.id;
