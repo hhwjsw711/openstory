@@ -157,7 +157,7 @@ const enhanceScriptInputSchema = z.object({
     .string()
     .min(10, 'Script must be at least 10 characters')
     .max(50000, 'Script too long'),
-  targetDuration: z.number().min(15).max(60).optional(),
+  targetDuration: z.number().min(5).max(180).optional(),
   tone: z.enum(['dramatic', 'comedic', 'documentary', 'action']).optional(),
   style: z.string().optional(),
   styleConfig: StyleConfigSchema.partial().optional(),
@@ -182,6 +182,7 @@ export const enhanceScriptStreamFn = createServerFn({ method: 'POST' })
     const userPrompt = createUserPrompt(sanitized, {
       styleConfig: data.styleConfig,
       aspectRatio: data.aspectRatio,
+      targetDuration: data.targetDuration,
     });
 
     const model =
