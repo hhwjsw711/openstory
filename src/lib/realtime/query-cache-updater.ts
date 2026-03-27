@@ -60,10 +60,7 @@ function debouncedInvalidate(
 }
 
 /**
- * Validates if a status value is a valid Frame status.
- */
-/**
- * Validates if a status value is a valid music status (excludes 'preview').
+ * Validates if a status value is a valid music status.
  */
 function isValidMusicStatus(
   status: unknown
