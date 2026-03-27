@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
       "Read",
       "Bash(bun lint:*)",
@@ -41,6 +42,7 @@
       "Bash(cat:*)",
       "Bash(bun storybook:*)",
       "Bash(grep:*)",
+      "Bash(find:*)",
       "Bash(head:*)",
       "Bash(git mv:*)",
       "Bash(bun cf:typegen:all:*)",
