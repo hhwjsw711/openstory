@@ -1,0 +1,1 @@
+ALTER TABLE `frames` ADD `preview_thumbnail_url` text;

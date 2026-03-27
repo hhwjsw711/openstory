@@ -60,7 +60,6 @@ export const fastPreviewWorkflow = createScopedWorkflow<
               durationMs: Math.round(
                 (scene.metadata?.durationSeconds ?? 3) * 1000
               ),
-              thumbnailStatus: 'preview',
               videoStatus: 'pending',
             }) satisfies NewFrame
         );

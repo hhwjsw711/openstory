@@ -173,13 +173,12 @@ export const generateImageWorkflow = createScopedWorkflow<
       });
       if (storageUrl) imageUrl = storageUrl;
     } else if (imageUrl && frameId && input.skipStorage) {
-      // Preview mode: store fal.ai CDN URL directly, set status to 'preview'
+      // Preview mode: store fal.ai CDN URL in dedicated preview field
       await context.run('store-preview-url', async () => {
         const updatedFrame = await scopedDb.frames.update(
           frameId,
           {
-            thumbnailUrl: imageUrl,
-            thumbnailStatus: 'preview',
+            previewThumbnailUrl: imageUrl,
             thumbnailGeneratedAt: new Date(),
             thumbnailError: null,
           },
@@ -197,7 +196,7 @@ export const generateImageWorkflow = createScopedWorkflow<
         if (sequenceId) {
           await getGenerationChannel(sequenceId)?.emit(
             'generation.image:progress',
-            { frameId, status: 'preview', thumbnailUrl: imageUrl }
+            { frameId, previewThumbnailUrl: imageUrl }
           );
         }
       });

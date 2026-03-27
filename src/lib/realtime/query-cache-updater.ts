@@ -81,7 +81,6 @@ function isValidFrameStatus(
 ): status is Frame['thumbnailStatus'] {
   return (
     status === 'pending' ||
-    status === 'preview' ||
     status === 'generating' ||
     status === 'completed' ||
     status === 'failed'
@@ -124,6 +123,10 @@ export function updateQueryCacheFromEvent(
 
     case 'generation.image:progress': {
       const thumbnailUrl = getOptionalString(data, 'thumbnailUrl');
+      const previewThumbnailUrl = getOptionalString(
+        data,
+        'previewThumbnailUrl'
+      );
       const status = data.status;
       queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
         old?.map((f) =>
@@ -131,6 +134,8 @@ export function updateQueryCacheFromEvent(
             ? {
                 ...f,
                 thumbnailUrl: thumbnailUrl ?? f.thumbnailUrl,
+                previewThumbnailUrl:
+                  previewThumbnailUrl ?? f.previewThumbnailUrl,
                 thumbnailStatus: isValidFrameStatus(status)
                   ? status
                   : f.thumbnailStatus,

@@ -47,6 +47,7 @@ const createTestFrame = (overrides: Partial<Frame>): Frame => ({
   audioGeneratedAt: null,
   audioError: null,
   audioModel: null,
+  previewThumbnailUrl: null,
   ...overrides,
 });
 

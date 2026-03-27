@@ -2,13 +2,7 @@ import { BlobLoader } from '@/components/ui/blob-loader';
 import { cn } from '@/lib/utils';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
-type FrameStatus =
-  | 'pending'
-  | 'preview'
-  | 'generating'
-  | 'completed'
-  | 'failed'
-  | null;
+type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed' | null;
 
 type VideoStateOverlayProps = {
   thumbnailUrl?: string | null;

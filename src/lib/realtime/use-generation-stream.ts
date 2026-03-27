@@ -31,24 +31,18 @@ function asOptionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
-type FrameStatus =
-  | 'pending'
-  | 'preview'
-  | 'generating'
-  | 'completed'
-  | 'failed';
+type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
 
-function asFrameStatus(value: unknown): FrameStatus {
+function asFrameStatus(value: unknown): FrameStatus | undefined {
   if (
     value === 'pending' ||
-    value === 'preview' ||
     value === 'generating' ||
     value === 'completed' ||
     value === 'failed'
   ) {
     return value;
   }
-  return 'pending';
+  return undefined;
 }
 
 /**
@@ -116,6 +110,7 @@ function mapEventToAction(
           frameId: asString(data.frameId),
           status: asFrameStatus(data.status),
           thumbnailUrl: asOptionalString(data.thumbnailUrl),
+          previewThumbnailUrl: asOptionalString(data.previewThumbnailUrl),
         },
       };
 

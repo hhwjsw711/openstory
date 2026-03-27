@@ -11,12 +11,8 @@ import { memo } from 'react';
 
 type SceneThumbnailProps = {
   thumbnailUrl?: string | null;
-  thumbnailStatus?:
-    | 'pending'
-    | 'preview'
-    | 'generating'
-    | 'completed'
-    | 'failed';
+  previewThumbnailUrl?: string | null;
+  thumbnailStatus?: 'pending' | 'generating' | 'completed' | 'failed';
   alt: string;
   aspectRatio: AspectRatio;
   className?: string;
@@ -24,17 +20,22 @@ type SceneThumbnailProps = {
 
 const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   thumbnailUrl,
+  previewThumbnailUrl,
   thumbnailStatus,
   alt,
   aspectRatio,
   className,
 }) => {
-  // Only show loader when there's no image
-  const showLoader =
-    !thumbnailUrl && !!thumbnailStatus && thumbnailStatus !== 'failed';
+  // Display the final image if available, otherwise the preview
+  const displayUrl = thumbnailUrl ?? previewThumbnailUrl;
+  const isPreview = !thumbnailUrl && !!previewThumbnailUrl;
 
-  const showSkeleton = !thumbnailUrl || !thumbnailStatus;
-  const isFailed = thumbnailStatus === 'failed' && !thumbnailUrl;
+  // Only show loader when there's no image at all
+  const showLoader =
+    !displayUrl && !!thumbnailStatus && thumbnailStatus !== 'failed';
+
+  const showSkeleton = !displayUrl || !thumbnailStatus;
+  const isFailed = thumbnailStatus === 'failed' && !displayUrl;
 
   return (
     <div
@@ -51,9 +52,9 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
         <BlobLoaderContainer size="sm" className="absolute inset-0" />
       )}
 
-      {thumbnailUrl && (
+      {displayUrl && (
         <Image
-          src={thumbnailUrl}
+          src={displayUrl}
           alt={alt}
           className="h-full w-full object-cover"
           width={320}
@@ -61,7 +62,7 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
         />
       )}
 
-      {thumbnailStatus === 'preview' && thumbnailUrl && (
+      {isPreview && (
         <span className="absolute top-1 right-1 rounded bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground backdrop-blur-sm">
           Preview
         </span>
@@ -79,14 +80,13 @@ const SceneThumbnailComponent: React.FC<SceneThumbnailProps> = ({
   );
 };
 
-// Custom equality check to prevent unnecessary re-renders during polling
-// Only re-render when thumbnail-related fields actually change
 const areEqual = (
   prevProps: SceneThumbnailProps,
   nextProps: SceneThumbnailProps
 ): boolean => {
   return (
     prevProps.thumbnailUrl === nextProps.thumbnailUrl &&
+    prevProps.previewThumbnailUrl === nextProps.previewThumbnailUrl &&
     prevProps.thumbnailStatus === nextProps.thumbnailStatus &&
     prevProps.alt === nextProps.alt &&
     prevProps.aspectRatio === nextProps.aspectRatio &&

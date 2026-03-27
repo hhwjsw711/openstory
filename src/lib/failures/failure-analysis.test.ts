@@ -36,6 +36,7 @@ function makeFrame(overrides: Partial<Frame> = {}): Frame {
     audioGeneratedAt: null,
     audioError: null,
     audioModel: null,
+    previewThumbnailUrl: null,
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),

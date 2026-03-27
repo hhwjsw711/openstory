@@ -71,6 +71,13 @@
       "when": 1774513687792,
       "tag": "0009_huge_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1774592766755,
+      "tag": "0010_crazy_yellowjacket",
+      "breakpoints": true
     }
   ]
 }

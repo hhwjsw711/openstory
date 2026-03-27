@@ -34,6 +34,7 @@ const mockFrame: Frame = {
   audioGeneratedAt: null,
   audioError: null,
   audioModel: null,
+  previewThumbnailUrl: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,

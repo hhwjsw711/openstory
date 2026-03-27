@@ -33,6 +33,14 @@ export const Generating: Story = {
   },
 };
 
+export const Preview: Story = {
+  args: {
+    previewThumbnailUrl: 'https://picsum.photos/seed/preview1/320/180',
+    thumbnailStatus: 'generating',
+    alt: 'Scene 1 - Preview while generating',
+  },
+};
+
 export const Completed: Story = {
   args: {
     thumbnailUrl: 'https://picsum.photos/seed/scene1/320/180',
