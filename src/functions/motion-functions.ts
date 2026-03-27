@@ -15,6 +15,7 @@ import { snapDuration } from '@/lib/motion/motion-generation';
 import { generateMotionSchema } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type {
   BatchMotionMusicWorkflowInput,
   MergeVideoWorkflowInput,
@@ -76,7 +77,10 @@ export const generateFrameMotionFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/motion-batch',
       workflowInput,
-      { deduplicationId: `motion-batch-${frame.id}-${Date.now()}` }
+      {
+        deduplicationId: `motion-batch-${frame.id}-${Date.now()}`,
+        label: buildWorkflowLabel(sequence.title, sequence.id),
+      }
     );
 
     return { workflowRunId, frameId: frame.id };
@@ -178,7 +182,10 @@ export const batchGenerateMotionFn = createServerFn({ method: 'POST' })
     const workflowRunId = await triggerWorkflow(
       '/motion-batch',
       workflowInput,
-      { deduplicationId: `motion-batch-${sequence.id}-${Date.now()}` }
+      {
+        deduplicationId: `motion-batch-${sequence.id}-${Date.now()}`,
+        label: buildWorkflowLabel(sequence.title, sequence.id),
+      }
     );
 
     return {
@@ -236,6 +243,7 @@ export const triggerMergeVideoFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow('/merge-video', workflowInput, {
       deduplicationId: `merge-${sequence.id}-${Date.now()}`,
+      label: buildWorkflowLabel(sequence.title, sequence.id),
     });
 
     return { workflowRunId, sequenceId: sequence.id };

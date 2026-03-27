@@ -10,6 +10,7 @@ import {
   getMimeTypeFromExtension,
 } from '@/lib/utils/file';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type { LibraryLocationSheetWorkflowInput } from '@/lib/workflow/types';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
@@ -137,7 +138,9 @@ export const createLibraryLocationFn = createServerFn({ method: 'POST' })
         sequenceId: 'library',
       };
 
-      await triggerWorkflow('/library-location-sheet', workflowInput);
+      await triggerWorkflow('/library-location-sheet', workflowInput, {
+        label: buildWorkflowLabel(data.name, newLocation.id),
+      });
     }
 
     return { ...newLocation, sequenceTitle: 'Library' as const };
@@ -308,7 +311,8 @@ export const addLocationSheetsFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow(
       '/library-location-sheet',
-      workflowInput
+      workflowInput,
+      { label: buildWorkflowLabel(location.name, data.locationId) }
     );
 
     return { sheets: newSheets, workflowRunId };

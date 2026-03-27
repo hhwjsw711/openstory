@@ -19,6 +19,7 @@ import {
 import { uploadVideoToStorage } from '@/lib/motion/video-storage';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
@@ -415,6 +416,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
 
         await triggerWorkflow('/merge-video', mergeInput, {
           deduplicationId: `merge-${input.sequenceId}-${Date.now()}`,
+          label: buildWorkflowLabel(undefined, input.sequenceId),
         });
       });
     }

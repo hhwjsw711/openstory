@@ -177,17 +177,21 @@ async function main() {
   console.log('');
 
   try {
-    const workflowRunId = await triggerWorkflow('/analyze-script', {
-      script,
-      styleConfig: styleResult.data,
-      aspectRatio,
-      analysisModelId: analysisModel,
-      imageModel: values['image-model'],
-      videoModel: values['video-model'],
-      userId: values['user-id'] ?? 'cli-user',
-      teamId: values['team-id'] ?? 'cli-team',
-      sequenceId: values['sequence-id'],
-    });
+    const workflowRunId = await triggerWorkflow(
+      '/analyze-script',
+      {
+        script,
+        styleConfig: styleResult.data,
+        aspectRatio,
+        analysisModelId: analysisModel,
+        imageModel: values['image-model'],
+        videoModel: values['video-model'],
+        userId: values['user-id'] ?? 'cli-user',
+        teamId: values['team-id'] ?? 'cli-team',
+        sequenceId: values['sequence-id'],
+      },
+      { label: 'CLI analyze-script' }
+    );
 
     console.log('✅ Workflow triggered successfully');
     console.log(`   Workflow Run ID: ${workflowRunId}`);

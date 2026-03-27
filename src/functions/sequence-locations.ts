@@ -1,6 +1,7 @@
 import type { SequenceLocation } from '@/lib/db/schema';
 import { getGenerationChannel } from '@/lib/realtime';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type { RecastLocationWorkflowInput } from '@/lib/workflow/types';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
@@ -109,17 +110,21 @@ export const recastLocationFn = createServerFn({ method: 'POST' })
         data.locationId
       );
 
-    const workflowRunId = await triggerWorkflow('/recast-location', {
-      locationDbId: data.locationId,
-      locationName: location.name,
-      locationMetadata: toLocationMetadata(location),
-      sequenceId: location.sequenceId,
-      teamId: context.teamId,
-      userId: context.user.id,
-      referenceImageUrl: data.referenceImageUrl,
-      libraryLocationDescription: data.description,
-      affectedFrameIds,
-    } satisfies RecastLocationWorkflowInput);
+    const workflowRunId = await triggerWorkflow(
+      '/recast-location',
+      {
+        locationDbId: data.locationId,
+        locationName: location.name,
+        locationMetadata: toLocationMetadata(location),
+        sequenceId: location.sequenceId,
+        teamId: context.teamId,
+        userId: context.user.id,
+        referenceImageUrl: data.referenceImageUrl,
+        libraryLocationDescription: data.description,
+        affectedFrameIds,
+      } satisfies RecastLocationWorkflowInput,
+      { label: buildWorkflowLabel(location.name, location.sequenceId) }
+    );
 
     return {
       locationId: data.locationId,

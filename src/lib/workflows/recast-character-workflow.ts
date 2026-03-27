@@ -7,6 +7,7 @@
  */
 
 import { getGenerationChannel } from '@/lib/realtime';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { RecastCharacterWorkflowInput } from '@/lib/workflow/types';
@@ -17,6 +18,7 @@ export const recastCharacterWorkflow =
   createScopedWorkflow<RecastCharacterWorkflowInput>(
     async (context, _scopedDb) => {
       const input = context.requestPayload;
+      const label = buildWorkflowLabel(input.characterName, input.sequenceId);
 
       console.log(
         '[RecastCharacterWorkflow]',
@@ -28,6 +30,7 @@ export const recastCharacterWorkflow =
         'character-sheet',
         {
           workflow: characterSheetWorkflow,
+          label,
           body: {
             characterDbId: input.characterDbId,
             characterName: input.characterName,
@@ -63,6 +66,7 @@ export const recastCharacterWorkflow =
         const { body: regenerateResult, isFailed: regenerateFailed } =
           await context.invoke('regenerate-frames', {
             workflow: regenerateFramesWorkflow,
+            label,
             body: {
               sequenceId: input.sequenceId,
               userId: input.userId,

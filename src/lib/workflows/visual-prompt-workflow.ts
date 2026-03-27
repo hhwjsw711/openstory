@@ -7,6 +7,7 @@
 
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { VisualPromptWorkflowInput } from '@/lib/workflow/types';
 import { visualPromptSceneWorkflow } from './visual-prompt-scene-workflow';
@@ -27,6 +28,8 @@ export const visualPromptWorkflow = createScopedWorkflow<
       frameMapping,
     } = input;
 
+    const label = buildWorkflowLabel(undefined, input.sequenceId);
+
     console.log(
       `[VisualPromptWorkflow] Starting visual prompt generation for ${scenes.length} scenes`
     );
@@ -41,6 +44,7 @@ export const visualPromptWorkflow = createScopedWorkflow<
 
         return await context.invoke('visual-prompt-scene', {
           workflow: visualPromptSceneWorkflow,
+          label,
           body: {
             scene,
             sceneBefore,

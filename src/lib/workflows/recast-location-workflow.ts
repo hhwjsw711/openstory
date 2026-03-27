@@ -7,6 +7,7 @@
  */
 
 import { getGenerationChannel } from '@/lib/realtime';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { RecastLocationWorkflowInput } from '@/lib/workflow/types';
@@ -17,6 +18,7 @@ export const recastLocationWorkflow =
   createScopedWorkflow<RecastLocationWorkflowInput>(
     async (context, _scopedDb) => {
       const input = context.requestPayload;
+      const label = buildWorkflowLabel(input.locationName, input.sequenceId);
 
       console.log(
         '[RecastLocationWorkflow]',
@@ -28,6 +30,7 @@ export const recastLocationWorkflow =
         'location-sheet',
         {
           workflow: locationSheetWorkflow,
+          label,
           body: {
             locationDbId: input.locationDbId,
             locationName: input.locationName,
@@ -61,6 +64,7 @@ export const recastLocationWorkflow =
         const { body: regenerateResult, isFailed: regenerateFailed } =
           await context.invoke('regenerate-frames', {
             workflow: regenerateFramesWorkflow,
+            label,
             body: {
               sequenceId: input.sequenceId,
               userId: input.userId,

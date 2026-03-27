@@ -9,6 +9,7 @@ import { aspectRatioToImageSize } from '@/lib/constants/aspect-ratios';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import { WorkflowValidationError } from '@/lib/workflow/errors';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   FrameImagesWorkflowInput,
@@ -39,6 +40,8 @@ export const frameImagesWorkflow = createScopedWorkflow<
       aspectRatio,
       sequenceId,
     } = input;
+
+    const label = buildWorkflowLabel(undefined, sequenceId);
 
     // Build per-scene character and location maps for reference image lookup
     const { sceneCharacterMap, sceneLocationMap } = await context.run(
@@ -92,6 +95,7 @@ export const frameImagesWorkflow = createScopedWorkflow<
 
         const result = await context.invoke('image', {
           workflow: generateImageWorkflow,
+          label,
           body: {
             userId: input.userId,
             teamId: input.teamId,
@@ -118,6 +122,7 @@ export const frameImagesWorkflow = createScopedWorkflow<
         // Now invoke the variant workflow
         await context.invoke('variant-image', {
           workflow: generateVariantWorkflow,
+          label,
           body: {
             userId: input.userId,
             teamId: input.teamId,

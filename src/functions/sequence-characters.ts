@@ -11,6 +11,7 @@ import { buildCastingAttributes } from '@/lib/prompts/character-prompt';
 import { getGenerationChannel } from '@/lib/realtime';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import { triggerWorkflow } from '@/lib/workflow/client';
+import { buildWorkflowLabel } from '@/lib/workflow/labels';
 import type { RecastCharacterWorkflowInput } from '@/lib/workflow/types';
 
 import { authWithTeamMiddleware, sequenceAccessMiddleware } from './middleware';
@@ -137,7 +138,8 @@ export const recastCharacterFn = createServerFn({ method: 'POST' })
 
     const workflowRunId = await triggerWorkflow(
       '/recast-character',
-      workflowInput
+      workflowInput,
+      { label: buildWorkflowLabel(character.name, character.sequenceId) }
     );
 
     return {
