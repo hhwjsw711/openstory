@@ -210,23 +210,28 @@ export const generateImageWorkflow = createScopedWorkflow<
   {
     failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
-      const error = sanitizeFailResponse(failResponse);
+      // Skipping storage means we're in preview mode
+      const previewMode = input.skipStorage;
+      if (!previewMode) {
+        // Only flag the frame as failed if we're not in preview mode
+        const error = sanitizeFailResponse(failResponse);
 
-      if (input.frameId && input.teamId) {
-        await scopedDb.frames.update(
-          input.frameId,
-          { thumbnailStatus: 'failed', thumbnailError: error },
-          { throwOnMissing: false }
-        );
+        if (input.frameId && input.teamId) {
+          await scopedDb.frames.update(
+            input.frameId,
+            { thumbnailStatus: 'failed', thumbnailError: error },
+            { throwOnMissing: false }
+          );
 
-        if (input.sequenceId) {
-          try {
-            await getGenerationChannel(input.sequenceId)?.emit(
-              'generation.image:progress',
-              { frameId: input.frameId, status: 'failed' }
-            );
-          } catch {
-            // Ignore emit errors in failure handler
+          if (input.sequenceId) {
+            try {
+              await getGenerationChannel(input.sequenceId)?.emit(
+                'generation.image:progress',
+                { frameId: input.frameId, status: 'failed' }
+              );
+            } catch {
+              // Ignore emit errors in failure handler
+            }
           }
         }
 

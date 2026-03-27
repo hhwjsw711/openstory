@@ -73,10 +73,9 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
         teamId: input.teamId,
         sequenceId,
         promptName: 'phase/scene-splitting-chat',
-        promptVariables: {
-          aspectRatio,
-          script: sanitizeScriptContent(script),
-        },
+        aspectRatio,
+        script: sanitizeScriptContent(script),
+        styleConfig,
         modelId: analysisModelId,
         autoGenerateMotion,
       },

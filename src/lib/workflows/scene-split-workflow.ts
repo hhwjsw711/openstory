@@ -14,6 +14,7 @@ import { getContextWindow } from '@/lib/ai/models.config';
 import { sceneSplittingResultSchema } from '@/lib/ai/response-schemas';
 import {
   createStreamingSceneParser,
+  type SceneSplittingScene,
   stripCodeFences,
 } from '@/lib/ai/streaming-scene-parser';
 import { ZERO_MICROS } from '@/lib/billing/money';
@@ -23,9 +24,13 @@ import { getChatPrompt } from '@/lib/prompts';
 import { getGenerationChannel } from '@/lib/realtime';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
+  ImageWorkflowInput,
   SceneSplitWorkflowInput,
   SceneSplitWorkflowResult,
 } from '@/lib/workflow/types';
+import { PREVIEW_IMAGE_MODEL } from '../ai/models';
+import { aspectRatioToImageSize } from '../constants/aspect-ratios';
+import { triggerWorkflow } from '../workflow/client';
 
 export const sceneSplitWorkflow = createScopedWorkflow<
   SceneSplitWorkflowInput,
@@ -33,7 +38,13 @@ export const sceneSplitWorkflow = createScopedWorkflow<
 >(
   async (context, scopedDb) => {
     const input = context.requestPayload;
-    const { sequenceId, modelId, autoGenerateMotion = false } = input;
+    const {
+      sequenceId,
+      modelId,
+      styleConfig,
+      aspectRatio,
+      autoGenerateMotion = false,
+    } = input;
 
     const phase = { number: 1, name: 'Analyzing script\u2026' };
     const name = 'scene-splitting';
@@ -45,9 +56,13 @@ export const sceneSplitWorkflow = createScopedWorkflow<
     const { messages, promptReference } = await context.run(
       'prepare-scene-splitting',
       async () => {
+        const promptVariables = {
+          aspectRatio,
+          script: input.script,
+        };
         const { prompt, messages } = await getChatPrompt(
           input.promptName,
-          input.promptVariables
+          promptVariables
         );
 
         return { messages, promptReference: prompt };
@@ -71,7 +86,8 @@ export const sceneSplitWorkflow = createScopedWorkflow<
         const frameMapping: Array<{ sceneId: string; frameId: string }> = [];
         let finalText = '';
         let chunkCount = 0;
-
+        let prevScene: SceneSplittingScene | undefined = undefined;
+        let prevFrameId: string | undefined = undefined;
         // Stream the LLM response
         for await (const chunk of callLLMStream({
           model: modelId,
@@ -141,6 +157,7 @@ export const sceneSplitWorkflow = createScopedWorkflow<
               console.log(
                 `[Stream:${logName}] Scene ${event.index + 1} complete: "${event.scene.metadata?.title}" (chunk #${chunkCount}, ${finalText.length} chars)`
               );
+
               await getGenerationChannel(sequenceId).emit(
                 'generation.scene:new',
                 {
@@ -182,7 +199,34 @@ export const sceneSplitWorkflow = createScopedWorkflow<
                     orderIndex: event.index,
                   }
                 );
+                if (prevScene && prevFrameId) {
+                  // Use raw script extract as the prompt for fast preview
+                  const prompt = `${
+                    prevScene.originalScript?.extract?.slice(0, 2000) ??
+                    prevScene.metadata?.title ??
+                    'A cinematic scene'
+                  } style: ${JSON.stringify({ ...styleConfig, aspectRatio })}`;
+
+                  // Now kick off the preview generation for the previous scene
+                  // Just trigger a workflow - don't await it
+                  // Do this instead of context.invoke because we don't want to block the main thread
+                  await triggerWorkflow('/image', {
+                    userId: input.userId,
+                    teamId: input.teamId,
+                    sequenceId,
+                    prompt,
+                    model: PREVIEW_IMAGE_MODEL,
+                    imageSize: aspectRatioToImageSize(aspectRatio),
+                    numImages: 1,
+                    frameId: prevFrameId,
+                    skipStorage: true,
+                  } satisfies ImageWorkflowInput);
+                }
+
+                prevFrameId = frame.id;
               }
+              // Set previous scene to the current scene
+              prevScene = event.scene;
             }
           }
         }

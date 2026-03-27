@@ -126,8 +126,10 @@ export interface AnalyzeScriptWorkflowInput extends SequenceWorkflowContext {
  */
 export type SceneSplitWorkflowInput = SequenceWorkflowContext & {
   promptName: string;
-  promptVariables?: Record<string, string>;
   modelId: AnalysisModelId;
+  styleConfig: StyleConfig;
+  aspectRatio: AspectRatio;
+  script: string;
   autoGenerateMotion?: boolean;
 };
 

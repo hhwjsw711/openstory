@@ -6,7 +6,6 @@
 import {
   DEFAULT_IMAGE_MODEL,
   DEFAULT_VIDEO_MODEL,
-  IMAGE_MODELS,
   safeImageToVideoModel,
   safeTextToImageModel,
 } from '@/lib/ai/models';
@@ -21,7 +20,6 @@ import { WorkflowValidationError } from '@/lib/workflow/errors';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type { StoryboardWorkflowInput } from '@/lib/workflow/types';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
-import { fastPreviewWorkflow } from '@/lib/workflows/fast-preview-workflow';
 
 export const generateStoryboardWorkflow =
   createScopedWorkflow<StoryboardWorkflowInput>(async (context, scopedDb) => {
@@ -96,13 +94,7 @@ export const generateStoryboardWorkflow =
       };
     });
 
-    // Determine if we should run fast preview
-    // Skip preview if user already chose a fast-tier model (final images would be just as fast)
-    const isFastModel =
-      IMAGE_MODELS[imageModel].tier === 'fast' ||
-      IMAGE_MODELS[imageModel].tier === 'ultra-fast';
-
-    const analyzeScriptInvocation = context.invoke('analyze-script', {
+    await context.invoke('analyze-script', {
       workflow: analyzeScriptWorkflow,
       workflowRunId: `analyze-script-${sequenceId}-${Date.now()}`,
       body: {
@@ -124,28 +116,6 @@ export const generateStoryboardWorkflow =
       retries: 3,
       retryDelay: 'pow(2, retried) * 1000',
     });
-
-    if (isFastModel) {
-      // Fast model selected — skip preview, just run analysis pipeline
-      await analyzeScriptInvocation;
-    } else {
-      // Run fast preview and full analysis in parallel
-      await Promise.all([
-        context.invoke('fast-preview', {
-          workflow: fastPreviewWorkflow,
-          workflowRunId: `fast-preview-${sequenceId}-${Date.now()}`,
-          body: {
-            userId: input.userId,
-            teamId: input.teamId,
-            sequenceId,
-            script,
-            aspectRatio,
-          },
-          retries: 1, // Preview is best-effort
-        }),
-        analyzeScriptInvocation,
-      ]);
-    }
 
     await context.run('emit-complete', async () => {
       await getGenerationChannel(sequenceId).emit('generation.complete', {
