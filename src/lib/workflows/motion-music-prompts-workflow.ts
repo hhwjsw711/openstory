@@ -114,7 +114,7 @@ export const motionMusicPromptsWorkflow = createScopedWorkflow<
     const completeScenes: Scene[] = await context.run(
       'merge-music-and-motion',
       () =>
-        scenesWithVisualPrompts.map((scene) => {
+        scenesWithSnappedDurations.map((scene) => {
           const motionPrompt = motionPrompts.find(
             (s) => s.sceneId === scene.sceneId
           );
