@@ -281,8 +281,6 @@ export function useGenerationStream(
       'generation.updated',
       'generation.error',
     ] as const,
-    // @ts-expect-error history supported at runtime, not yet in SDK types
-    history: true,
     onData: handleEvent,
     enabled: true,
   });

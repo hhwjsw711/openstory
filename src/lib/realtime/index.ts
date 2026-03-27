@@ -215,7 +215,7 @@ function createRealtime() {
   return new Realtime({
     schema: realtimeSchema,
     redis,
-    history: { maxLength: 1000, expireAfterSecs: 3600 },
+    history: true,
   });
 }
 
