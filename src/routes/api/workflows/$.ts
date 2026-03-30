@@ -14,7 +14,6 @@ import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
-import { fastPreviewWorkflow } from '@/lib/workflows/fast-preview-workflow';
 import { frameImagesWorkflow } from '@/lib/workflows/frame-images-workflow';
 import { generateImageWorkflow } from '@/lib/workflows/image-workflow';
 import { libraryLocationSheetWorkflow } from '@/lib/workflows/library-location-sheet-workflow';
@@ -59,7 +58,6 @@ function getHandler() {
         'character-sheet-from-bible': characterBibleWorkflow,
         'character-sheet': characterSheetWorkflow,
         'frame-images': frameImagesWorkflow,
-        'fast-preview': fastPreviewWorkflow,
         image: generateImageWorkflow,
         'library-location-sheet': libraryLocationSheetWorkflow,
         'library-talent-sheet': libraryTalentSheetWorkflow,

@@ -30,6 +30,7 @@ import type {
 } from '@/lib/workflow/types';
 import { PREVIEW_IMAGE_MODEL } from '../ai/models';
 import { aspectRatioToImageSize } from '../constants/aspect-ratios';
+import { buildPreviewPrompt } from '../prompts/poster-prompt';
 import { triggerWorkflow } from '../workflow/client';
 import { buildWorkflowLabel } from '../workflow/labels';
 
@@ -202,10 +203,10 @@ export const sceneSplitWorkflow = createScopedWorkflow<
                 );
                 if (prevScene && prevFrameId) {
                   const sceneText =
-                    prevScene.originalScript?.extract?.slice(0, 1500) ??
+                    prevScene.originalScript?.extract ??
                     prevScene.metadata?.title ??
                     'A cinematic scene';
-                  const prompt = `Cinematic film still. ${sceneText}. style: ${JSON.stringify({ ...styleConfig, aspectRatio })}. No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.`;
+                  const prompt = buildPreviewPrompt(sceneText, styleConfig);
 
                   // Now kick off the preview generation for the previous scene
                   // Just trigger a workflow - don't await it
@@ -240,10 +241,10 @@ export const sceneSplitWorkflow = createScopedWorkflow<
         // Trigger preview for the last scene (the loop only triggers N-1)
         if (prevScene && prevFrameId && sequenceId) {
           const sceneText =
-            prevScene.originalScript?.extract?.slice(0, 1500) ??
+            prevScene.originalScript?.extract ??
             prevScene.metadata?.title ??
             'A cinematic scene';
-          const prompt = `Cinematic film still. ${sceneText}. style: ${JSON.stringify({ ...styleConfig, aspectRatio })}. No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.`;
+          const prompt = buildPreviewPrompt(sceneText, styleConfig);
 
           await triggerWorkflow(
             '/image',

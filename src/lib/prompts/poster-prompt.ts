@@ -2,6 +2,25 @@ import type { StyleConfig } from '@/lib/db/schema/libraries';
 
 const MAX_PROMPT_LENGTH = 2000;
 const MAX_SCRIPT_LENGTH = 500;
+const MAX_SCENE_TEXT_LENGTH = 1500;
+
+const NO_TEXT_SUFFIX =
+  'No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.';
+
+function formatStyleDetails(styleConfig: StyleConfig): string {
+  const details = [
+    styleConfig.artStyle && `Art style: ${styleConfig.artStyle}`,
+    styleConfig.mood && `Mood: ${styleConfig.mood}`,
+    styleConfig.lighting && `Lighting: ${styleConfig.lighting}`,
+  ].filter(Boolean);
+
+  return details.length > 0 ? details.join('. ') + '.' : '';
+}
+
+function clampPrompt(prompt: string): string {
+  if (prompt.length <= MAX_PROMPT_LENGTH) return prompt;
+  return prompt.slice(0, MAX_PROMPT_LENGTH - 3) + '...';
+}
 
 /**
  * Build an image generation prompt for a sequence poster image.
@@ -21,23 +40,32 @@ export function buildPosterPrompt(
   ];
 
   if (styleConfig) {
-    const styleDetails = [
-      styleConfig.artStyle && `Art style: ${styleConfig.artStyle}`,
-      styleConfig.mood && `Mood: ${styleConfig.mood}`,
-      styleConfig.lighting && `Lighting: ${styleConfig.lighting}`,
-    ].filter(Boolean);
-
-    if (styleDetails.length > 0) {
-      parts.push(styleDetails.join('. ') + '.');
-    }
+    const style = formatStyleDetails(styleConfig);
+    if (style) parts.push(style);
   }
 
-  parts.push(
-    'No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.'
-  );
+  parts.push(NO_TEXT_SUFFIX);
+  return clampPrompt(parts.join(' '));
+}
 
-  const prompt = parts.join(' ');
+/**
+ * Build an image generation prompt for a fast scene preview.
+ * Uses the scene's script extract and style config to produce a
+ * cinematic still suitable for quick preview image generation.
+ */
+export function buildPreviewPrompt(
+  sceneText: string,
+  styleConfig?: StyleConfig
+): string {
+  const excerpt = sceneText.slice(0, MAX_SCENE_TEXT_LENGTH);
 
-  if (prompt.length <= MAX_PROMPT_LENGTH) return prompt;
-  return prompt.slice(0, MAX_PROMPT_LENGTH - 3) + '...';
+  const parts: string[] = [`Cinematic film still. ${excerpt}.`];
+
+  if (styleConfig) {
+    const style = formatStyleDetails(styleConfig);
+    if (style) parts.push(style);
+  }
+
+  parts.push(NO_TEXT_SUFFIX);
+  return clampPrompt(parts.join(' '));
 }

@@ -579,15 +579,6 @@ export interface MusicWorkflowResult {
  * Merge audio+video workflow input
  * Muxes a music track onto the merged video to produce the final output
  */
-/**
- * Fast preview workflow input
- * Generates quick preview images using text-based scene splitting
- */
-export interface FastPreviewWorkflowInput extends SequenceWorkflowContext {
-  script: string;
-  aspectRatio: AspectRatio;
-}
-
 export interface MergeAudioVideoWorkflowInput extends SequenceWorkflowContext {
   /** URL of the merged video (all frames stitched) */
   mergedVideoUrl: string;
