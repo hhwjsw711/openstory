@@ -37,6 +37,7 @@ type ScenePlayerProps = {
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
   className?: string;
+  wrapperClassName?: string;
   selectedTab?: TabValue;
   progressMessage?: string;
   posterUrl?: string;
@@ -47,6 +48,7 @@ type ScenePlayerProps = {
 export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   frames,
   className,
+  wrapperClassName,
   selectedFrameId,
   aspectRatio,
   selectedTab,
@@ -231,7 +233,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   const isPreviewImage = !!displayImage && !currentFrame.thumbnailUrl;
 
   return (
-    <>
+    <div className={cn('flex w-full flex-col', wrapperClassName)}>
       {hasFailedVideo ? (
         <div
           className={cn(
@@ -370,12 +372,23 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             progressMessage={progressMessage}
           />
           {isPreviewImage && (
-            <span className="absolute top-2 left-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+            <span className="absolute top-2 right-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
               Preview
             </span>
           )}
         </div>
       )}
+      <p
+        className={cn(
+          'text-xs italic py-1 transition-opacity duration-300',
+          isPreviewImage
+            ? 'text-muted-foreground opacity-100'
+            : 'opacity-0 select-none'
+        )}
+        aria-hidden={!isPreviewImage}
+      >
+        Fast preview — may not match the final image.
+      </p>
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (
         <div className="hidden">
@@ -387,6 +400,6 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           />
         </div>
       )}
-    </>
+    </div>
   );
 };

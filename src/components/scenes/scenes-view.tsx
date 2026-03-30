@@ -31,11 +31,13 @@ type ScenesViewProps = {
 };
 
 // Full class names required for Tailwind JIT to detect at build time
-const PLAYER_MAX_CLASS_BY_RATIO: Record<AspectRatio, string> = {
-  '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
-  '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
-  '1:1': 'max-h-[50vh] max-w-[50vh]',
+// Split into max-width (for the wrapper, enables centering) and max-height (for the player div)
+const PLAYER_MAX_W_BY_RATIO: Record<AspectRatio, string> = {
+  '16:9': 'max-w-[calc(50vh*1.7777777777777777)]',
+  '9:16': 'max-w-[calc(50vh*0.5625)]',
+  '1:1': 'max-w-[50vh]',
 };
+const PLAYER_MAX_H = 'max-h-[50vh]';
 
 type RegenerationType = 'image' | 'motion' | 'scene-variants';
 
@@ -362,7 +364,8 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
                   ?.phaseName
               }
               posterUrl={sequence?.posterUrl ?? undefined}
-              className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
+              className={PLAYER_MAX_H}
+              wrapperClassName={PLAYER_MAX_W_BY_RATIO[aspectRatio]}
             />
           </div>
           <SceneScriptPrompts

@@ -695,6 +695,83 @@ export const PreviewMode: Story = {
   },
 };
 
+export const PreviewModePortrait: Story = {
+  args: {
+    sequenceId: 'preview-mode-portrait',
+  },
+  parameters: {
+    sequenceOverrides: { aspectRatio: '9:16' },
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: null,
+        thumbnailPath: null,
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview1p/720/1280',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'generating',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Preview - Generating Full Image',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '2',
+        orderIndex: 1,
+        thumbnailUrl: null,
+        thumbnailPath: null,
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview2p/720/1280',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'generating',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 2,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Preview - Still Processing',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '3',
+        orderIndex: 2,
+        thumbnailUrl: 'https://picsum.photos/seed/final3p/720/1280',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview3p/720/1280',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 3,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Final Image Ready',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
+    docs: {
+      description: {
+        story:
+          'Portrait (9:16) preview mode. Shows preview badge and subtext on tall aspect ratio frames.',
+      },
+    },
+  },
+};
+
 export const WithFailures: Story = {
   args: {
     sequenceId: 'with-failures',
