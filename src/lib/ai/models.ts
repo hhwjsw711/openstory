@@ -107,166 +107,95 @@ export const IMAGE_TO_VIDEO_MODELS = {
  * Available models for image generation with rich metadata
  */
 export const IMAGE_MODELS = {
-  nano_banana: {
-    id: 'fal-ai/nano-banana' as const,
-    name: 'Nano Banana',
-    provider: 'Fal.ai',
-    tier: 'ultra-fast',
-    description: 'Fastest generation, good for iteration',
-    maxPromptLength: 2000, // ~512 tokens
+  nano_banana_2: {
+    id: 'fal-ai/nano-banana-2' as const,
+    name: 'Nano Banana 2',
+    provider: 'Google',
+    license: 'proprietary' as const,
+    qualityRank: 1,
+    description: "Google's latest fast image generation and editing model",
+    maxPromptLength: 50000,
   },
   nano_banana_pro: {
     id: 'fal-ai/nano-banana-pro' as const,
     name: 'Nano Banana Pro',
-    provider: 'Fal.ai',
-    tier: 'high quality',
-    description:
-      "Enhanced realism and typography, Google's latest image generation model",
-    maxPromptLength: 50000, // ~12,800 tokens (supports very long prompts)
-  },
-  nano_banana_2: {
-    id: 'fal-ai/nano-banana-2' as const,
-    name: 'Nano Banana 2',
-    provider: 'Fal.ai',
-    tier: 'high quality',
-    description: "Google's latest fast image generation and editing model",
-    maxPromptLength: 50000,
-  },
-  flux_schnell: {
-    id: 'fal-ai/flux/schnell' as const,
-    name: 'Flux Schnell',
-    provider: 'Black Forest Labs',
-    tier: 'fast',
-    description: 'Fast high-quality images',
-    maxPromptLength: 1000, // ~256 tokens (Schnell uses shorter prompts)
-  },
-  flux_dev: {
-    id: 'fal-ai/flux/dev' as const,
-    name: 'Flux Dev',
-    provider: 'Black Forest Labs',
-    tier: 'balanced',
-    description: 'Balance of speed and quality',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  flux_pro: {
-    id: 'fal-ai/flux-pro' as const,
-    name: 'Flux Pro',
-    provider: 'Black Forest Labs',
-    tier: 'premium',
-    description: 'Professional quality images',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  flux_pro_v1_1_ultra: {
-    id: 'fal-ai/flux-pro/v1.1-ultra' as const,
-    name: 'Flux Pro v1.1 Ultra',
-    provider: 'Black Forest Labs',
-    tier: 'premium',
-    description: 'Highest quality Flux model',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  flux_krea_lora: {
-    id: 'fal-ai/flux-krea-lora' as const,
-    name: 'Flux Krea LoRA',
-    provider: 'Black Forest Labs',
-    tier: 'premium',
-    description: 'Flux with creative LoRA',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  flux_2: {
-    id: 'fal-ai/flux-2' as const,
-    name: 'Flux 2',
-    provider: 'Black Forest Labs',
-    tier: 'premium',
-    description: 'Enhanced realism, crisper text generation, native editing',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  sdxl_lightning: {
-    id: 'fal-ai/fast-lightning-sdxl' as const,
-    name: 'SDXL Lightning',
-    provider: 'Stability AI',
-    tier: 'fast',
-    description: 'Fast SDXL variant',
-    maxPromptLength: 1000, // ~256 tokens (SDXL uses CLIP encoder)
-  },
-  sdxl: {
-    id: 'fal-ai/fast-sdxl' as const,
-    name: 'SDXL',
-    provider: 'Stability AI',
-    tier: 'balanced',
-    description: 'Stable Diffusion XL',
-    maxPromptLength: 1000, // ~256 tokens (SDXL uses CLIP encoder)
-  },
-  imagen4_preview_ultra: {
-    id: 'fal-ai/imagen4/preview/ultra' as const,
-    name: 'Imagen 4 Ultra',
     provider: 'Google',
-    tier: 'premium',
-    description: 'Google latest image model',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  recraft_v3: {
-    id: 'fal-ai/recraft/v3/text-to-image' as const,
-    name: 'Recraft v3',
-    provider: 'Recraft',
-    tier: 'premium',
-    description: 'Design-focused generation',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  hidream_i1_full: {
-    id: 'fal-ai/hidream-i1-full' as const,
-    name: 'HiDream I1 Full',
-    provider: 'HiDream',
-    tier: 'premium',
-    description: 'High detail rendering',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  seedream_v4_5: {
-    id: 'fal-ai/bytedance/seedream/v4.5/text-to-image' as const,
-    name: 'Seedream 4.5',
-    provider: 'ByteDance',
-    tier: 'premium',
-    description: 'Unified generation and editing, high resolution up to 4K',
-    maxPromptLength: 2000, // ~512 tokens
-  },
-  kling_image_v3: {
-    id: 'fal-ai/kling-image/v3/text-to-image' as const,
-    name: 'Kling Image v3',
-    provider: 'Kling',
-    tier: 'balanced',
-    description: 'Fast high-quality with face/character control',
-    maxPromptLength: 2500,
-  },
-  flux_2_klein_4b: {
-    id: 'fal-ai/flux-2/klein/4b' as const,
-    name: 'Flux 2 Klein 4B',
-    provider: 'Black Forest Labs',
-    tier: 'fast',
-    description: 'Ultra-fast lightweight Flux 2',
-    maxPromptLength: 2000,
-  },
-  gpt_image_1_5: {
-    id: 'fal-ai/gpt-image-1.5' as const,
-    name: 'GPT Image 1.5',
-    provider: 'OpenAI',
-    tier: 'premium',
-    description: 'OpenAI image generation with transparent backgrounds',
-    maxPromptLength: 4000,
+    license: 'proprietary' as const,
+    qualityRank: 2,
+    description: 'Enhanced realism and typography',
+    maxPromptLength: 50000,
   },
   grok_imagine_image: {
     id: 'xai/grok-imagine-image' as const,
     name: 'Grok Imagine Image',
-    provider: 'xAI',
-    tier: 'balanced',
-    description: 'xAI image generation with prompt enhancement',
+    provider: 'Grok',
+    license: 'proprietary' as const,
+    qualityRank: 3,
+    description: 'Aesthetic image generation with low censoring',
     maxPromptLength: 4000,
   },
-  letzai: {
-    id: 'letzai/image' as const,
-    name: 'LetzAI',
-    provider: 'LetzAI',
-    tier: 'balanced',
-    description: 'Alternative provider',
-    maxPromptLength: 2000, // ~512 tokens
+  flux_2_max: {
+    id: 'fal-ai/flux-2-max' as const,
+    name: 'FLUX.2 Max',
+    provider: 'Black Forest Labs',
+    license: 'proprietary' as const,
+    qualityRank: 4,
+    description: 'Exceptional realism, precision, and consistency',
+    maxPromptLength: 2000,
+  },
+  phota: {
+    id: 'fal-ai/phota' as const,
+    name: 'Phota',
+    provider: 'Phota',
+    license: 'proprietary' as const,
+    qualityRank: 5,
+    description: 'Character consistency via profiles',
+    maxPromptLength: 2000,
+  },
+  hunyuan_image_v3: {
+    id: 'fal-ai/hunyuan-image/v3/text-to-image' as const,
+    name: 'Hunyuan Image v3',
+    provider: 'Tencent',
+    license: 'open-source' as const,
+    qualityRank: 6,
+    description: 'Open source with strong composition',
+    maxPromptLength: 2000,
+  },
+  flux_2_dev: {
+    id: 'fal-ai/flux-2' as const,
+    name: 'FLUX.2 Dev',
+    provider: 'Black Forest Labs',
+    license: 'open-source' as const,
+    qualityRank: 7,
+    description: '32B open weights with native editing',
+    maxPromptLength: 2000,
+  },
+  qwen_image: {
+    id: 'fal-ai/qwen-image' as const,
+    name: 'Qwen Image',
+    provider: 'Alibaba',
+    license: 'open-source' as const,
+    qualityRank: 8,
+    description: 'Apache 2.0, native 2K, text rendering',
+    maxPromptLength: 2000,
+  },
+  hidream_i1: {
+    id: 'fal-ai/hidream-i1-full' as const,
+    name: 'HiDream I1',
+    provider: 'HiDream',
+    license: 'open-source' as const,
+    qualityRank: 9,
+    description: 'MIT licensed, 17B parameters',
+    maxPromptLength: 2000,
+  },
+  seedream_v5: {
+    id: 'fal-ai/bytedance/seedream/v5/lite/text-to-image' as const,
+    name: 'Seedream 5',
+    provider: 'ByteDance',
+    license: 'proprietary' as const,
+    qualityRank: 10,
+    description: 'Unified generation and editing',
+    maxPromptLength: 2000,
   },
 } as const;
 
@@ -637,9 +566,16 @@ export function safeAudioModel(
  * These endpoints accept image_urls for reference-based generation
  */
 export const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
-  nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   nano_banana_2: 'fal-ai/nano-banana-2/edit',
+  nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   grok_imagine_image: 'xai/grok-imagine-image/edit',
+  flux_2_max: 'fal-ai/flux-2-max/edit',
+  phota: 'fal-ai/phota/edit',
+  hunyuan_image_v3: 'fal-ai/hunyuan-image/v3/instruct/edit',
+  flux_2_dev: 'fal-ai/flux-2/edit',
+  qwen_image: 'fal-ai/qwen-image-edit-2511',
+  hidream_i1: 'fal-ai/hidream-e1-1',
+  seedream_v5: 'fal-ai/bytedance/seedream/v5/lite/edit',
 };
 
 /**
