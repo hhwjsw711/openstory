@@ -299,7 +299,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
       ) : (
         <div
           className={cn(
-            'relative',
+            'relative w-full',
             getAspectRatioClassName(aspectRatio),
             className
           )}
