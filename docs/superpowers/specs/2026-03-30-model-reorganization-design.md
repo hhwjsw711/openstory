@@ -14,6 +14,7 @@ Curate the model lists across image, video, and music categories to highlight op
 - **Quality ordering** based on Artificial Analysis rankings as starting point, to be refined by a custom evaluation suite (separate issue)
 - **Fast/draft variants removed** — a future "draft mode" toggle will select the fast version of whichever model is chosen
 - **SFX models unchanged** — existing MMAudio V2 and ElevenLabs SFX stay in the codebase but are not part of this redesign
+- **Edit endpoint required** — all image models must have an edit endpoint for reference image generation (characters, locations)
 
 ## Data Model Changes
 
@@ -59,20 +60,22 @@ Add `license` and `qualityRank` to music models. SFX models stay unchanged.
 
 ## Curated Model Lists
 
-### Image Models (8 models)
+### Image Models (10 models, all with edit endpoints)
 
-| Rank | Model              | Key                  | Endpoint                                          | Provider          | License     | Notes                           |
-| ---- | ------------------ | -------------------- | ------------------------------------------------- | ----------------- | ----------- | ------------------------------- |
-| 1    | Nano Banana 2      | `nano_banana_2`      | `fal-ai/nano-banana-2`                            | Google            | Proprietary | ELO 1258, Feb 2026              |
-| 2    | Nano Banana Pro    | `nano_banana_pro`    | `fal-ai/nano-banana-pro`                          | Google            | Proprietary | ELO 1214                        |
-| 3    | Grok Imagine Image | `grok_imagine_image` | `xai/grok-imagine-image`                          | Grok              | Proprietary | Low censoring, aesthetic        |
-| 4    | Qwen Image         | `qwen_image`         | `fal-ai/qwen-image`                               | Alibaba           | Open Source | Apache 2.0, ELO 1151, 2K native |
-| 5    | FLUX.2 Dev         | `flux_2_dev`         | `fal-ai/flux-2`                                   | Black Forest Labs | Open Source | 32B, open weights, Nov 2025     |
-| 6    | HiDream I1         | `hidream_i1`         | `fal-ai/hidream-i1-full`                          | HiDream           | Open Source | MIT, 17B params                 |
-| 7    | Recraft V4         | `recraft_v4`         | `fal-ai/recraft/v4/text-to-image`                 | Recraft           | Proprietary | Feb 2026, design-focused        |
-| 8    | Seedream 5         | `seedream_v5`        | `fal-ai/bytedance/seedream/v5/lite/text-to-image` | ByteDance         | Proprietary | Feb 2026, unified gen+edit      |
+| Rank | Model              | Key                  | Endpoint                                          | Edit Endpoint                            | Provider          | License     | Notes                              |
+| ---- | ------------------ | -------------------- | ------------------------------------------------- | ---------------------------------------- | ----------------- | ----------- | ---------------------------------- |
+| 1    | Nano Banana 2      | `nano_banana_2`      | `fal-ai/nano-banana-2`                            | `fal-ai/nano-banana-2/edit`              | Google            | Proprietary | ELO 1258, Feb 2026                 |
+| 2    | Nano Banana Pro    | `nano_banana_pro`    | `fal-ai/nano-banana-pro`                          | `fal-ai/nano-banana-pro/edit`            | Google            | Proprietary | ELO 1214                           |
+| 3    | Grok Imagine Image | `grok_imagine_image` | `xai/grok-imagine-image`                          | `xai/grok-imagine-image/edit`            | Grok              | Proprietary | Low censoring, aesthetic           |
+| 4    | FLUX.2 Max         | `flux_2_max`         | `fal-ai/flux-2-max`                               | `fal-ai/flux-2-max/edit`                 | Black Forest Labs | Proprietary | ELO 1200, configurable safety      |
+| 5    | Phota              | `phota`              | `fal-ai/phota`                                    | `fal-ai/phota/edit`                      | Phota             | Proprietary | Character consistency via profiles |
+| 6    | Hunyuan Image v3   | `hunyuan_image_v3`   | `fal-ai/hunyuan-image/v3/text-to-image`           | `fal-ai/hunyuan-image/v3/instruct/edit`  | Tencent           | Open Source | Open source, strong composition    |
+| 7    | FLUX.2 Dev         | `flux_2_dev`         | `fal-ai/flux-2`                                   | `fal-ai/flux-2/edit`                     | Black Forest Labs | Open Source | 32B, open weights, Nov 2025        |
+| 8    | Qwen Image         | `qwen_image`         | `fal-ai/qwen-image`                               | `fal-ai/qwen-image-edit-2511`            | Alibaba           | Open Source | Apache 2.0, ELO 1151, 2K native    |
+| 9    | HiDream I1         | `hidream_i1`         | `fal-ai/hidream-i1-full`                          | `fal-ai/hidream-e1-1`                    | HiDream           | Open Source | MIT, 17B params                    |
+| 10   | Seedream 5         | `seedream_v5`        | `fal-ai/bytedance/seedream/v5/lite/text-to-image` | `fal-ai/bytedance/seedream/v5/lite/edit` | ByteDance         | Proprietary | Feb 2026, unified gen+edit         |
 
-**Removed:** Nano Banana (original), FLUX.1 Schnell, FLUX.1 Dev, FLUX Pro, FLUX Pro v1.1 Ultra, FLUX Krea LoRA, FLUX 2 Klein 4B, SDXL, SDXL Lightning, Imagen 4 Ultra, Recraft v3, Seedream 4.5, Kling Image v3, LetzAI, GPT Image 1.5.
+**Removed:** Nano Banana (original), FLUX.1 Schnell, FLUX.1 Dev, FLUX Pro, FLUX Pro v1.1 Ultra, FLUX Krea LoRA, FLUX 2 (renamed to FLUX.2 Dev), FLUX 2 Klein 4B, SDXL, SDXL Lightning, Imagen 4 Ultra, Recraft v3, Seedream 4.5, Kling Image v3, LetzAI, GPT Image 1.5 (excessive censoring), Grok Imagine Image (stays — was incorrectly in removal list earlier).
 
 **Default:** `nano_banana_2` (unchanged)
 
@@ -89,7 +92,7 @@ Add `license` and `qualityRank` to music models. SFX models stay unchanged.
 
 **Removed:** Sora 2 (discontinued), Kling v2.5 Turbo Pro (old), Kling O1 (superseded), Kling v3 Pro no-audio (duplicate endpoint), Veo 3 (superseded by 3.1), Seedance v1 Pro (superseded), Wan 2.6 Flash (placeholder endpoint).
 
-**Default:** `ltx_2_3_pro` (changed from `kling_v3_pro`)
+**Default:** `kling_v3_pro` (unchanged)
 
 ### Music Models (4 models)
 
@@ -108,13 +111,20 @@ Add `license` and `qualityRank` to music models. SFX models stay unchanged.
 
 ### Edit Endpoints
 
-Updated to match new model keys:
+All image models have edit endpoints. Updated map:
 
 ```typescript
 export const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
-  nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   nano_banana_2: 'fal-ai/nano-banana-2/edit',
+  nano_banana_pro: 'fal-ai/nano-banana-pro/edit',
   grok_imagine_image: 'xai/grok-imagine-image/edit',
+  flux_2_max: 'fal-ai/flux-2-max/edit',
+  phota: 'fal-ai/phota/edit',
+  qwen_image: 'fal-ai/qwen-image-edit-2511',
+  flux_2_dev: 'fal-ai/flux-2/edit',
+  hidream_i1: 'fal-ai/hidream-e1-1',
+  hunyuan_image_v3: 'fal-ai/hunyuan-image/v3/instruct/edit',
+  seedream_v5: 'fal-ai/bytedance/seedream/v5/lite/edit',
 };
 ```
 
