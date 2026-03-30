@@ -150,58 +150,64 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   if (!frames || frames.length === 0) {
     if (progressMessage) {
       return (
-        <div
-          className={cn(
-            'relative flex w-full items-center justify-center overflow-hidden bg-muted',
-            className,
-            getAspectRatioClassName(aspectRatio)
-          )}
-        >
-          {posterUrl ? (
-            <Image
-              src={posterUrl}
-              alt=""
-              width={imageDimensions.width}
-              height={imageDimensions.height}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            <>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
-              <div className="relative flex flex-col items-center gap-4">
-                <BlobLoader size="lg" />
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  <p className="text-sm font-medium">{progressMessage}</p>
+        <div className={cn('flex w-full flex-col', wrapperClassName)}>
+          <div
+            className={cn(
+              'relative flex w-full items-center justify-center overflow-hidden bg-muted',
+              className,
+              getAspectRatioClassName(aspectRatio)
+            )}
+          >
+            {posterUrl ? (
+              <Image
+                src={posterUrl}
+                alt=""
+                width={imageDimensions.width}
+                height={imageDimensions.height}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
+                <div className="relative flex flex-col items-center gap-4">
+                  <BlobLoader size="lg" />
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <p className="text-sm font-medium">{progressMessage}</p>
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       );
     }
     if (posterUrl) {
       return (
-        <div
-          className={cn(
-            'relative overflow-hidden',
-            className,
-            getAspectRatioClassName(aspectRatio)
-          )}
-        >
-          <Image
-            src={posterUrl}
-            alt=""
-            width={imageDimensions.width}
-            height={imageDimensions.height}
-            className="h-full w-full object-cover"
-          />
+        <div className={cn('flex w-full flex-col', wrapperClassName)}>
+          <div
+            className={cn(
+              'relative overflow-hidden',
+              className,
+              getAspectRatioClassName(aspectRatio)
+            )}
+          >
+            <Image
+              src={posterUrl}
+              alt=""
+              width={imageDimensions.width}
+              height={imageDimensions.height}
+              className="h-full w-full object-cover"
+            />
+          </div>
         </div>
       );
     }
     return (
-      <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
-        <Skeleton className="w-full h-full" />
+      <div className={cn('flex w-full flex-col', wrapperClassName)}>
+        <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
+          <Skeleton className="w-full h-full" />
+        </div>
       </div>
     );
   }
