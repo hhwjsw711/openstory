@@ -29,77 +29,59 @@ export type TextModel = AnalysisModelId;
  * Only model-level metadata lives here: identity, audio override, performance.
  */
 export const IMAGE_TO_VIDEO_MODELS = {
-  seedance_v1_pro: {
-    id: 'fal-ai/bytedance/seedance/v1/pro/image-to-video',
-    name: 'Premium Motion (Seedance Pro)',
-    provider: 'seedance',
-    maxPromptLength: 4096,
-    performance: { estimatedGenerationTime: 12, quality: 'best' },
-  },
-  veo3: {
-    id: 'fal-ai/veo3',
-    name: 'Ultra Premium Motion with Audio (Google Veo 3)',
-    provider: 'google',
-    maxPromptLength: 20000,
-    performance: { estimatedGenerationTime: 25, quality: 'best' },
+  ltx_2_3_pro: {
+    id: 'fal-ai/ltx-2.3/image-to-video',
+    name: 'LTX 2.3 Pro',
+    provider: 'Lightricks',
+    license: 'open-source' as const,
+    qualityRank: 1,
+    maxPromptLength: 2500,
+    performance: { estimatedGenerationTime: 15, quality: 'best' as const },
   },
   veo3_1: {
     id: 'fal-ai/veo3.1/image-to-video',
-    name: 'Google Veo 3.1',
-    provider: 'google',
+    name: 'Veo 3.1',
+    provider: 'Google',
+    license: 'proprietary' as const,
+    qualityRank: 2,
     maxPromptLength: 20000,
-    performance: { estimatedGenerationTime: 25, quality: 'best' },
-  },
-  kling_v2_5_turbo_pro: {
-    id: 'fal-ai/kling-video/v2.5-turbo/pro/image-to-video',
-    name: 'Kling v2.5 Turbo Pro',
-    provider: 'kling',
-    maxPromptLength: 2500,
-    performance: { estimatedGenerationTime: 15, quality: 'best' },
-  },
-  sora_2: {
-    id: 'fal-ai/sora-2/image-to-video',
-    name: 'OpenAI Sora 2',
-    provider: 'openai',
-    supportsAudio: true, // always generates audio, no toggle in schema
-    maxPromptLength: 5000,
-    performance: { estimatedGenerationTime: 30, quality: 'best' },
-  },
-  kling_o1: {
-    id: 'fal-ai/kling-video/o1/image-to-video',
-    name: 'Kling O1 (Omni)',
-    provider: 'kling',
-    maxPromptLength: 2500,
-    performance: { estimatedGenerationTime: 15, quality: 'best' },
+    performance: { estimatedGenerationTime: 25, quality: 'best' as const },
   },
   kling_v3_pro: {
     id: 'fal-ai/kling-video/v3/pro/image-to-video',
     name: 'Kling v3 Pro',
-    provider: 'kling',
+    provider: 'Kling',
+    license: 'proprietary' as const,
+    qualityRank: 3,
     maxPromptLength: 2500,
-    performance: { estimatedGenerationTime: 20, quality: 'best' },
-  },
-  kling_v3_pro_no_audio: {
-    id: 'fal-ai/kling-video/v3/pro/image-to-video',
-    name: 'Kling v3 Pro (no Audio)',
-    provider: 'kling',
-    supportsAudio: false as const, // override — same endpoint as kling_v3_pro but without audio
-    maxPromptLength: 2500,
-    performance: { estimatedGenerationTime: 20, quality: 'best' },
+    performance: { estimatedGenerationTime: 20, quality: 'best' as const },
   },
   grok_imagine_video: {
     id: 'xai/grok-imagine-video/image-to-video',
     name: 'Grok Imagine Video',
-    provider: 'xai',
+    provider: 'Grok',
+    license: 'proprietary' as const,
+    qualityRank: 4,
     maxPromptLength: 2500,
-    performance: { estimatedGenerationTime: 20, quality: 'best' },
+    performance: { estimatedGenerationTime: 20, quality: 'best' as const },
   },
-  wan_v2_6_flash: {
-    id: 'wan/v2.6/image-to-video/flash',
-    name: 'Wan 2.6 Flash',
-    provider: 'wan',
+  minimax_hailuo_02: {
+    id: 'fal-ai/minimax/hailuo-02/pro/image-to-video',
+    name: 'MiniMax Hailuo 02',
+    provider: 'MiniMax',
+    license: 'proprietary' as const,
+    qualityRank: 5,
     maxPromptLength: 2500,
-    performance: { estimatedGenerationTime: 15, quality: 'good' },
+    performance: { estimatedGenerationTime: 15, quality: 'best' as const },
+  },
+  seedance_v1_5_pro: {
+    id: 'fal-ai/bytedance/seedance/v1.5/pro/image-to-video',
+    name: 'Seedance 1.5 Pro',
+    provider: 'ByteDance',
+    license: 'proprietary' as const,
+    qualityRank: 6,
+    maxPromptLength: 4096,
+    performance: { estimatedGenerationTime: 12, quality: 'best' as const },
   },
 } as const;
 
@@ -238,15 +220,11 @@ export const DEFAULT_VIDEO_MODEL: ImageToVideoModel = 'kling_v3_pro';
 // This is type-safe because we use satisfies to validate the tuple matches the type
 export const IMAGE_TO_VIDEO_MODEL_KEYS = [
   'grok_imagine_video',
-  'kling_o1',
-  'kling_v2_5_turbo_pro',
   'kling_v3_pro',
-  'kling_v3_pro_no_audio',
-  'seedance_v1_pro',
-  'sora_2',
-  'veo3',
+  'ltx_2_3_pro',
+  'minimax_hailuo_02',
+  'seedance_v1_5_pro',
   'veo3_1',
-  'wan_v2_6_flash',
 ] as const satisfies readonly ImageToVideoModel[];
 
 // Helper to get model ID from key (for backward compatibility)
@@ -264,7 +242,8 @@ function schemaOf(modelKey: ImageToVideoModel) {
  *  Checks the Zod schema for a generate_audio field, respects per-model overrides. */
 export function videoModelSupportsAudio(modelKey: ImageToVideoModel): boolean {
   const config = IMAGE_TO_VIDEO_MODELS[modelKey];
-  if ('supportsAudio' in config) return config.supportsAudio;
+  if ('supportsAudio' in config && typeof config.supportsAudio === 'boolean')
+    return config.supportsAudio;
   return 'generate_audio' in schemaOf(modelKey).shape;
 }
 
