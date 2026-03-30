@@ -24,7 +24,7 @@ const sceneSplittingSceneSchema = z.object({
   metadata: sceneMetadataSchema,
 });
 
-type SceneSplittingScene = z.infer<typeof sceneSplittingSceneSchema>;
+export type SceneSplittingScene = z.infer<typeof sceneSplittingSceneSchema>;
 
 export type StreamedSceneEvent =
   | { type: 'title'; title: string }

@@ -53,6 +53,7 @@ export const frames = sqliteTable(
     description: text(),
     durationMs: integer('duration_ms').default(3000),
     thumbnailUrl: text('thumbnail_url'),
+    previewThumbnailUrl: text('preview_thumbnail_url'), // Fast preview CDN URL (not stored in R2; URL may expire but column persists)
     thumbnailPath: text('thumbnail_path'), // R2 storage path (not signed URL)
     variantImageUrl: text('variant_image_url'), // R2 storage path (not signed URL)
     variantImageStatus: text('variant_image_status')

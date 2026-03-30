@@ -12,7 +12,6 @@ import {
 } from '@/lib/observability/memory-profiler';
 import { getQStashClient } from '@/lib/workflow/client';
 import { analyzeScriptWorkflow } from '@/lib/workflows/analyze-script-workflow';
-import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from '@/lib/workflows/character-bible-workflow';
 import { characterSheetWorkflow } from '@/lib/workflows/character-sheet-workflow';
 import { frameImagesWorkflow } from '@/lib/workflows/frame-images-workflow';
@@ -24,6 +23,7 @@ import { locationMatchingWorkflow } from '@/lib/workflows/location-matching-work
 import { locationSheetWorkflow } from '@/lib/workflows/location-sheet-workflow';
 import { mergeAudioVideoWorkflow } from '@/lib/workflows/merge-audio-video-workflow';
 import { mergeVideoWorkflow } from '@/lib/workflows/merge-video-workflow';
+import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { motionMusicPromptsWorkflow } from '@/lib/workflows/motion-music-prompts-workflow';
 import { motionPromptSceneWorkflow } from '@/lib/workflows/motion-prompt-scene-workflow';
 import { motionPromptWorkflow } from '@/lib/workflows/motion-prompt-workflow';
@@ -33,6 +33,7 @@ import { generateMusicWorkflow } from '@/lib/workflows/music-workflow';
 import { recastCharacterWorkflow } from '@/lib/workflows/recast-character-workflow';
 import { recastLocationWorkflow } from '@/lib/workflows/recast-location-workflow';
 import { regenerateFramesWorkflow } from '@/lib/workflows/regenerate-frames-workflow';
+import { sceneSplitWorkflow } from '@/lib/workflows/scene-split-workflow';
 import { generateStoryboardWorkflow } from '@/lib/workflows/storyboard-workflow';
 import { talentMatchingWorkflow } from '@/lib/workflows/talent-matching-workflow';
 import { upscaleVariantWorkflow } from '@/lib/workflows/upscale-variant-workflow';
@@ -71,6 +72,7 @@ function getHandler() {
         motion: generateMotionWorkflow,
         'music-prompt': generateMusicPromptWorflow,
         music: generateMusicWorkflow,
+        'scene-split': sceneSplitWorkflow,
         'recast-character': recastCharacterWorkflow,
         'recast-location': recastLocationWorkflow,
         'regenerate-frames': regenerateFramesWorkflow,

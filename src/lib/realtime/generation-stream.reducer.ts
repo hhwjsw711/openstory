@@ -20,6 +20,7 @@ type StreamingFrame = {
   imageStatus: FrameStatus;
   videoStatus: FrameStatus;
   thumbnailUrl?: string;
+  previewThumbnailUrl?: string;
   videoUrl?: string;
 };
 
@@ -87,11 +88,16 @@ export type GenerationStreamAction =
     }
   | {
       type: 'IMAGE_PROGRESS';
-      payload: { frameId: string; status: FrameStatus; thumbnailUrl?: string };
+      payload: {
+        frameId: string;
+        status?: FrameStatus;
+        thumbnailUrl?: string;
+        previewThumbnailUrl?: string;
+      };
     }
   | {
       type: 'VIDEO_PROGRESS';
-      payload: { frameId: string; status: FrameStatus; videoUrl?: string };
+      payload: { frameId: string; status?: FrameStatus; videoUrl?: string };
     }
   | { type: 'COMPLETE'; payload: { sequenceId: string } }
   | { type: 'FAILED'; payload: { message: string } }
@@ -102,6 +108,7 @@ export type GenerationStreamAction =
       payload: { unusedTalentIds: string[]; unusedTalentNames: string[] };
     }
   | { type: 'LOCATION_MATCHED'; payload: { matches: LocationMatch[] } }
+  | { type: 'PREVIEW_REPLACED'; payload: { newSceneCount: number } }
   | { type: 'RESET' };
 
 const PHASES = [
@@ -259,15 +266,17 @@ export function generationStreamReducer(
     }
 
     case 'IMAGE_PROGRESS': {
-      const { frameId, status, thumbnailUrl } = action.payload;
+      const { frameId, status, thumbnailUrl, previewThumbnailUrl } =
+        action.payload;
       const frame = state.frames.get(frameId);
       if (!frame) return state;
 
       const newFrames = new Map(state.frames);
       newFrames.set(frameId, {
         ...frame,
-        imageStatus: status,
+        imageStatus: status ?? frame.imageStatus,
         thumbnailUrl: thumbnailUrl ?? frame.thumbnailUrl,
+        previewThumbnailUrl: previewThumbnailUrl ?? frame.previewThumbnailUrl,
       });
       return {
         ...state,
@@ -283,7 +292,7 @@ export function generationStreamReducer(
       const newFrames = new Map(state.frames);
       newFrames.set(frameId, {
         ...frame,
-        videoStatus: status,
+        ...(status !== undefined && { videoStatus: status }),
         videoUrl: videoUrl ?? frame.videoUrl,
       });
       return {
@@ -332,6 +341,14 @@ export function generationStreamReducer(
       return {
         ...state,
         locationMatches: action.payload.matches,
+      };
+
+    case 'PREVIEW_REPLACED':
+      // Clear frame state when preview frames are replaced by AI-analyzed frames
+      return {
+        ...state,
+        scenes: [],
+        frames: new Map(),
       };
 
     case 'RESET':

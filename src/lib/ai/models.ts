@@ -180,6 +180,14 @@ export const IMAGE_MODELS = {
     description: 'Enhanced realism, crisper text generation, native editing',
     maxPromptLength: 2000, // ~512 tokens
   },
+  flux_2_turbo: {
+    id: 'fal-ai/flux-2/turbo' as const,
+    name: 'Flux 2 Turbo',
+    provider: 'Black Forest Labs',
+    tier: 'fast',
+    description: 'Ultra-fast Flux 2 for preview generation',
+    maxPromptLength: 2000,
+  },
   sdxl_lightning: {
     id: 'fal-ai/fast-lightning-sdxl' as const,
     name: 'SDXL Lightning',
@@ -276,6 +284,9 @@ type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
 type TextToImageModelId = ImageModelConfig['id'];
 
 export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana_2';
+
+/** Model used for fast preview image generation */
+export const PREVIEW_IMAGE_MODEL: TextToImageModel = 'flux_2_turbo';
 
 // Helper to get model ID from key
 export function getTextToImageModelId(

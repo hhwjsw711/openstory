@@ -53,6 +53,8 @@ export interface ImageWorkflowInput extends SequenceWorkflowContext {
   frameId?: string; // Optional: update frame thumbnail
   /** Reference images for character consistency (auto-switches to edit endpoint) */
   referenceImages?: ReferenceImageDescription[];
+  /** Skip R2 upload and store fal.ai CDN URL directly (for ephemeral preview images) */
+  skipStorage?: boolean;
 }
 
 /**
@@ -118,6 +120,24 @@ export interface AnalyzeScriptWorkflowInput extends SequenceWorkflowContext {
   /** Location IDs suggested by user for visual consistency */
   suggestedLocationIds?: string[];
 }
+
+/**
+ * Scene split workflow input
+ */
+export type SceneSplitWorkflowInput = SequenceWorkflowContext & {
+  promptName: string;
+  modelId: AnalysisModelId;
+  styleConfig: StyleConfig;
+  aspectRatio: AspectRatio;
+  script: string;
+  autoGenerateMotion?: boolean;
+};
+
+export type SceneSplitWorkflowResult = {
+  scenes: Scene[];
+  title: string;
+  frameMapping: Array<{ sceneId: string; frameId: string }>;
+};
 
 /**
  * Motion generation workflow input
