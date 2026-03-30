@@ -4,10 +4,25 @@
  */
 
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VideoPlayer } from '@/components/motion/video-player';
 import type { Sequence } from '@/types/database';
-import { Loader2, AlertCircle, Film } from 'lucide-react';
+import {
+  Loader2,
+  AlertCircle,
+  Film,
+  Share2,
+  Link,
+  Download,
+} from 'lucide-react';
+import { useCallback } from 'react';
+import { toast } from 'sonner';
 
 type TheatreViewProps = {
   sequence: Sequence;
@@ -23,6 +38,26 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
   const { mergedVideoStatus, mergedVideoUrl, mergedVideoError, aspectRatio } =
     sequence;
 
+  const handleCopyVideoUrl = useCallback(async () => {
+    if (!mergedVideoUrl) return;
+    try {
+      await navigator.clipboard.writeText(mergedVideoUrl);
+      toast.success('Video URL copied');
+    } catch {
+      toast.error('Failed to copy URL');
+    }
+  }, [mergedVideoUrl]);
+
+  const handleDownloadVideo = useCallback(() => {
+    if (!mergedVideoUrl) return;
+    const a = document.createElement('a');
+    a.href = mergedVideoUrl;
+    a.download = `${sequence.title || 'sequence'}_openstory.mp4`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [mergedVideoUrl, sequence.title]);
+
   // Merging state
   if (mergedVideoStatus === 'merging') {
     return (
@@ -36,12 +71,31 @@ export const TheatreView: React.FC<TheatreViewProps> = ({
   // Completed state - show video
   if (mergedVideoStatus === 'completed' && mergedVideoUrl) {
     return (
-      <VideoPlayer
-        src={mergedVideoUrl}
-        aspectRatio={aspectRatio}
-        enableDownload
-        downloadFilename={`${sequence.title || 'sequence'}_openstory.mp4`}
-      />
+      <div className="relative">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 h-8 w-8 bg-black/50 text-white hover:bg-black/70"
+              aria-label="Share"
+            >
+              <Share2 className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => void handleCopyVideoUrl()}>
+              <Link className="h-4 w-4" />
+              Copy video URL
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDownloadVideo}>
+              <Download className="h-4 w-4" />
+              Download video
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <VideoPlayer src={mergedVideoUrl} aspectRatio={aspectRatio} />
+      </div>
     );
   }
 

@@ -2,7 +2,6 @@
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { nitro } from 'nitro/vite';
-import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 
@@ -16,7 +15,6 @@ const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
 const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
 const isDev = process.env.NODE_ENV !== 'production';
 
-const vidstackPath = path.resolve('node_modules/@vidstack/react');
 export default defineConfig({
   // Prevent Vite from replacing process.env at build time
   // This allows workerd's nodejs_compat_populate_process_env to work
@@ -39,23 +37,6 @@ export default defineConfig({
   preview: {
     port: 3000, // Preview server port (for cf:preview)
     host: true,
-  },
-  resolve: {
-    alias: process.env.BUILD_CLOUDFLARE
-      ? [
-          {
-            find: /^@vidstack\/react\/player\/layouts\/default$/,
-            replacement: path.join(
-              vidstackPath,
-              'prod/player/vidstack-default-layout.js'
-            ),
-          },
-          {
-            find: /^@vidstack\/react$/,
-            replacement: path.join(vidstackPath, 'prod/vidstack.js'),
-          },
-        ]
-      : undefined,
   },
   plugins: [
     isDev && devtools(),
@@ -93,6 +74,6 @@ export default defineConfig({
     viteReact(),
   ],
   ssr: {
-    noExternal: ['@upstash/realtime', '@vidstack/react'],
+    noExternal: ['@upstash/realtime', '@videojs/react'],
   },
 });

@@ -128,7 +128,7 @@
     "@upstash/realtime": "^1.0.2",
     "@upstash/redis": "^1.36.2",
     "@upstash/workflow": "^1.1.1",
-    "@vidstack/react": "^1.12.13",
+    "@videojs/react": "^10.0.0-alpha.11",
     "better-auth": "^1.4.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

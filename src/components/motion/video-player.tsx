@@ -4,19 +4,11 @@ import {
   type AspectRatio,
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
-import {
-  MediaPlayer,
-  MediaProvider,
-  Poster,
-  Track,
-  type MediaPlayerInstance,
-} from '@vidstack/react';
-import {
-  defaultLayoutIcons,
-  DefaultVideoLayout,
-} from '@vidstack/react/player/layouts/default';
-import { useRef } from 'react';
-import { CustomDownloadButton } from './custom-download-button';
+import { createPlayer, Poster, useMedia } from '@videojs/react';
+import { Video, VideoSkin, videoFeatures } from '@videojs/react/video';
+import { useEffect, useRef } from 'react';
+
+const Player = createPlayer({ features: videoFeatures });
 
 type VideoPlayerProps = {
   src: string;
@@ -25,13 +17,76 @@ type VideoPlayerProps = {
   aspectRatio: AspectRatio;
   className?: string;
   autoPlay?: boolean;
-  enableDownload?: boolean;
-  downloadFilename?: string;
-  downloadUrl?: string;
   onLoadedMetadata?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
   onPause?: () => void;
   onEnded?: () => void;
+};
+
+const VideoPlayerInner: React.FC<
+  Omit<VideoPlayerProps, 'aspectRatio' | 'className'>
+> = ({
+  src,
+  chaptersUrl,
+  posterSrc,
+  autoPlay = false,
+  onLoadedMetadata,
+  onTimeUpdate,
+  onPause,
+  onEnded,
+}) => {
+  const media = useMedia();
+  const callbacksRef = useRef({
+    onLoadedMetadata,
+    onTimeUpdate,
+    onPause,
+    onEnded,
+  });
+  callbacksRef.current = { onLoadedMetadata, onTimeUpdate, onPause, onEnded };
+
+  useEffect(() => {
+    if (!media) return;
+    const el = media;
+
+    const handleLoadedMetadata = () => {
+      callbacksRef.current.onLoadedMetadata?.(el.duration);
+    };
+    const handleTimeUpdate = () => {
+      callbacksRef.current.onTimeUpdate?.(el.currentTime);
+    };
+    const handlePause = () => {
+      callbacksRef.current.onPause?.();
+    };
+    const handleEnded = () => {
+      callbacksRef.current.onEnded?.();
+    };
+
+    el.addEventListener('loadedmetadata', handleLoadedMetadata);
+    el.addEventListener('timeupdate', handleTimeUpdate);
+    el.addEventListener('pause', handlePause);
+    el.addEventListener('ended', handleEnded);
+
+    return () => {
+      el.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      el.removeEventListener('timeupdate', handleTimeUpdate);
+      el.removeEventListener('pause', handlePause);
+      el.removeEventListener('ended', handleEnded);
+    };
+  }, [media]);
+
+  return (
+    <VideoSkin>
+      <Video
+        src={src || undefined}
+        playsInline
+        autoPlay={autoPlay}
+        preload="metadata"
+      >
+        {chaptersUrl && <track kind="chapters" src={chaptersUrl} default />}
+      </Video>
+      {posterSrc && <Poster src={posterSrc} alt="Video thumbnail" />}
+    </VideoSkin>
+  );
 };
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({
@@ -41,16 +96,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   aspectRatio,
   className,
   autoPlay = false,
-  enableDownload = false,
-  downloadFilename,
-  downloadUrl,
   onLoadedMetadata,
   onTimeUpdate,
   onPause,
   onEnded,
 }) => {
-  const playerRef = useRef<MediaPlayerInstance>(null);
-
   // Show skeleton when there's no video source and no poster
   if (!src && !posterSrc) {
     return (
@@ -64,79 +114,46 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     );
   }
 
-  // Convert aspect ratio format from "16:9" to "16/9" for Vidstack
-  const vidstackAspectRatio = aspectRatio.replace(':', '/');
-
-  // Construct download slots
-  // Use custom download button when we have a signed URL to avoid vidstack adding query params
-  // which would break the AWS signature
-  const downloadSlots =
-    enableDownload && downloadUrl && downloadFilename
-      ? {
-          downloadButton: (
-            <CustomDownloadButton
-              downloadUrl={downloadUrl}
-              downloadFilename={downloadFilename}
-            />
-          ),
-        }
-      : {};
-
-  // Fallback download info for when downloadUrl is not provided
-  // This uses vidstack's default download button (which adds query params)
-  const fallbackDownloadInfo =
-    enableDownload && !downloadUrl && src
-      ? downloadFilename
-        ? { url: src, filename: downloadFilename }
-        : true
-      : null;
+  // Image-only mode: VideoSkin collapses to 0px without a video src, so render
+  // the poster directly into a properly-sized aspect-ratio container instead.
+  if (!src && posterSrc) {
+    return (
+      <div
+        className={cn(
+          'relative w-full overflow-hidden',
+          className,
+          getAspectRatioClassName(aspectRatio)
+        )}
+      >
+        <img
+          src={posterSrc}
+          alt="Scene thumbnail"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
 
   return (
-    <MediaPlayer
-      ref={playerRef}
-      src={src}
-      poster={posterSrc || undefined}
-      aspectRatio={vidstackAspectRatio}
-      className={className}
-      playsInline
-      load="visible"
-      posterLoad="visible"
-      autoPlay={autoPlay}
-      onLoadedMetadata={() => {
-        if (onLoadedMetadata && playerRef.current) {
-          onLoadedMetadata(playerRef.current.state.duration);
-        }
-      }}
-      onTimeUpdate={() => {
-        if (onTimeUpdate && playerRef.current) {
-          onTimeUpdate(playerRef.current.state.currentTime);
-        }
-      }}
-      onPause={() => {
-        if (onPause) {
-          onPause();
-        }
-      }}
-      onEnded={() => {
-        if (onEnded) {
-          onEnded();
-        }
-      }}
-    >
-      <MediaProvider>
-        {/* Show poster if there is no video source and a poster source is provided. Still not 100% sure if this is the best way to do this. */}
-        {posterSrc && !src && <Poster src={posterSrc} alt="video thumbnail" />}
-      </MediaProvider>
-
-      {chaptersUrl && (
-        <Track kind="chapters" src={chaptersUrl} type="vtt" default />
+    <div
+      className={cn(
+        'relative w-full',
+        className,
+        getAspectRatioClassName(aspectRatio)
       )}
-
-      <DefaultVideoLayout
-        icons={defaultLayoutIcons}
-        download={fallbackDownloadInfo}
-        slots={downloadSlots}
-      />
-    </MediaPlayer>
+    >
+      <Player.Provider>
+        <VideoPlayerInner
+          src={src}
+          chaptersUrl={chaptersUrl}
+          posterSrc={posterSrc}
+          autoPlay={autoPlay}
+          onLoadedMetadata={onLoadedMetadata}
+          onTimeUpdate={onTimeUpdate}
+          onPause={onPause}
+          onEnded={onEnded}
+        />
+      </Player.Provider>
+    </div>
   );
 };
