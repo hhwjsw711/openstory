@@ -152,6 +152,10 @@ export const generateStoryboardWorkflow =
       retryDelay: 'pow(2, retried) * 1000',
     });
 
+    await context.run('mark-completed', async () => {
+      await seq.updateStatus('completed');
+    });
+
     await context.run('emit-complete', async () => {
       await getGenerationChannel(sequenceId).emit('generation.complete', {
         sequenceId,

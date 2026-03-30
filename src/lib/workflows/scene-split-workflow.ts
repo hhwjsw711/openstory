@@ -319,16 +319,13 @@ export const sceneSplitWorkflow = createScopedWorkflow<
           frameId: f.id,
         }));
 
-        // Ensure title, workflow, and status are set
+        // Ensure title and workflow are set (status stays 'processing'
+        // until storyboard-workflow completes all phases)
         await scopedDb.sequences.updateTitle(sequenceId, resolvedTitle);
         await scopedDb.sequences.updateWorkflow(
           sequenceId,
           'analyze-script-shorter-prompts-batch-size-1'
         );
-        await scopedDb.sequences.update({
-          id: sequenceId,
-          status: 'completed',
-        });
 
         // Emit frame:created for any frames the streaming step didn't cover
         const streamedSceneIds = new Set(
