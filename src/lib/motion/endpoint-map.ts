@@ -6,52 +6,224 @@ import { z } from 'zod';
 import { motionTransform } from './motion-transform';
 
 import {
-  zBytedanceSeedanceV1ProImageToVideoInput,
   zGrokImagineVideoImageToVideoInput,
-  zKlingVideoO1ImageToVideoInput,
-  zKlingVideoV25TurboProImageToVideoInput,
   zKlingVideoV3ProImageToVideoInput,
-  zSora2ImageToVideoInput,
-  zV26ImageToVideoFlashInput,
   zVeo31ImageToVideoInput,
-  zVeo3Input,
 } from './generated/zod.gen';
 
 import {
-  BytedanceSeedanceV1ProImageToVideoInputSchema,
   GrokImagineVideoImageToVideoInputSchema,
-  KlingVideoO1ImageToVideoInputSchema,
-  KlingVideoV25TurboProImageToVideoInputSchema,
   KlingVideoV3ProImageToVideoInputSchema,
-  Sora2ImageToVideoInputSchema,
-  V26ImageToVideoFlashInputSchema,
   Veo31ImageToVideoInputSchema,
-  Veo3InputSchema,
 } from './generated/schemas.gen';
 
+// ---------------------------------------------------------------------------
+// Inline schemas for new endpoints not yet in generated files
+// ---------------------------------------------------------------------------
+
+export const zLtx23ImageToVideoInput = z.object({
+  prompt: z.string().register(z.globalRegistry, {
+    description: 'The prompt to use for the generated video',
+  }),
+  image_url: z.union([z.string(), z.string()]),
+  end_image_url: z.union([z.string(), z.unknown()]).optional(),
+  duration: z
+    .enum(['6', '8', '10'])
+    .register(z.globalRegistry, {
+      description: 'The duration of the generated video in seconds',
+    })
+    .optional(),
+  aspect_ratio: z
+    .enum(['auto', '16:9', '9:16'])
+    .register(z.globalRegistry, {
+      description:
+        "The aspect ratio of the generated video. If 'auto', the aspect ratio will be determined automatically based on the input image.",
+    })
+    .optional(),
+  resolution: z
+    .enum(['1080p', '1440p', '2160p'])
+    .register(z.globalRegistry, {
+      description: 'Output video resolution',
+    })
+    .optional(),
+  fps: z
+    .enum(['24', '25', '48', '50'])
+    .register(z.globalRegistry, {
+      description: 'Frames per second',
+    })
+    .optional(),
+  generate_audio: z
+    .boolean()
+    .register(z.globalRegistry, {
+      description: 'Whether to generate audio for the video',
+    })
+    .optional()
+    .default(true),
+  seed: z.union([z.int(), z.unknown()]).optional(),
+  negative_prompt: z.union([z.string(), z.unknown()]).optional(),
+  num_inference_steps: z
+    .union([z.int().gte(1).lte(50), z.unknown()])
+    .optional(),
+  guidance_scale: z.union([z.number(), z.unknown()]).optional(),
+});
+
+export const Ltx23ImageToVideoInputSchema = {
+  title: 'LTX23ImageToVideoInput',
+  type: 'object',
+  properties: {
+    prompt: {
+      type: 'string',
+      description: 'The prompt to use for the generated video',
+    },
+    image_url: { type: 'string' },
+    end_image_url: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    duration: { enum: ['6', '8', '10'], description: 'Duration in seconds' },
+    aspect_ratio: {
+      enum: ['auto', '16:9', '9:16'],
+      description: 'Aspect ratio of the generated video',
+    },
+    resolution: { enum: ['1080p', '1440p', '2160p'] },
+    fps: { enum: ['24', '25', '48', '50'] },
+    generate_audio: { type: 'boolean', default: true },
+    seed: { anyOf: [{ type: 'integer' }, { type: 'null' }] },
+    negative_prompt: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    num_inference_steps: { type: 'integer', minimum: 1, maximum: 50 },
+    guidance_scale: { type: 'number' },
+  },
+  required: ['prompt', 'image_url'],
+} as const;
+
+export const zMinimaxHailuo02ImageToVideoInput = z.object({
+  prompt: z.string().register(z.globalRegistry, {
+    description: 'The text prompt describing the video content to generate',
+  }),
+  image_url: z.union([z.string(), z.string()]),
+  end_image_url: z.union([z.string(), z.unknown()]).optional(),
+  prompt_optimizer: z
+    .boolean()
+    .register(z.globalRegistry, {
+      description: "Whether to enable the model's prompt optimization",
+    })
+    .optional()
+    .default(true),
+});
+
+export const MinimaxHailuo02ImageToVideoInputSchema = {
+  title: 'MinimaxHailuo02ImageToVideoInput',
+  type: 'object',
+  properties: {
+    prompt: {
+      type: 'string',
+      description: 'The text prompt describing the video content',
+    },
+    image_url: { type: 'string' },
+    end_image_url: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    prompt_optimizer: { type: 'boolean', default: true },
+  },
+  required: ['prompt', 'image_url'],
+} as const;
+
+export const zBytedanceSeedanceV15ProImageToVideoInput = z.object({
+  prompt: z.string().register(z.globalRegistry, {
+    description: 'The text prompt used to generate the video',
+  }),
+  image_url: z.union([z.string(), z.string()]),
+  end_image_url: z.union([z.string(), z.unknown()]).optional(),
+  aspect_ratio: z
+    .enum(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16', 'auto'])
+    .register(z.globalRegistry, {
+      description: 'The aspect ratio of the generated video',
+    })
+    .optional(),
+  resolution: z
+    .enum(['480p', '720p', '1080p'])
+    .register(z.globalRegistry, {
+      description:
+        'Video resolution - 480p for faster generation, 720p for balance, 1080p for higher quality',
+    })
+    .optional(),
+  duration: z
+    .enum(['5', '6', '7', '8', '9', '10', '11', '12'])
+    .register(z.globalRegistry, {
+      description: 'Length of the video in seconds',
+    })
+    .optional(),
+  camera_fixed: z
+    .boolean()
+    .register(z.globalRegistry, {
+      description: 'Whether to fix the camera position',
+    })
+    .optional()
+    .default(false),
+  generate_audio: z
+    .boolean()
+    .register(z.globalRegistry, {
+      description: 'Whether to generate audio for the video',
+    })
+    .optional()
+    .default(true),
+  enable_safety_checker: z
+    .boolean()
+    .register(z.globalRegistry, {
+      description: 'If set to true, the safety checker will be enabled.',
+    })
+    .optional()
+    .default(true),
+  seed: z.union([z.int(), z.unknown()]).optional(),
+});
+
+export const BytedanceSeedanceV15ProImageToVideoInputSchema = {
+  title: 'BytedanceSeedanceV15ProImageToVideoInput',
+  type: 'object',
+  properties: {
+    prompt: {
+      type: 'string',
+      description: 'The text prompt used to generate the video',
+    },
+    image_url: { type: 'string' },
+    end_image_url: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+    aspect_ratio: {
+      enum: ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16', 'auto'],
+      description: 'The aspect ratio of the generated video',
+    },
+    resolution: { enum: ['480p', '720p', '1080p'] },
+    duration: {
+      enum: ['5', '6', '7', '8', '9', '10', '11', '12'],
+      description: 'Length of the video in seconds',
+    },
+    camera_fixed: { type: 'boolean', default: false },
+    generate_audio: { type: 'boolean', default: true },
+    enable_safety_checker: { type: 'boolean', default: true },
+    seed: { anyOf: [{ type: 'integer' }, { type: 'null' }] },
+  },
+  required: ['prompt', 'image_url'],
+} as const;
+
+// ---------------------------------------------------------------------------
+// Type union
+// ---------------------------------------------------------------------------
+
 export type MotionJSONSchema =
-  | typeof BytedanceSeedanceV1ProImageToVideoInputSchema
   | typeof GrokImagineVideoImageToVideoInputSchema
-  | typeof KlingVideoO1ImageToVideoInputSchema
-  | typeof KlingVideoV25TurboProImageToVideoInputSchema
   | typeof KlingVideoV3ProImageToVideoInputSchema
-  | typeof Sora2ImageToVideoInputSchema
-  | typeof V26ImageToVideoFlashInputSchema
   | typeof Veo31ImageToVideoInputSchema
-  | typeof Veo3InputSchema;
+  | typeof Ltx23ImageToVideoInputSchema
+  | typeof MinimaxHailuo02ImageToVideoInputSchema
+  | typeof BytedanceSeedanceV15ProImageToVideoInputSchema;
+
+// ---------------------------------------------------------------------------
+// Runtime maps
+// ---------------------------------------------------------------------------
 
 export const MOTION_INPUT_SCHEMAS = {
-  'fal-ai/bytedance/seedance/v1/pro/image-to-video':
-    zBytedanceSeedanceV1ProImageToVideoInput,
-  'fal-ai/veo3': zVeo3Input,
   'fal-ai/veo3.1/image-to-video': zVeo31ImageToVideoInput,
-  'fal-ai/kling-video/v2.5-turbo/pro/image-to-video':
-    zKlingVideoV25TurboProImageToVideoInput,
-  'fal-ai/sora-2/image-to-video': zSora2ImageToVideoInput,
-  'fal-ai/kling-video/o1/image-to-video': zKlingVideoO1ImageToVideoInput,
   'fal-ai/kling-video/v3/pro/image-to-video': zKlingVideoV3ProImageToVideoInput,
   'xai/grok-imagine-video/image-to-video': zGrokImagineVideoImageToVideoInput,
-  'wan/v2.6/image-to-video/flash': zV26ImageToVideoFlashInput,
+  'fal-ai/ltx-2.3/image-to-video': zLtx23ImageToVideoInput,
+  'fal-ai/minimax/hailuo-02/pro/image-to-video':
+    zMinimaxHailuo02ImageToVideoInput,
+  'fal-ai/bytedance/seedance/v1.5/pro/image-to-video':
+    zBytedanceSeedanceV15ProImageToVideoInput,
 };
 
 export type MotionEndpointId = keyof typeof MOTION_INPUT_SCHEMAS;
@@ -61,26 +233,9 @@ export type MotionInputFor<T extends MotionEndpointId> = z.infer<
 >;
 
 export const MOTION_TRANSFORMS = {
-  'fal-ai/bytedance/seedance/v1/pro/image-to-video': motionTransform(
-    zBytedanceSeedanceV1ProImageToVideoInput,
-    BytedanceSeedanceV1ProImageToVideoInputSchema
-  ),
-  'fal-ai/veo3': motionTransform(zVeo3Input, Veo3InputSchema),
   'fal-ai/veo3.1/image-to-video': motionTransform(
     zVeo31ImageToVideoInput,
     Veo31ImageToVideoInputSchema
-  ),
-  'fal-ai/kling-video/v2.5-turbo/pro/image-to-video': motionTransform(
-    zKlingVideoV25TurboProImageToVideoInput,
-    KlingVideoV25TurboProImageToVideoInputSchema
-  ),
-  'fal-ai/sora-2/image-to-video': motionTransform(
-    zSora2ImageToVideoInput,
-    Sora2ImageToVideoInputSchema
-  ),
-  'fal-ai/kling-video/o1/image-to-video': motionTransform(
-    zKlingVideoO1ImageToVideoInput,
-    KlingVideoO1ImageToVideoInputSchema
   ),
   'fal-ai/kling-video/v3/pro/image-to-video': motionTransform(
     zKlingVideoV3ProImageToVideoInput,
@@ -90,8 +245,16 @@ export const MOTION_TRANSFORMS = {
     zGrokImagineVideoImageToVideoInput,
     GrokImagineVideoImageToVideoInputSchema
   ),
-  'wan/v2.6/image-to-video/flash': motionTransform(
-    zV26ImageToVideoFlashInput,
-    V26ImageToVideoFlashInputSchema
+  'fal-ai/ltx-2.3/image-to-video': motionTransform(
+    zLtx23ImageToVideoInput,
+    Ltx23ImageToVideoInputSchema
+  ),
+  'fal-ai/minimax/hailuo-02/pro/image-to-video': motionTransform(
+    zMinimaxHailuo02ImageToVideoInput,
+    MinimaxHailuo02ImageToVideoInputSchema
+  ),
+  'fal-ai/bytedance/seedance/v1.5/pro/image-to-video': motionTransform(
+    zBytedanceSeedanceV15ProImageToVideoInput,
+    BytedanceSeedanceV15ProImageToVideoInputSchema
   ),
 };
