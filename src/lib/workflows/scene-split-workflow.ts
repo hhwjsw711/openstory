@@ -201,12 +201,11 @@ export const sceneSplitWorkflow = createScopedWorkflow<
                   }
                 );
                 if (prevScene && prevFrameId) {
-                  // Use raw script extract as the prompt for fast preview
-                  const prompt = `${
-                    prevScene.originalScript?.extract?.slice(0, 2000) ??
+                  const sceneText =
+                    prevScene.originalScript?.extract?.slice(0, 1500) ??
                     prevScene.metadata?.title ??
-                    'A cinematic scene'
-                  } style: ${JSON.stringify({ ...styleConfig, aspectRatio })}`;
+                    'A cinematic scene';
+                  const prompt = `Cinematic film still. ${sceneText}. style: ${JSON.stringify({ ...styleConfig, aspectRatio })}. No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.`;
 
                   // Now kick off the preview generation for the previous scene
                   // Just trigger a workflow - don't await it
@@ -236,6 +235,33 @@ export const sceneSplitWorkflow = createScopedWorkflow<
               prevScene = event.scene;
             }
           }
+        }
+
+        // Trigger preview for the last scene (the loop only triggers N-1)
+        if (prevScene && prevFrameId && sequenceId) {
+          const sceneText =
+            prevScene.originalScript?.extract?.slice(0, 1500) ??
+            prevScene.metadata?.title ??
+            'A cinematic scene';
+          const prompt = `Cinematic film still. ${sceneText}. style: ${JSON.stringify({ ...styleConfig, aspectRatio })}. No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.`;
+
+          await triggerWorkflow(
+            '/image',
+            {
+              userId: input.userId,
+              teamId: input.teamId,
+              sequenceId,
+              prompt,
+              model: PREVIEW_IMAGE_MODEL,
+              imageSize: aspectRatioToImageSize(aspectRatio),
+              numImages: 1,
+              frameId: prevFrameId,
+              skipStorage: true,
+            } satisfies ImageWorkflowInput,
+            {
+              label: buildWorkflowLabel(sequenceId),
+            }
+          );
         }
 
         // Parse final accumulated text with full schema

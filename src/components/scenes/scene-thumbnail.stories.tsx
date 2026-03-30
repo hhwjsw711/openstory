@@ -7,6 +7,9 @@ const meta: Meta<typeof SceneThumbnail> = {
   parameters: {
     layout: 'centered',
   },
+  args: {
+    aspectRatio: '16:9',
+  },
   decorators: [
     (Story) => (
       <div className="w-80">

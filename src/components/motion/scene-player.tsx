@@ -143,18 +143,20 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
               alt=""
               width={imageDimensions.width}
               height={imageDimensions.height}
-              className="absolute inset-0 h-full w-full object-cover opacity-60"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
+            <>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
+              <div className="relative flex flex-col items-center gap-4">
+                <BlobLoader size="lg" />
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <p className="text-sm font-medium">{progressMessage}</p>
+                </div>
+              </div>
+            </>
           )}
-          <div className="relative flex flex-col items-center gap-4">
-            <BlobLoader size="lg" />
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <p className="text-sm font-medium">{progressMessage}</p>
-            </div>
-          </div>
         </div>
       );
     }
@@ -277,7 +279,13 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           </div>
         </div>
       ) : (
-        <div className={cn('relative flex flex-1', className)}>
+        <div
+          className={cn(
+            'relative',
+            getAspectRatioClassName(aspectRatio),
+            className
+          )}
+        >
           {/* Share dropdown */}
           {(currentFrame.thumbnailUrl || currentFrame.videoUrl) && (
             <DropdownMenu>
@@ -343,7 +351,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             progressMessage={progressMessage}
           />
           {isPreviewImage && (
-            <span className="absolute top-10 right-10 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+            <span className="absolute top-2 left-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
               Preview
             </span>
           )}

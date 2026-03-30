@@ -96,11 +96,12 @@ export const fastPreviewWorkflow = createScopedWorkflow<
           (f) => f.sceneId === scene.sceneId
         );
 
-        // Use raw script extract as the prompt for fast preview
-        const prompt =
-          scene.originalScript?.extract?.slice(0, 2000) ??
+        // Wrap script extract with cinematic framing + anti-text instructions
+        const sceneText =
+          scene.originalScript?.extract?.slice(0, 1500) ??
           scene.metadata?.title ??
           'A cinematic scene';
+        const prompt = `Cinematic film still. ${sceneText}. No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.`;
 
         await context.invoke('preview-image', {
           workflow: generateImageWorkflow,

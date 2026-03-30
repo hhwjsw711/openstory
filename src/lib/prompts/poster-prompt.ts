@@ -16,7 +16,7 @@ export function buildPosterPrompt(
   const scriptExcerpt = script.slice(0, MAX_SCRIPT_LENGTH).trim();
 
   const parts: string[] = [
-    `A cinematic poster image for "${title}".`,
+    `A cinematic establishing shot for "${title}".`,
     `Opening scene: ${scriptExcerpt}`,
   ];
 
@@ -31,6 +31,10 @@ export function buildPosterPrompt(
       parts.push(styleDetails.join('. ') + '.');
     }
   }
+
+  parts.push(
+    'No text, no titles, no subtitles, no watermarks, no letters, no words, no signs, no UI elements.'
+  );
 
   const prompt = parts.join(' ');
 

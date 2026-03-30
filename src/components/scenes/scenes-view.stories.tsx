@@ -1,13 +1,55 @@
 /* eslint-disable @typescript-eslint/no-unsafe-type-assertion -- Storybook mock data uses intentional type assertions */
 import { ScenesView } from '@/components/scenes/scenes-view';
-import type { Frame } from '@/types/database';
+import type { Frame, Sequence } from '@/types/database';
 import type { Meta, StoryObj } from '@storybook/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router';
 
 // Extend the component props to include frames for story mocking
 // Frames are passed through parameters, not args, so make them optional
 type ScenesViewStoryProps = React.ComponentProps<typeof ScenesView> & {
   frames?: Frame[];
+};
+
+const mockSequence: Sequence = {
+  id: 'demo-sequence-123',
+  teamId: 'team-1',
+  title: 'Demo Sequence',
+  script: 'Sample script text for the demo sequence.',
+  status: 'completed',
+  statusError: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: 'user-1',
+  updatedBy: 'user-1',
+  styleId: 'style-1',
+  aspectRatio: '16:9',
+  analysisModel: 'anthropic/claude-haiku-4.5',
+  analysisDurationMs: 0,
+  imageModel: 'nano_banana',
+  videoModel: 'veo3',
+  workflow: null,
+  mergedVideoUrl: null,
+  mergedVideoPath: null,
+  mergedVideoStatus: 'pending',
+  mergedVideoGeneratedAt: null,
+  mergedVideoError: null,
+  musicUrl: null,
+  musicPath: null,
+  musicStatus: 'pending',
+  musicGeneratedAt: null,
+  musicError: null,
+  musicModel: null,
+  musicPrompt: null,
+  musicTags: null,
+  posterUrl: null,
+  autoGenerateMotion: false,
+  autoGenerateMusic: false,
 };
 
 const meta = {
@@ -21,6 +63,8 @@ const meta = {
       // Get frames from story parameters (not args since ScenesView doesn't accept them)
       const frames = (context.parameters.frames as Frame[]) || [];
       const sequenceId = context.args.sequenceId || 'mock-sequence';
+      const sequenceOverrides =
+        (context.parameters.sequenceOverrides as Partial<Sequence>) || {};
 
       // Create a query client with mock data
       const queryClient = new QueryClient({
@@ -31,12 +75,26 @@ const meta = {
         },
       });
 
-      // Pre-populate the cache with mock frame data using the correct query key
+      // Pre-populate the cache with mock data using the correct query keys
       queryClient.setQueryData(['frames', 'list', sequenceId], frames);
+      queryClient.setQueryData(['sequences', 'detail', sequenceId], {
+        ...mockSequence,
+        id: sequenceId,
+        ...sequenceOverrides,
+      });
+
+      // Provide a minimal TanStack Router context for useNavigate()
+      const rootRoute = createRootRoute({
+        component: () => <Story />,
+      });
+      const router = createRouter({
+        routeTree: rootRoute,
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      });
 
       return (
         <QueryClientProvider client={queryClient}>
-          <Story />
+          <RouterProvider router={router} />
         </QueryClientProvider>
       );
     },
@@ -46,7 +104,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Mock frame base
+// Mock frame base — all Frame fields included
 const mockFrameBase = {
   sequenceId: 'seq-1',
   orderIndex: 0,
@@ -55,9 +113,20 @@ const mockFrameBase = {
   thumbnailWorkflowRunId: null,
   thumbnailGeneratedAt: null,
   thumbnailError: null,
+  imageModel: 'nano_banana',
+  imagePrompt: null,
   videoWorkflowRunId: null,
   videoGeneratedAt: null,
   videoError: null,
+  motionPrompt: null,
+  motionModel: 'veo3',
+  audioUrl: null,
+  audioPath: null,
+  audioStatus: 'pending' as const,
+  audioWorkflowRunId: null,
+  audioGeneratedAt: null,
+  audioError: null,
+  audioModel: null,
   variantImageUrl: null,
   variantImageStatus: 'pending' as const,
   variantWorkflowRunId: null,
@@ -145,8 +214,10 @@ export const MixedStates: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/scene1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/1/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -163,8 +234,10 @@ export const MixedStates: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/scene2/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/2/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/2/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -181,7 +254,9 @@ export const MixedStates: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: 'https://picsum.photos/seed/scene3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -195,7 +270,9 @@ export const MixedStates: Story = {
         id: '4',
         orderIndex: 3,
         thumbnailUrl: 'https://picsum.photos/seed/scene4/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/4/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'generating',
         metadata: {
@@ -212,7 +289,9 @@ export const MixedStates: Story = {
         id: '5',
         orderIndex: 4,
         thumbnailUrl: null,
+        thumbnailPath: null,
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'generating',
         videoStatus: 'pending',
         metadata: {
@@ -245,8 +324,10 @@ export const AllCompleted: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/complete1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/1/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -260,8 +341,10 @@ export const AllCompleted: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/complete2/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/2/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/2/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -275,8 +358,10 @@ export const AllCompleted: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: 'https://picsum.photos/seed/complete3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/3/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -306,7 +391,9 @@ export const AllPending: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/pending1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -323,7 +410,9 @@ export const AllPending: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/pending2/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/2/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -340,7 +429,9 @@ export const AllPending: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: 'https://picsum.photos/seed/pending3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -373,8 +464,10 @@ export const FramesGenerating: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/framegen1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/1/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -391,7 +484,9 @@ export const FramesGenerating: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/framegen2/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/2/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
@@ -408,7 +503,9 @@ export const FramesGenerating: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: null,
+        thumbnailPath: null,
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'generating',
         videoStatus: 'pending',
         metadata: {
@@ -425,7 +522,9 @@ export const FramesGenerating: Story = {
         id: '4',
         orderIndex: 3,
         thumbnailUrl: null,
+        thumbnailPath: null,
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'pending',
         videoStatus: 'pending',
         metadata: {
@@ -458,7 +557,9 @@ export const GenerationInProgress: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/gen1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'generating',
         metadata: {
@@ -475,7 +576,9 @@ export const GenerationInProgress: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: null,
+        thumbnailPath: null,
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'generating',
         videoStatus: 'pending',
         metadata: {
@@ -492,7 +595,9 @@ export const GenerationInProgress: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: null,
+        thumbnailPath: null,
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'pending',
         videoStatus: 'pending',
         metadata: {
@@ -514,6 +619,82 @@ export const GenerationInProgress: Story = {
   },
 };
 
+export const PreviewMode: Story = {
+  args: {
+    sequenceId: 'preview-mode',
+  },
+  parameters: {
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: null,
+        thumbnailPath: null,
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview1/1280/720',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'generating',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Preview - Generating Full Image',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '2',
+        orderIndex: 1,
+        thumbnailUrl: null,
+        thumbnailPath: null,
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview2/1280/720',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'generating',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 2,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Preview - Still Processing',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '3',
+        orderIndex: 2,
+        thumbnailUrl: 'https://picsum.photos/seed/final3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview3/1280/720',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 3,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Final Image Ready',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
+    docs: {
+      description: {
+        story:
+          'Shows preview mode where fast preview images are displayed while full-resolution thumbnails are still generating. Scenes 1-2 show the "Preview" badge, Scene 3 has its final image ready (no badge).',
+      },
+    },
+  },
+};
+
 export const WithFailures: Story = {
   args: {
     sequenceId: 'with-failures',
@@ -525,8 +706,10 @@ export const WithFailures: Story = {
         id: '1',
         orderIndex: 0,
         thumbnailUrl: 'https://picsum.photos/seed/fail1/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/1/thumbnail.jpg',
         videoUrl:
           'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        videoPath: 'teams/mock/sequences/mock/frames/1/motion.mp4',
         thumbnailStatus: 'completed',
         videoStatus: 'completed',
         metadata: {
@@ -543,7 +726,9 @@ export const WithFailures: Story = {
         id: '2',
         orderIndex: 1,
         thumbnailUrl: 'https://picsum.photos/seed/fail2/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/2/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'failed',
         metadata: {
@@ -560,7 +745,9 @@ export const WithFailures: Story = {
         id: '3',
         orderIndex: 2,
         thumbnailUrl: 'https://picsum.photos/seed/fail3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
         videoUrl: null,
+        videoPath: null,
         thumbnailStatus: 'completed',
         videoStatus: 'pending',
         metadata: {
