@@ -149,7 +149,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
     // Step 2: Prepare start image — compress if Kling model and image exceeds 10MB
     const startImageUrl = await context.run('prepare-start-image', async () => {
       const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
-      if (modelConfig.provider !== 'kling') {
+      if (modelConfig.provider !== 'Kling') {
         return input.imageUrl;
       }
 
