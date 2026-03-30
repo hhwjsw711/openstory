@@ -1,4 +1,12 @@
 import { type TabValue } from '@/components/scenes/scene-script-prompts';
+import { BlobLoader } from '@/components/ui/blob-loader';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
@@ -9,13 +17,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Image } from '@unpic/react';
 import {
   AlertCircle,
   Download,
@@ -24,12 +26,10 @@ import {
   Share2,
   VideoIcon,
 } from 'lucide-react';
-import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
-import { BlobLoader } from '@/components/ui/blob-loader';
 
 type ScenePlayerProps = {
   frames?: Frame[];
@@ -159,13 +159,18 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             )}
           >
             {posterUrl ? (
-              <Image
-                src={posterUrl}
-                alt=""
-                width={imageDimensions.width}
-                height={imageDimensions.height}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
+              <>
+                <Image
+                  src={posterUrl}
+                  alt=""
+                  width={imageDimensions.width}
+                  height={imageDimensions.height}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <span className="absolute top-2 right-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+                  Preview
+                </span>
+              </>
             ) : (
               <>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
@@ -199,6 +204,9 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
               height={imageDimensions.height}
               className="h-full w-full object-cover"
             />
+            <span className="absolute top-2 right-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+              Preview
+            </span>
           </div>
         </div>
       );
@@ -236,7 +244,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     currentFrame.previewThumbnailUrl ??
     posterUrl ??
     null;
-  const isPreviewImage = !!displayImage && !currentFrame.thumbnailUrl;
+  const isPreviewImage =
+    !!currentFrame.previewThumbnailUrl && !currentFrame.thumbnailUrl;
 
   return (
     <div className={cn('flex w-full flex-col', wrapperClassName)}>
