@@ -206,7 +206,7 @@ export async function* callLLMStream(
     metadata: buildChatMetadata(params),
     modelOptions: {
       ...buildModelOptions(params),
-      stream_options: { include_usage: true },
+      streamOptions: { include_usage: true },
     },
     stream: true,
   });
