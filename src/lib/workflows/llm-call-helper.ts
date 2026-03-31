@@ -56,7 +56,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
   context: WorkflowContext<TInput>,
   config: DurableLLMCallConfig<TSchema>,
   callContext: DurableLLMCallContext
-): Promise<z.infer<TSchema>> {
+) {
   const { name, phase, modelId } = config;
   const logName = `phase-${phase.number}-${name}`;
   const logTags = [name, `phase-${phase.number}`, 'analysis'];
@@ -151,7 +151,7 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
     });
   }
 
-  return jsonResponse;
+  return config.responseSchema.parse(jsonResponse);
 }
 
 // ============================================================================
