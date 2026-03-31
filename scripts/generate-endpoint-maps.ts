@@ -22,7 +22,7 @@ import {
 } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as prettier from 'prettier';
+import { spawn } from 'bun';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -110,14 +110,19 @@ function toPascalCase(str: string): string {
 }
 
 /**
- * Format TypeScript code using prettier
+ * Format TypeScript code using oxfmt via stdin
  */
 async function formatTypeScript(content: string): Promise<string> {
-  const config = await prettier.resolveConfig(process.cwd());
-  return prettier.format(content, {
-    ...config,
-    parser: 'typescript',
+  const proc = spawn(['bunx', 'oxfmt', '--stdin-filepath', 'file.ts'], {
+    stdin: 'pipe',
+    stdout: 'pipe',
+    stderr: 'pipe',
   });
+  await proc.stdin.write(content);
+  await proc.stdin.end();
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+  return output;
 }
 
 /**
