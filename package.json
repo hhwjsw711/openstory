@@ -96,7 +96,7 @@
     "@langfuse/core": "^4.6.1",
     "@langfuse/otel": "^4.6.1",
     "@langfuse/tracing": "^4.6.1",
-    "@libsql/client": "^0.15.15",
+    "@libsql/client": "^0.17.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@opentelemetry/sdk-node": "^0.214.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
