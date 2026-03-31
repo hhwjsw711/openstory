@@ -31,7 +31,9 @@ export async function ensureImageUnderLimit(
     return null;
   }
 
-  // Download the image
+  // Download the image — must buffer fully because WASM's PhotonImage.new_from_byteslice()
+  // requires a complete Uint8Array. Bounded by Kling's 9.5MB limit, so peak memory
+  // (~original + WASM decode + JPEG output ≈ 43MB) stays well within Workers' 128MB cap.
   const response = await fetch(imageUrl);
   if (!response.ok) {
     throw new Error(

@@ -107,11 +107,10 @@ export async function uploadImageBufferToStorage(
   const ulid = generateId();
   const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
 
-  // Pass Uint8Array view directly as ArrayBuffer — avoids Blob wrapper round-trip
   const result = await uploadFile(
     STORAGE_BUCKETS.THUMBNAILS,
     storagePath,
-    new Uint8Array(imageBuffer).buffer,
+    imageBuffer,
     {
       contentType,
       upsert: true,

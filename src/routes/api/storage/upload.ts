@@ -54,7 +54,13 @@ export const Route = createFileRoute('/api/storage/upload')({
             );
           }
 
-          const body = await request.arrayBuffer();
+          const body = request.body;
+          if (!body) {
+            return Response.json(
+              { success: false, error: 'Request body is empty' },
+              { status: 400 }
+            );
+          }
 
           await uploadFile(validBucket, path, body, {
             contentType,

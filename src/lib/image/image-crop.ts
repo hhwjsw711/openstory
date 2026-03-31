@@ -15,7 +15,7 @@ type CropTileOptions = {
 };
 
 type CropTileResult = {
-  buffer: Buffer;
+  buffer: Uint8Array;
   width: number;
   height: number;
 };
@@ -72,7 +72,7 @@ export async function cropTileFromGrid(
       const outputBytes = croppedImage.get_bytes();
 
       return {
-        buffer: Buffer.from(outputBytes),
+        buffer: outputBytes,
         width: tileWidth,
         height: tileHeight,
       };

@@ -55,7 +55,7 @@ export function getR2BucketName(): string {
 export async function uploadFile(
   bucket: StorageBucket,
   path: string,
-  file: File | Blob | ArrayBuffer | ReadableStream<Uint8Array>,
+  file: File | Blob | ArrayBuffer | Uint8Array | ReadableStream<Uint8Array>,
   options?: {
     upsert?: boolean;
     contentType?: string;
@@ -89,7 +89,9 @@ export async function uploadFile(
     const client = createR2Client();
 
     let body: Uint8Array;
-    if (file instanceof ArrayBuffer) {
+    if (file instanceof Uint8Array) {
+      body = file;
+    } else if (file instanceof ArrayBuffer) {
       body = new Uint8Array(file);
     } else {
       body = new Uint8Array(await file.arrayBuffer());
