@@ -2197,6 +2197,18 @@ async function main() {
     await attachR2Domains();
   }
 
+  // Cloudflare Image Resizing reminder — needed for all environments since
+  // cdn-cgi/image/ URLs are served by Cloudflare's edge regardless of where the app runs
+  if (vars.has('R2_PUBLIC_STORAGE_DOMAIN')) {
+    p.log.warn(
+      chalk.bold('Cloudflare Image Resizing required\n') +
+        'Enable Image Resizing on the Cloudflare zone serving your R2 storage domain\n' +
+        `(e.g. the zone for ${vars.get('R2_PUBLIC_STORAGE_DOMAIN')}).\n` +
+        'Dashboard: Speed > Optimization > Image Resizing\n' +
+        'This is used to compress images for video generation (Kling 10MB limit).'
+    );
+  }
+
   // -------------------------------------------------------------------------
   // Style Previews
   // -------------------------------------------------------------------------
