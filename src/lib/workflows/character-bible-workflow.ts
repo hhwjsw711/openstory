@@ -8,7 +8,7 @@
  * to maintain consistency with the cast.
  */
 
-import { uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
@@ -107,11 +107,10 @@ export const characterBibleWorkflow = createScopedWorkflow<
                 `Failed to fetch generated image: ${response.status}`
               );
             }
-            const imageBlob = await response.blob();
-            const storageResult = await uploadFile(
+            const storageResult = await uploadResponse(
+              response,
               STORAGE_BUCKETS.CHARACTERS,
               storagePath,
-              imageBlob,
               { contentType: 'image/png' }
             );
             sheetImageUrl = storageResult.publicUrl;

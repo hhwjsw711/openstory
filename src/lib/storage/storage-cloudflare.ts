@@ -27,7 +27,7 @@ function getR2Bucket(): R2Bucket {
 export async function uploadFile(
   bucket: StorageBucket,
   path: string,
-  file: File | Blob | ArrayBuffer,
+  file: File | Blob | ArrayBuffer | ReadableStream<Uint8Array>,
   options?: {
     upsert?: boolean;
     contentType?: string;
@@ -38,7 +38,10 @@ export async function uploadFile(
   const key = buildR2Key(bucket, path);
 
   try {
-    const body = file instanceof ArrayBuffer ? file : await file.arrayBuffer();
+    const body =
+      file instanceof ReadableStream || file instanceof ArrayBuffer
+        ? file
+        : await file.arrayBuffer();
 
     await r2.put(key, body, {
       httpMetadata: {

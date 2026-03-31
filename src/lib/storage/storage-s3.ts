@@ -55,24 +55,44 @@ export function getR2BucketName(): string {
 export async function uploadFile(
   bucket: StorageBucket,
   path: string,
-  file: File | Blob | ArrayBuffer,
+  file: File | Blob | ArrayBuffer | ReadableStream<Uint8Array>,
   options?: {
     upsert?: boolean;
     contentType?: string;
     cacheControl?: string;
   }
 ): Promise<UploadResult> {
-  const client = createR2Client();
   const bucketName = getR2BucketName();
   const key = buildR2Key(bucket, path);
 
   try {
-    let body: Buffer | Uint8Array;
+    // Use Bun's native S3 client for ReadableStream — AWS SDK v3 in Bun
+    // doesn't reliably handle streaming uploads (see commit afdb5ccf)
+    if (file instanceof ReadableStream) {
+      const { S3Client: BunS3Client } = await import('bun');
+      const env = getEnv();
+      const bunS3 = new BunS3Client({
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+        bucket: bucketName,
+        endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      });
+
+      await bunS3.write(key, new Response(file), {
+        type: options?.contentType,
+      });
+
+      const publicUrl = getPublicUrl(bucket, path);
+      return { path: key, publicUrl, fullPath: key };
+    }
+
+    const client = createR2Client();
+
+    let body: Uint8Array;
     if (file instanceof ArrayBuffer) {
-      body = Buffer.from(file);
+      body = new Uint8Array(file);
     } else {
-      const arrayBuffer = await file.arrayBuffer();
-      body = Buffer.from(arrayBuffer);
+      body = new Uint8Array(await file.arrayBuffer());
     }
 
     const command = new PutObjectCommand({

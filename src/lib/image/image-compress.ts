@@ -7,7 +7,7 @@
 import { PhotonImage } from '@cf-wasm/photon';
 
 type CompressionResult = {
-  buffer: Buffer;
+  buffer: Uint8Array;
   contentType: string;
   originalSizeBytes: number;
   compressedSizeBytes: number;
@@ -67,7 +67,7 @@ export async function ensureImageUnderLimit(
     );
 
     return {
-      buffer: Buffer.from(outputBytes),
+      buffer: outputBytes,
       contentType: 'image/jpeg',
       originalSizeBytes,
       compressedSizeBytes: outputBytes.byteLength,
