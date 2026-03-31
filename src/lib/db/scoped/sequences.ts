@@ -67,10 +67,10 @@ export function createSequencesReadMethods(db: Database, teamId: string) {
       sequenceId: string
     ): Promise<SequenceWithFrames | null> => {
       const result = await db.query.sequences.findFirst({
-        where: and(eq(sequences.id, sequenceId), eq(sequences.teamId, teamId)),
+        where: { id: sequenceId, teamId },
         with: {
           frames: {
-            orderBy: (frames, { asc }) => [asc(frames.orderIndex)],
+            orderBy: { orderIndex: 'asc' },
           },
           style: true,
         },
@@ -87,10 +87,7 @@ export function createSequencesReadMethods(db: Database, teamId: string) {
 
     getForUser: async (params: { sequenceId: string }): Promise<Sequence> => {
       const sequence = await db.query.sequences.findFirst({
-        where: and(
-          eq(sequences.id, params.sequenceId),
-          eq(sequences.teamId, teamId)
-        ),
+        where: { id: params.sequenceId, teamId },
       });
       if (!sequence) {
         throw new ValidationError('Sequence not found');

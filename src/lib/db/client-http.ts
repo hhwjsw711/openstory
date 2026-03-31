@@ -5,14 +5,14 @@
 
 import { getEnv } from '#env';
 import { createClient } from '@libsql/client/http';
-import { drizzle, LibSQLDatabase } from 'drizzle-orm/libsql';
-import { schema } from './schema';
-// @ts-ignore - resolved via package.json imports
+import { drizzle } from 'drizzle-orm/libsql';
+import { relations } from './schema/relations';
 
 console.log('[db-http] Loading client');
 
-// Define the database type explicitly
-type Database = LibSQLDatabase<typeof schema>;
+type Database = ReturnType<
+  typeof drizzle<Record<string, never>, typeof relations>
+>;
 
 let _db: Database | undefined;
 
@@ -26,24 +26,14 @@ export const getDb = (): Database => {
     throw new Error('TURSO_DATABASE_URL is required');
   }
 
-  /**
-   * libSQL client instance
-   * Connects to Turso database (cloud) or local SQLite file
-   * - For local development: use file: URLs (e.g., file:local.db)
-   * - For production: use https:// URLs with auth token
-   */
   const client = createClient({
     url: tursoUrl,
-    ...(tursoToken && { authToken: tursoToken }), // Only include if defined
+    ...(tursoToken && { authToken: tursoToken }),
   });
 
-  /**
-   * Drizzle database instance
-   * Uses the libSQL client and includes all schema definitions
-   * Configured to use snake_case in database and camelCase in application
-   */
-  _db = drizzle(client, {
-    schema,
+  _db = drizzle({
+    client,
+    relations,
     logger: getEnv().NODE_ENV === 'development',
     casing: 'snake_case',
   });

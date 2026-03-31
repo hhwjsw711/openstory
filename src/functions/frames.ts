@@ -44,7 +44,7 @@ export const createFrameFn = createServerFn({ method: 'POST' })
     zodValidator(singleFrameSchema.extend({ sequenceId: ulidSchema }))
   )
   .handler(async ({ data, context }) => {
-    return context.scopedDb.frames.create(data);
+    return context.scopedDb.frames.create(data as NewFrame);
   });
 
 export const createFramesBulkFn = createServerFn({ method: 'POST' })
@@ -58,10 +58,10 @@ export const createFramesBulkFn = createServerFn({ method: 'POST' })
     )
   )
   .handler(async ({ data, context }) => {
-    const frameInserts: NewFrame[] = data.frames.map((frame) => ({
+    const frameInserts = data.frames.map((frame) => ({
       sequenceId: data.sequenceId,
       ...frame,
-    }));
+    })) as NewFrame[];
     return context.scopedDb.frames.bulkUpsert(frameInserts);
   });
 
@@ -74,7 +74,10 @@ export const updateFrameFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { sequenceId: _, frameId, ...updateData } = data;
-    return context.scopedDb.frames.update(frameId, updateData);
+    return context.scopedDb.frames.update(
+      frameId,
+      updateData as Partial<NewFrame>
+    );
   });
 
 export const deleteFrameFn = createServerFn({ method: 'POST' })

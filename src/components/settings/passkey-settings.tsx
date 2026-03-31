@@ -48,7 +48,12 @@ export function PasskeySettings({ isSetupFlow }: PasskeySettingsProps) {
     mutationFn: async () => {
       const result = await authClient.passkey.addPasskey();
       if (result?.error) {
-        throw new Error(result.error.message || 'Failed to add passkey');
+        const msg = result.error.message;
+        const errorMessage =
+          typeof msg === 'string'
+            ? msg
+            : (msg?.message ?? msg?.code ?? 'Failed to add passkey');
+        throw new Error(errorMessage);
       }
       return result;
     },

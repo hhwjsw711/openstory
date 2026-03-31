@@ -9,6 +9,7 @@ import {
   createStyleSchema,
   updateStyleSchema,
 } from '@/lib/schemas/style.schemas';
+import type { Style, StyleConfig } from '@/lib/db/schema';
 import { createServerFn } from '@tanstack/react-start';
 import { zodValidator } from '@tanstack/zod-adapter';
 import { z } from 'zod';
@@ -69,9 +70,9 @@ export const createStyleFn = createServerFn({ method: 'POST' })
     return context.scopedDb.styles.create({
       name: data.name,
       description: data.description,
-      config: data.config,
+      config: data.config as StyleConfig,
       category: data.category,
-      tags: data.tags,
+      tags: data.tags as string[] | null | undefined,
       isPublic: data.isPublic,
       previewUrl: data.previewUrl,
     });
@@ -95,7 +96,12 @@ export const updateStyleFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const { styleId, ...updateData } = data;
 
-    const style = await context.scopedDb.styles.update(styleId, updateData);
+    const style = await context.scopedDb.styles.update(
+      styleId,
+      updateData as Partial<
+        Omit<Style, 'id' | 'teamId' | 'createdAt' | 'createdBy'>
+      >
+    );
 
     if (!style) {
       throw new Error(

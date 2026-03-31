@@ -286,7 +286,7 @@ export async function callChat<TSchema extends z.ZodType>(
     }
   }
 
-  const jsonResponse: z.infer<TSchema> = await chat({
+  const jsonResponse = (await chat({
     adapter,
     messages: chatMessages,
     systemPrompts,
@@ -299,7 +299,7 @@ export async function callChat<TSchema extends z.ZodType>(
       metadata: logMetadata,
     },
     outputSchema: responseSchema,
-  });
+  })) as z.infer<TSchema>;
 
   console.log(`[LLM:${name}] Call succeeded`);
 

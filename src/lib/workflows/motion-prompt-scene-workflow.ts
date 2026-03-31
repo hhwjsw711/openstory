@@ -63,7 +63,7 @@ export const motionPromptSceneWorkflow = createScopedWorkflow<
         };
       }
     );
-    const motionPrompt = await durableLLMCall(
+    const motionPrompt: MotionPrompt = await durableLLMCall(
       context,
       {
         name: 'motion-prompts',

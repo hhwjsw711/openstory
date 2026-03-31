@@ -208,7 +208,7 @@ export function createFramesMethods(db: Database) {
       frameId: string
     ): Promise<FrameWithSequence | null> => {
       const result = await db.query.frames.findFirst({
-        where: eq(frames.id, frameId),
+        where: { id: frameId },
         with: {
           sequence: {
             columns: {

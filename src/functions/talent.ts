@@ -3,6 +3,7 @@ import { getEnv } from '#env';
 import { requireTeamAdminAccess } from '@/lib/auth/action-utils';
 import { generateId } from '@/lib/db/id';
 import type { Talent, TalentWithSheets } from '@/lib/db/schema';
+import type { CharacterBibleEntry } from '@/lib/ai/scene-analysis.schema';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
 import {
   createTalentSchema,
@@ -218,7 +219,7 @@ export const createTalentSheetFn = createServerFn({ method: 'POST' })
       name: data.name,
       imageUrl: data.imageUrl,
       imagePath: data.imagePath,
-      metadata: data.metadata,
+      metadata: data.metadata as CharacterBibleEntry | undefined,
       isDefault: data.isDefault ?? false,
       source:
         data.source === 'ai_generated' ||

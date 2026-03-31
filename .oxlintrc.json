@@ -23,7 +23,6 @@
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
     "typescript/await-thenable": "error",
-    "typescript/no-unnecessary-condition": "warn",
     "unicorn/prefer-optional-catch-binding": "error",
     "react/rules-of-hooks": "error",
     "react/no-unstable-nested-components": "error",

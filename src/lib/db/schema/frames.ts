@@ -5,11 +5,7 @@
 
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
-import {
-  type InferInsertModel,
-  type InferSelectModel,
-  relations,
-} from 'drizzle-orm';
+import { type InferInsertModel, type InferSelectModel } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -122,13 +118,6 @@ export const frames = sqliteTable(
     ),
   ]
 );
-
-export const framesRelations = relations(frames, ({ one }) => ({
-  sequence: one(sequences, {
-    fields: [frames.sequenceId],
-    references: [sequences.id],
-  }),
-}));
 
 // Override the inferred Frame type to use Scene for metadata
 type InferredFrame = InferSelectModel<typeof frames>;
