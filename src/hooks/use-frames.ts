@@ -545,10 +545,10 @@ export function useSelectVariant() {
 
 // Hook to track preview image generation status for frames
 export function useFramePreviewStatus(frames: Frame[]) {
-  // Get frames that might be generating previews (no thumbnailUrl but were recently created)
+  // Get frames that might be generating previews (no image URLs but were recently created)
   const framesNeedingPreviews = useMemo(() => {
     return frames.filter((frame) => {
-      if (frame.thumbnailUrl) return false; // Already has preview
+      if (frame.thumbnailUrl || frame.previewThumbnailUrl) return false; // Already has an image
 
       // Check if frame was created recently (within last 2 minutes for faster timeout)
       const createdAt = new Date(frame.createdAt).getTime();
@@ -576,11 +576,11 @@ export function useFramePreviewStatus(frames: Frame[]) {
     >();
 
     refreshedFrames.forEach((frame) => {
-      const hasPreview = !!frame.thumbnailUrl;
+      const hasPreview = !!frame.previewThumbnailUrl;
 
       // Check if this frame should show as generating
       let isGenerating = false;
-      if (!hasPreview) {
+      if (!frame.thumbnailUrl && !frame.previewThumbnailUrl) {
         const createdAt = new Date(frame.createdAt).getTime();
         const updatedAt = frame.updatedAt
           ? new Date(frame.updatedAt).getTime()

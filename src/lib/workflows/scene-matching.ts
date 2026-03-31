@@ -29,7 +29,9 @@ export function matchCharactersToScene(
       const tagLower = tag.toLowerCase();
       return (
         (consistencyTag && tagLower.includes(consistencyTag)) ||
+        (consistencyTag && consistencyTag.includes(tagLower)) ||
         tagLower.includes(charName) ||
+        (charName.includes(tagLower) && tagLower.length >= 3) ||
         tagLower.includes(charId)
       );
     });

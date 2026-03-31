@@ -123,7 +123,7 @@ export const generateImageWorkflow = createScopedWorkflow<
 
     let imageUrl: string = imageResult.imageUrls[0];
 
-    if (imageUrl && frameId && sequenceId && teamId) {
+    if (imageUrl && frameId && sequenceId && teamId && !input.skipStorage) {
       const storageUrl = await context.run('upload-to-storage', async () => {
         const result = await uploadImageToStorage({
           imageUrl,
@@ -172,6 +172,34 @@ export const generateImageWorkflow = createScopedWorkflow<
         return result.url;
       });
       if (storageUrl) imageUrl = storageUrl;
+    } else if (imageUrl && frameId && input.skipStorage) {
+      // Preview mode: store fal.ai CDN URL in dedicated preview field
+      await context.run('store-preview-url', async () => {
+        const updatedFrame = await scopedDb.frames.update(
+          frameId,
+          {
+            previewThumbnailUrl: imageUrl,
+            thumbnailGeneratedAt: new Date(),
+            thumbnailError: null,
+          },
+          { throwOnMissing: false }
+        );
+
+        if (!updatedFrame) {
+          console.log(
+            '[ImageWorkflow]',
+            `Frame ${frameId} was deleted, skipping preview update`
+          );
+          return;
+        }
+
+        if (sequenceId) {
+          await getGenerationChannel(sequenceId)?.emit(
+            'generation.image:progress',
+            { frameId, previewThumbnailUrl: imageUrl }
+          );
+        }
+      });
     }
 
     console.log('[ImageWorkflow]', 'Image generation workflow completed');
@@ -181,23 +209,28 @@ export const generateImageWorkflow = createScopedWorkflow<
   {
     failureFunction: async ({ context, scopedDb, failResponse }) => {
       const input = context.requestPayload;
-      const error = sanitizeFailResponse(failResponse);
+      // Skipping storage means we're in preview mode
+      const previewMode = input.skipStorage;
+      if (!previewMode) {
+        // Only flag the frame as failed if we're not in preview mode
+        const error = sanitizeFailResponse(failResponse);
 
-      if (input.frameId && input.teamId) {
-        await scopedDb.frames.update(
-          input.frameId,
-          { thumbnailStatus: 'failed', thumbnailError: error },
-          { throwOnMissing: false }
-        );
+        if (input.frameId && input.teamId) {
+          await scopedDb.frames.update(
+            input.frameId,
+            { thumbnailStatus: 'failed', thumbnailError: error },
+            { throwOnMissing: false }
+          );
 
-        if (input.sequenceId) {
-          try {
-            await getGenerationChannel(input.sequenceId)?.emit(
-              'generation.image:progress',
-              { frameId: input.frameId, status: 'failed' }
-            );
-          } catch {
-            // Ignore emit errors in failure handler
+          if (input.sequenceId) {
+            try {
+              await getGenerationChannel(input.sequenceId)?.emit(
+                'generation.image:progress',
+                { frameId: input.frameId, status: 'failed' }
+              );
+            } catch {
+              // Ignore emit errors in failure handler
+            }
           }
         }
 

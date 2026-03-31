@@ -78,6 +78,7 @@ const generateMockFrame = (overrides?: Partial<Frame>): Frame => {
     audioGeneratedAt: null,
     audioError: null,
     audioModel: null,
+    previewThumbnailUrl: null,
     createdAt: faker.date.past(),
     updatedAt: faker.date.recent(),
     metadata: {

@@ -164,6 +164,7 @@ export function createSequencesMethods(
       musicUrl?: string;
       musicPath?: string;
       musicGeneratedAt?: Date;
+      posterUrl?: string | null;
     }): Promise<Sequence> => {
       const [data] = await db
         .update(sequences)

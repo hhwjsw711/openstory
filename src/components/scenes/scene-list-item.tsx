@@ -91,6 +91,7 @@ const SceneListItemComponent: React.FC<SceneListItemProps> = ({
         >
           <SceneThumbnail
             thumbnailUrl={frame?.thumbnailUrl}
+            previewThumbnailUrl={frame?.previewThumbnailUrl}
             thumbnailStatus={frame?.thumbnailStatus || undefined}
             alt={title ?? 'Scene thumbnail'}
             aspectRatio={aspectRatio}
@@ -165,6 +166,7 @@ const areEqual = (
   // Check thumbnail-related fields
   if (
     prevFrame.thumbnailUrl !== nextFrame.thumbnailUrl ||
+    prevFrame.previewThumbnailUrl !== nextFrame.previewThumbnailUrl ||
     prevFrame.thumbnailStatus !== nextFrame.thumbnailStatus
   ) {
     return false;

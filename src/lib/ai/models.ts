@@ -179,6 +179,15 @@ export const IMAGE_MODELS = {
     description: 'Unified generation and editing',
     maxPromptLength: 2000,
   },
+  flux_2_turbo: {
+    id: 'fal-ai/flux-2/turbo' as const,
+    name: 'FLUX.2 Turbo',
+    provider: 'Black Forest Labs',
+    license: 'open-source' as const,
+    qualityRank: 99,
+    description: 'Ultra-fast preview generation',
+    maxPromptLength: 2000,
+  },
 } as const;
 
 // Text to image model types
@@ -187,6 +196,9 @@ type ImageModelConfig = (typeof IMAGE_MODELS)[TextToImageModel];
 type TextToImageModelId = ImageModelConfig['id'];
 
 export const DEFAULT_IMAGE_MODEL: TextToImageModel = 'nano_banana_2';
+
+/** Model used for fast preview image generation */
+export const PREVIEW_IMAGE_MODEL: TextToImageModel = 'flux_2_turbo';
 
 // Helper to get model ID from key
 export function getTextToImageModelId(

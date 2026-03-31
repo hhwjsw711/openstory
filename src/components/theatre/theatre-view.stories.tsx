@@ -34,6 +34,7 @@ const baseSequence: Sequence = {
   musicPrompt: null,
   musicTags: null,
   statusError: null,
+  posterUrl: null,
   autoGenerateMotion: false,
   autoGenerateMusic: false,
 };

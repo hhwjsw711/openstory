@@ -1,0 +1,1 @@
+ALTER TABLE `sequences` ADD `poster_url` text;

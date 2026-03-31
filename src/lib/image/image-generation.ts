@@ -235,6 +235,18 @@ function buildFalModelOptions(
         sync_mode: false,
       };
 
+    case 'flux_2_turbo':
+      return {
+        image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        num_inference_steps: params.numInferenceSteps ?? 4,
+        guidance_scale: params.guidanceScale ?? 2.5,
+        enable_safety_checker: true,
+        ...(params.seed !== undefined && { seed: params.seed }),
+        ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.outputFormat && { output_format: params.outputFormat }),
+        sync_mode: false,
+      };
+
     case 'flux_2_max':
       return {
         image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,

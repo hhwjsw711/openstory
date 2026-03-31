@@ -1,4 +1,12 @@
 import { type TabValue } from '@/components/scenes/scene-script-prompts';
+import { BlobLoader } from '@/components/ui/blob-loader';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFrameDownloadUrl } from '@/hooks/use-frame-download-url';
@@ -9,13 +17,7 @@ import {
 } from '@/lib/constants/aspect-ratios';
 import { cn } from '@/lib/utils';
 import type { Frame } from '@/types/database';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Image } from '@unpic/react';
 import {
   AlertCircle,
   Download,
@@ -24,12 +26,10 @@ import {
   Share2,
   VideoIcon,
 } from 'lucide-react';
-import { Image } from '@unpic/react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { VideoPlayer } from './video-player';
 import { VideoStateOverlay } from './video-state-overlay';
-import { BlobLoader } from '@/components/ui/blob-loader';
 
 type ScenePlayerProps = {
   frames?: Frame[];
@@ -37,8 +37,10 @@ type ScenePlayerProps = {
   aspectRatio: AspectRatio;
   onSelectFrame: (frameId: string) => void;
   className?: string;
+  wrapperClassName?: string;
   selectedTab?: TabValue;
   progressMessage?: string;
+  posterUrl?: string;
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
 };
@@ -46,10 +48,12 @@ type ScenePlayerProps = {
 export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   frames,
   className,
+  wrapperClassName,
   selectedFrameId,
   aspectRatio,
   selectedTab,
   progressMessage,
+  posterUrl,
   onSelectFrame,
   onTimeUpdate,
   onEnded,
@@ -146,27 +150,72 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
   if (!frames || frames.length === 0) {
     if (progressMessage) {
       return (
-        <div
-          className={cn(
-            'relative flex w-full items-center justify-center overflow-hidden bg-muted',
-            className,
-            getAspectRatioClassName(aspectRatio)
-          )}
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
-          <div className="flex flex-col items-center gap-4">
-            <BlobLoader size="lg" />
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-              <p className="text-sm font-medium">{progressMessage}</p>
-            </div>
+        <div className={cn('flex w-full flex-col', wrapperClassName)}>
+          <div
+            className={cn(
+              'relative flex w-full items-center justify-center overflow-hidden bg-muted',
+              className,
+              getAspectRatioClassName(aspectRatio)
+            )}
+          >
+            {posterUrl ? (
+              <>
+                <Image
+                  src={posterUrl}
+                  alt=""
+                  width={imageDimensions.width}
+                  height={imageDimensions.height}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <span className="absolute top-2 right-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+                  Preview
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(167,112,239,0.12),transparent_70%)]" />
+                <div className="relative flex flex-col items-center gap-4">
+                  <BlobLoader size="lg" />
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <p className="text-sm font-medium">{progressMessage}</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+    if (posterUrl) {
+      return (
+        <div className={cn('flex w-full flex-col', wrapperClassName)}>
+          <div
+            className={cn(
+              'relative overflow-hidden',
+              className,
+              getAspectRatioClassName(aspectRatio)
+            )}
+          >
+            <Image
+              src={posterUrl}
+              alt=""
+              width={imageDimensions.width}
+              height={imageDimensions.height}
+              className="h-full w-full object-cover"
+            />
+            <span className="absolute top-2 right-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+              Preview
+            </span>
           </div>
         </div>
       );
     }
     return (
-      <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
-        <Skeleton className="w-full h-full" />
+      <div className={cn('flex w-full flex-col', wrapperClassName)}>
+        <div className={cn(className, getAspectRatioClassName(aspectRatio))}>
+          <Skeleton className="w-full h-full" />
+        </div>
       </div>
     );
   }
@@ -189,28 +238,37 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
     currentFrame.metadata?.metadata?.title ??
     (sceneNumber ? `Scene ${sceneNumber}` : undefined);
 
+  // Best available image: final thumbnail → fast preview → sequence poster
+  const displayImage =
+    currentFrame.thumbnailUrl ??
+    currentFrame.previewThumbnailUrl ??
+    posterUrl ??
+    null;
+  const isPreviewImage =
+    !!currentFrame.previewThumbnailUrl && !currentFrame.thumbnailUrl;
+
   return (
-    <>
+    <div className={cn('flex w-full flex-col', wrapperClassName)}>
       {hasFailedVideo ? (
         <div
           className={cn(
             'relative overflow-hidden',
             getAspectRatioClassName(aspectRatio),
-            // Use bg-muted as fallback when no thumbnail
-            !currentFrame.thumbnailUrl && 'bg-muted',
+            // Use bg-muted as fallback when no image at all
+            !displayImage && 'bg-muted',
             className
           )}
         >
-          {/* Show thumbnail as background if available */}
-          {currentFrame.thumbnailUrl && (
+          {/* Show best available image as background */}
+          {displayImage && (
             <a
-              href={currentFrame.thumbnailUrl}
+              href={currentFrame.thumbnailUrl ?? displayImage}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full h-full"
             >
               <Image
-                src={currentFrame.thumbnailUrl}
+                src={displayImage}
                 alt={title || 'Scene thumbnail'}
                 className="w-full h-full object-cover"
                 width={imageDimensions.width}
@@ -245,8 +303,8 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           <div
             className={cn(
               'absolute inset-0 flex items-center justify-center pointer-events-none',
-              // Use semi-transparent overlay if thumbnail exists, solid bg if not
-              currentFrame.thumbnailUrl ? 'bg-muted/80' : 'bg-transparent'
+              // Use semi-transparent overlay if image exists, solid bg if not
+              displayImage ? 'bg-muted/80' : 'bg-transparent'
             )}
           >
             <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -256,7 +314,13 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           </div>
         </div>
       ) : (
-        <div className={cn('relative flex flex-1', className)}>
+        <div
+          className={cn(
+            'relative w-full',
+            getAspectRatioClassName(aspectRatio),
+            className
+          )}
+        >
           {/* Share dropdown */}
           {(currentFrame.thumbnailUrl || currentFrame.videoUrl) && (
             <DropdownMenu>
@@ -308,7 +372,7 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
             src={
               selectedTab === 'image-prompt' ? '' : currentFrame.videoUrl || ''
             }
-            posterSrc={currentFrame.thumbnailUrl}
+            posterSrc={displayImage}
             aspectRatio={aspectRatio}
             className="w-full"
             autoPlay={shouldAutoPlay}
@@ -318,12 +382,28 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           />
           {/* Show overlay for image/video generation states */}
           <VideoStateOverlay
-            thumbnailUrl={currentFrame.thumbnailUrl}
+            thumbnailUrl={displayImage}
             videoStatus={currentFrame.videoStatus ?? null}
             progressMessage={progressMessage}
           />
+          {isPreviewImage && (
+            <span className="absolute top-2 right-2 z-10 rounded bg-background/80 px-2 py-1 text-xs font-medium text-muted-foreground backdrop-blur-sm">
+              Preview
+            </span>
+          )}
         </div>
       )}
+      <p
+        className={cn(
+          'text-xs italic py-1 transition-opacity duration-300',
+          isPreviewImage
+            ? 'text-muted-foreground opacity-100'
+            : 'opacity-0 select-none'
+        )}
+        aria-hidden={!isPreviewImage}
+      >
+        Fast preview — may not match the final image.
+      </p>
       {/* Preload next video in background if it's completed */}
       {nextFrame?.videoUrl && nextFrame.videoStatus === 'completed' && (
         <div className="hidden">
@@ -335,6 +415,6 @@ export const ScenePlayer: React.FC<ScenePlayerProps> = ({
           />
         </div>
       )}
-    </>
+    </div>
   );
 };
