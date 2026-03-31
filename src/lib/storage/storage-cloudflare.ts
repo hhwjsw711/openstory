@@ -64,23 +64,25 @@ export async function uploadFile(
 export async function getSignedUrl(
   bucket: StorageBucket,
   path: string,
-  expiresIn = 3600
+  _expiresIn = 3600
 ): Promise<string> {
-  // R2 bindings don't support presigned URLs — fall back to S3 SDK
-  const { getSignedUrl: s3GetSignedUrl } = await import('./storage-s3');
-  return s3GetSignedUrl(bucket, path, expiresIn);
+  // R2 files are publicly accessible via CDN — no signing needed on Cloudflare.
+  // The S3 SDK fallback previously here pulled ~19MB of @aws-sdk into the Worker
+  // bundle, contributing to OOM (error 1102) on the 128MB Workers memory limit.
+  return getPublicUrl(bucket, path);
 }
 
 export async function getSignedUrlWithDownload(
   bucket: StorageBucket,
   path: string,
-  filename: string,
-  expiresIn = 3600
+  _filename: string,
+  _expiresIn = 3600
 ): Promise<string> {
-  // R2 bindings don't support presigned URLs — fall back to S3 SDK
-  const { getSignedUrlWithDownload: s3GetSignedUrlWithDownload } =
-    await import('./storage-s3');
-  return s3GetSignedUrlWithDownload(bucket, path, filename, expiresIn);
+  // R2 files are publicly accessible — return public URL.
+  // Custom download filename (ResponseContentDisposition) is not supported
+  // without S3 presigned URLs, but keeping the AWS SDK out of the Worker
+  // bundle is worth the trade-off. Browser "Save As" still works.
+  return getPublicUrl(bucket, path);
 }
 
 export async function getSignedUploadUrl(
