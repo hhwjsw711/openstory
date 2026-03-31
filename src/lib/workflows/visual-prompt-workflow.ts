@@ -64,6 +64,7 @@ export const visualPromptWorkflow = createScopedWorkflow<
           },
           flowControl: getLLMFlowControl(),
           retries: 3,
+          retryDelay: '10000 * pow(2, retried)',
         });
       })
     );
