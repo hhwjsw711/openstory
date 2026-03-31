@@ -129,16 +129,15 @@ export const MotionProgressBanner: React.FC<MotionProgressBannerProps> = ({
   onComplete,
 }) => {
   const [isOpen, setIsOpen] = useState(true);
-  const [elapsedSeconds, setElapsedSeconds] = useState(() =>
-    Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
-  );
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startTimeRef = useRef(startedAt);
 
-  // Tick elapsed time every second
+  // Tick elapsed time every second (initial call avoids 1s blank after hydration)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const tick = () =>
       setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 1000);
+    tick();
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, []);
 
