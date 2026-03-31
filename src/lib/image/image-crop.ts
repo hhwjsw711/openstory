@@ -1,10 +1,14 @@
 /**
- * Image Cropping Utility
- * Uses @cf-wasm/photon (WASM-based) to crop tiles from grid images
- * Compatible with Cloudflare Workers (Sharp's native binaries don't work in workerd)
+ * Image Cropping via Cloudflare Image Resizing
+ *
+ * Instead of downloading grid images and cropping with WASM in-process,
+ * returns a `/cdn-cgi/image/trim=T;R;B;L/` URL. Cloudflare crops at the
+ * edge when the downstream service (e.g. FAL nano_banana_2) fetches it.
+ *
+ * Requires Image Resizing enabled on the Cloudflare zone.
  */
 
-import { PhotonImage, crop } from '@cf-wasm/photon';
+import type { ImageSize } from '@/lib/constants/aspect-ratios';
 
 type CropTileOptions = {
   gridImageUrl: string;
@@ -12,23 +16,37 @@ type CropTileOptions = {
   col: number; // 1-based (1 = left column)
   gridCols?: number; // total columns in grid (default 3)
   gridRows?: number; // total rows in grid (default 3)
+  imageSize: ImageSize; // needed to calculate pixel dimensions
 };
 
 type CropTileResult = {
-  buffer: Uint8Array;
-  width: number;
-  height: number;
+  url: string;
 };
 
 /**
- * Crop a tile from a grid image with configurable dimensions
- * @param options - Grid image URL, tile position, and grid dimensions
- * @returns Promise resolving to cropped image buffer and dimensions
+ * Known tile dimensions per imageSize for fal.ai models.
+ * These are the per-tile pixel dimensions — the full grid image is
+ * (cols * tileWidth) x (rows * tileHeight).
  */
-export async function cropTileFromGrid(
-  options: CropTileOptions
-): Promise<CropTileResult> {
-  const { gridImageUrl, row, col, gridCols = 3, gridRows = 3 } = options;
+const TILE_DIMENSIONS: Record<ImageSize, { width: number; height: number }> = {
+  landscape_16_9: { width: 1344, height: 768 },
+  portrait_16_9: { width: 576, height: 1024 },
+  square_hd: { width: 1024, height: 1024 },
+};
+
+/**
+ * Crop a tile from a grid image using Cloudflare Image Resizing.
+ * Returns a cdn-cgi/image/trim= URL instead of downloading and processing in-memory.
+ */
+export function cropTileFromGrid(options: CropTileOptions): CropTileResult {
+  const {
+    gridImageUrl,
+    row,
+    col,
+    gridCols = 3,
+    gridRows = 3,
+    imageSize,
+  } = options;
 
   if (row < 1 || row > gridRows || col < 1 || col > gridCols) {
     throw new Error(
@@ -36,52 +54,18 @@ export async function cropTileFromGrid(
     );
   }
 
-  // Fetch the grid image
-  const response = await fetch(gridImageUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch grid image: ${response.status}`);
-  }
+  const tile = TILE_DIMENSIONS[imageSize];
+  const tileWidth = tile.width;
+  const tileHeight = tile.height;
 
-  const arrayBuffer = await response.arrayBuffer();
-  const inputBytes = new Uint8Array(arrayBuffer);
+  // Calculate trim values (pixels to remove from each edge)
+  const trimTop = tileHeight * (row - 1);
+  const trimRight = tileWidth * (gridCols - col);
+  const trimBottom = tileHeight * (gridRows - row);
+  const trimLeft = tileWidth * (col - 1);
 
-  // Create PhotonImage instance from bytes
-  const inputImage = PhotonImage.new_from_byteslice(inputBytes);
+  const parsed = new URL(gridImageUrl);
+  const trimUrl = `${parsed.origin}/cdn-cgi/image/trim=${trimTop};${trimRight};${trimBottom};${trimLeft}${parsed.pathname}`;
 
-  try {
-    // Get image dimensions
-    const width = inputImage.get_width();
-    const height = inputImage.get_height();
-
-    // Calculate tile dimensions
-    const tileWidth = Math.floor(width / gridCols);
-    const tileHeight = Math.floor(height / gridRows);
-
-    // Calculate crop coordinates (row/col are 1-indexed)
-    // Photon crop takes (x1, y1, x2, y2) - top-left and bottom-right corners
-    const x1 = (col - 1) * tileWidth;
-    const y1 = (row - 1) * tileHeight;
-    const x2 = x1 + tileWidth;
-    const y2 = y1 + tileHeight;
-
-    // Crop the tile
-    const croppedImage = crop(inputImage, x1, y1, x2, y2);
-
-    try {
-      // Get PNG bytes
-      const outputBytes = croppedImage.get_bytes();
-
-      return {
-        buffer: outputBytes,
-        width: tileWidth,
-        height: tileHeight,
-      };
-    } finally {
-      // Free cropped image memory
-      croppedImage.free();
-    }
-  } finally {
-    // Free input image memory
-    inputImage.free();
-  }
+  return { url: trimUrl };
 }

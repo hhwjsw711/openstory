@@ -16,7 +16,6 @@ import {
 import type { Character, SequenceLocation } from '@/lib/db/schema';
 import { locationMatchesTag } from '@/lib/db/scoped/sequence-locations';
 import { cropTileFromGrid } from '@/lib/image/image-crop';
-import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import { buildCharacterReferenceImages } from '@/lib/prompts/character-prompt';
 import { buildLocationReferenceImages } from '@/lib/prompts/location-prompt';
 import type { ReferenceImageDescription } from '@/lib/prompts/reference-image-prompt';
@@ -322,30 +321,22 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
 
     const { row, col } = indexToRowCol(data.variantIndex, gridConfig.cols);
 
-    const cropResult = await cropTileFromGrid({
+    // Construct a Cloudflare Image Resizing crop URL instead of downloading
+    // and WASM-processing the grid image in-Worker. FAL fetches the cropped
+    // tile directly from this URL when upscaling.
+    const cropResult = cropTileFromGrid({
       gridImageUrl: frame.variantImageUrl,
       row,
       col,
       gridCols: gridConfig.cols,
       gridRows: gridConfig.rows,
+      imageSize: gridConfig.imageSize,
     });
 
-    const uploadResult = await uploadImageBufferToStorage({
-      imageBuffer: cropResult.buffer,
-      teamId: sequence.teamId,
-      sequenceId: sequence.id,
-      frameId: frame.id,
-      contentType: 'image/png',
-    });
-
-    if (!uploadResult.url) {
-      throw new Error('Failed to upload cropped image to storage');
-    }
-
-    // Set cropped thumbnail and clear stale motion fields
+    // Set cropped thumbnail URL and clear stale motion fields
     await context.scopedDb.frames.update(frame.id, {
-      thumbnailUrl: uploadResult.url,
-      thumbnailPath: uploadResult.path || null,
+      thumbnailUrl: cropResult.url,
+      thumbnailPath: null,
       thumbnailStatus: 'generating',
       thumbnailError: null,
       videoUrl: null,
@@ -385,8 +376,8 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
       teamId: sequence.teamId,
       sequenceId: sequence.id,
       frameId: frame.id,
-      croppedTileUrl: uploadResult.url,
-      croppedTilePath: uploadResult.path || '',
+      croppedTileUrl: cropResult.url,
+      croppedTilePath: '',
       aspectRatio: sequence.aspectRatio,
       characterReferences,
       locationReferences,
@@ -403,7 +394,7 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
 
     return {
       frameId: frame.id,
-      thumbnailUrl: uploadResult.url,
+      thumbnailUrl: cropResult.url,
       variantIndex: data.variantIndex,
       upscaleWorkflowRunId: workflowRunId,
     };
