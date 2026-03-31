@@ -8,15 +8,12 @@
  * Requires Image Resizing enabled on the Cloudflare zone.
  */
 
-import type { ImageSize } from '@/lib/constants/aspect-ratios';
-
 type CropTileOptions = {
   gridImageUrl: string;
   row: number; // 1-based (1 = top row)
   col: number; // 1-based (1 = left column)
   gridCols?: number; // total columns in grid (default 3)
   gridRows?: number; // total rows in grid (default 3)
-  imageSize: ImageSize; // needed to calculate pixel dimensions
 };
 
 type CropTileResult = {
@@ -24,29 +21,46 @@ type CropTileResult = {
 };
 
 /**
- * Known tile dimensions per imageSize for fal.ai models.
- * These are the per-tile pixel dimensions — the full grid image is
- * (cols * tileWidth) x (rows * tileHeight).
+ * Read the pixel dimensions from a PNG header (bytes 16-23 of IHDR chunk).
+ * Only fetches the first 30 bytes via Range request — no full download.
  */
-const TILE_DIMENSIONS: Record<ImageSize, { width: number; height: number }> = {
-  landscape_16_9: { width: 1344, height: 768 },
-  portrait_16_9: { width: 576, height: 1024 },
-  square_hd: { width: 1024, height: 1024 },
-};
+async function getImageDimensions(
+  imageUrl: string
+): Promise<{ width: number; height: number }> {
+  const response = await fetch(imageUrl, {
+    headers: { Range: 'bytes=0-29' },
+  });
+
+  const buffer = await response.arrayBuffer();
+  const view = new DataView(buffer);
+
+  // PNG: bytes 16-19 = width, 20-23 = height (big-endian uint32)
+  // PNG magic: 0x89504E47
+  if (view.getUint8(0) === 0x89 && view.getUint8(1) === 0x50) {
+    return {
+      width: view.getUint32(16, false),
+      height: view.getUint32(20, false),
+    };
+  }
+
+  // JPEG: need to scan for SOF marker — more complex, fall back to full HEAD
+  // For now, throw and let the caller handle it
+  throw new Error(
+    'Could not read image dimensions — only PNG headers are supported'
+  );
+}
 
 /**
  * Crop a tile from a grid image using Cloudflare Image Resizing.
  * Returns a cdn-cgi/image/trim= URL instead of downloading and processing in-memory.
+ *
+ * Reads actual image dimensions from the PNG header (30 bytes) to calculate
+ * accurate trim values, rather than assuming fixed tile sizes.
  */
-export function cropTileFromGrid(options: CropTileOptions): CropTileResult {
-  const {
-    gridImageUrl,
-    row,
-    col,
-    gridCols = 3,
-    gridRows = 3,
-    imageSize,
-  } = options;
+export async function cropTileFromGrid(
+  options: CropTileOptions
+): Promise<CropTileResult> {
+  const { gridImageUrl, row, col, gridCols = 3, gridRows = 3 } = options;
 
   if (row < 1 || row > gridRows || col < 1 || col > gridCols) {
     throw new Error(
@@ -54,9 +68,11 @@ export function cropTileFromGrid(options: CropTileOptions): CropTileResult {
     );
   }
 
-  const tile = TILE_DIMENSIONS[imageSize];
-  const tileWidth = tile.width;
-  const tileHeight = tile.height;
+  const { width: gridWidth, height: gridHeight } =
+    await getImageDimensions(gridImageUrl);
+
+  const tileWidth = Math.floor(gridWidth / gridCols);
+  const tileHeight = Math.floor(gridHeight / gridRows);
 
   // Calculate trim values (pixels to remove from each edge)
   const trimTop = tileHeight * (row - 1);

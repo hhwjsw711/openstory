@@ -324,13 +324,12 @@ export const selectFrameVariantFn = createServerFn({ method: 'POST' })
     // Construct a Cloudflare Image Resizing crop URL instead of downloading
     // and WASM-processing the grid image in-Worker. FAL fetches the cropped
     // tile directly from this URL when upscaling.
-    const cropResult = cropTileFromGrid({
+    const cropResult = await cropTileFromGrid({
       gridImageUrl: frame.variantImageUrl,
       row,
       col,
       gridCols: gridConfig.cols,
       gridRows: gridConfig.rows,
-      imageSize: gridConfig.imageSize,
     });
 
     // Set cropped thumbnail URL and clear stale motion fields
