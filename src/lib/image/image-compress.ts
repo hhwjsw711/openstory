@@ -4,8 +4,6 @@
  * Compatible with Cloudflare Workers (Sharp's native binaries don't work in workerd).
  */
 
-import { PhotonImage } from '@cf-wasm/photon';
-
 type CompressionResult = {
   buffer: Uint8Array;
   contentType: string;
@@ -51,6 +49,11 @@ export async function ensureImageUnderLimit(
   console.log(
     `[ImageCompress] Image is ${(originalSizeBytes / 1024 / 1024).toFixed(1)}MB, compressing under ${(maxBytes / 1024 / 1024).toFixed(1)}MB limit`
   );
+
+  // Dynamic import — @cf-wasm/photon's 1.6MB WASM binary uses significant runtime
+  // memory when instantiated. Loading it only when compression is actually needed
+  // keeps the Worker under the 128MB memory limit for requests that skip compression.
+  const { PhotonImage } = await import('@cf-wasm/photon');
 
   const inputBytes = new Uint8Array(arrayBuffer);
   const inputImage = PhotonImage.new_from_byteslice(inputBytes);
