@@ -21,19 +21,15 @@ export const GenerationProgressBanner: React.FC<
   GenerationProgressBannerProps
 > = ({ generationState, isProcessing, startedAt, script }) => {
   const [isOpen, setIsOpen] = useState(true);
-  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
-    if (startedAt) {
-      return Math.max(0, Math.floor((Date.now() - startedAt.getTime()) / 1000));
-    }
-    return 0;
-  });
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const startTimeRef = useRef(startedAt?.getTime() ?? Date.now());
 
-  // Tick elapsed time every second
+  // Tick elapsed time every second (initial call avoids 1s blank after hydration)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const tick = () =>
       setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 1000);
+    tick();
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, []);
 
