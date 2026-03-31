@@ -38,14 +38,9 @@ export async function uploadFile(
   const key = buildR2Key(bucket, path);
 
   try {
-    const body =
-      file instanceof ReadableStream ||
-      file instanceof ArrayBuffer ||
-      file instanceof Uint8Array
-        ? file
-        : await file.arrayBuffer();
-
-    await r2.put(key, body, {
+    // R2 natively accepts all types in our union (ReadableStream, ArrayBuffer,
+    // ArrayBufferView, Blob) — no conversion needed.
+    await r2.put(key, file, {
       httpMetadata: {
         contentType: options?.contentType,
         cacheControl: options?.cacheControl ?? 'public, max-age=31536000',

@@ -67,7 +67,9 @@ export async function uploadFile(
 
   try {
     // Use Bun's native S3 client for ReadableStream — AWS SDK v3 in Bun
-    // doesn't reliably handle streaming uploads (see commit afdb5ccf)
+    // doesn't reliably handle streaming uploads (see commit afdb5ccf).
+    // Note: Bun's S3Options doesn't support cacheControl, so streamed files
+    // won't get cache headers. This only affects local dev / Railway.
     if (file instanceof ReadableStream) {
       const { S3Client: BunS3Client } = await import('bun');
       const env = getEnv();
