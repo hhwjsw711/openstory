@@ -22,6 +22,7 @@ declare namespace Cloudflare {
     FAL_KEY: string;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
+    LLM_CONCURRENCY_LIMIT: string;
     LANGFUSE_BASE_URL: string;
     LANGFUSE_CAPTURE_CONTENT: string;
     LANGFUSE_PUBLIC_KEY: string;
@@ -68,6 +69,7 @@ declare namespace Cloudflare {
     FAL_KEY: string;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
+    LLM_CONCURRENCY_LIMIT: string;
     LANGFUSE_BASE_URL: string;
     LANGFUSE_CAPTURE_CONTENT: string;
     LANGFUSE_PUBLIC_KEY: string;
@@ -110,6 +112,7 @@ declare namespace Cloudflare {
     FAL_KEY: string;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
+    LLM_CONCURRENCY_LIMIT: string;
     LANGFUSE_BASE_URL: string;
     LANGFUSE_CAPTURE_CONTENT: string;
     LANGFUSE_PUBLIC_KEY: string;
@@ -163,6 +166,7 @@ declare namespace NodeJS {
       | 'EVAL_JUDGE_MODEL'
       | 'FAL_CONCURRENCY_LIMIT'
       | 'FAL_KEY'
+      | 'LLM_CONCURRENCY_LIMIT'
       | 'GOOGLE_CLIENT_ID'
       | 'GOOGLE_CLIENT_SECRET'
       | 'LANGFUSE_BASE_URL'

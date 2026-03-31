@@ -769,12 +769,12 @@ TALENT TO CAST ({{numTalent}} selected by user):
 {{talentDescription}}
 
 REQUIREMENTS:
-- Match ALL {{expectedMatches}} talent to characters ({{numTalent}} talent, {{numCharacters}} characters available)
+- Match ALL {{numTalent}} talent to characters ({{numTalent}} talent, {{numCharacters}} characters available)
 - Each talent gets exactly one character
 - Each character can only have one talent
 {{additionalRequirements}}
 
-Respond with exactly {{expectedMatches}} matches.`,
+Respond with exactly {{numTalent}} matches.`,
     },
   ],
 

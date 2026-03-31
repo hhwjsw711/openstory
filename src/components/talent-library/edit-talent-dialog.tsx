@@ -77,8 +77,11 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
           </Button>
         )}
       </DialogTrigger>
-      <form onSubmit={(e) => void handleSubmit(e)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex flex-col gap-4"
+        >
           <DialogHeader>
             <DialogTitle>Edit Talent</DialogTitle>
             <DialogDescription>
@@ -170,8 +173,8 @@ export const EditTalentDialog: React.FC<EditTalentDialogProps> = ({
               {updateTalent.isPending ? 'Saving…' : 'Save Changes'}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 };

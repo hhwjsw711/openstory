@@ -111,6 +111,7 @@ preview*/
 
 # superpowers
 .superpowers/
+docs/superpowers/
 
 # json
 json/

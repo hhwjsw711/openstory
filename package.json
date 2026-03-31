@@ -113,7 +113,6 @@
     "@aws-sdk/client-s3": "^3.1020.0",
     "@aws-sdk/s3-request-presigner": "^3.1020.0",
     "@better-auth/passkey": "^1.5.6",
-    "@cf-wasm/photon": "^0.3.4",
     "@fal-ai/client": "^1.9.5",
     "@langfuse/client": "5",
     "@langfuse/otel": "5",
@@ -171,6 +170,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@cf-wasm/photon": "^0.3.4",
     "@chromatic-com/storybook": "^5.1.1",
     "@clack/prompts": "^1.1.0",
     "@cloudflare/vite-plugin": "^1.30.2",

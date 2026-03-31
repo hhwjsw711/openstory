@@ -1,0 +1,62 @@
+/**
+ * Mock for @tanstack/react-start used in Storybook.
+ *
+ * Replaces createServerFn and createMiddleware so server functions
+ * become no-ops that return never-resolving promises. This lets
+ * React Query use pre-populated cache data without triggering
+ * real HTTP calls to /_serverFn/.
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+function createBuilder(handler?: (...args: any[]) => any) {
+  const builder: Record<string, any> = {};
+
+  // Every chained method returns the same builder
+  for (const method of [
+    'middleware',
+    'inputValidator',
+    'validator',
+    'options',
+    'server',
+    'client',
+  ]) {
+    builder[method] = () => builder;
+  }
+
+  // .handler() terminates the chain and returns the callable function
+  builder.handler = () => {
+    // Return a function that never resolves — React Query will use cached data
+    const serverFn = () => new Promise<never>(() => {});
+    // Attach builder methods to the function too (some code chains after .handler())
+    Object.assign(serverFn, builder);
+    return serverFn;
+  };
+
+  return handler ? builder.handler(handler) : builder;
+}
+
+export function createServerFn(_opts?: any) {
+  return createBuilder();
+}
+
+export function createMiddleware(_opts?: any) {
+  return createBuilder();
+}
+
+// Re-export stubs for subpath imports (@tanstack/react-start/server)
+export function getRequest() {
+  return new Request('http://localhost');
+}
+
+// Other exports that might be imported from @tanstack/react-start
+export function json(data: any, init?: ResponseInit) {
+  return new Response(JSON.stringify(data), {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  });
+}
+
+export function createIsomorphicFn() {
+  return createBuilder();
+}

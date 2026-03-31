@@ -47,6 +47,7 @@ Oh, hi Mom. Yeah, I'm fine. Just... working on a big project.`,
   musicPrompt: null,
   musicTags: null,
   statusError: null,
+  posterUrl: null,
   autoGenerateMotion: false,
   autoGenerateMusic: false,
 };

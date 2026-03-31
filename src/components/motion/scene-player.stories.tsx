@@ -39,6 +39,7 @@ const mockFrameBase = {
   variantImageUrl: null,
   variantImageStatus: 'pending' as const,
   variantWorkflowRunId: null,
+  previewThumbnailUrl: null,
   metadata: {
     sceneId: 'scene-1',
     sceneNumber: 1,
@@ -391,6 +392,87 @@ export const FailedVideoWithThumbnail: Story = {
       description: {
         story:
           'Video generation failed but thumbnail succeeded. Shows error overlay with semi-transparent background over the thumbnail image.',
+      },
+    },
+  },
+};
+
+export const PreviewMode: Story = {
+  args: {
+    selectedFrameId: '1',
+    aspectRatio: '16:9',
+    onSelectFrame: () => {},
+    frames: [
+      {
+        ...mockFrameBase,
+        id: '1',
+        orderIndex: 0,
+        thumbnailUrl: null,
+        thumbnailPath: null,
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview1/1280/720',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'generating',
+        videoStatus: 'pending',
+        variantImageStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 1,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Preview - Generating Full Image',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '2',
+        orderIndex: 1,
+        thumbnailUrl: null,
+        thumbnailPath: null,
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview2/1280/720',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'generating',
+        videoStatus: 'pending',
+        variantImageStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 2,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Preview - Still Processing',
+          },
+        } as unknown as Frame['metadata'],
+      },
+      {
+        ...mockFrameBase,
+        id: '3',
+        orderIndex: 2,
+        thumbnailUrl: 'https://picsum.photos/seed/final3/1280/720',
+        thumbnailPath: 'teams/mock/sequences/mock/frames/3/thumbnail.jpg',
+        previewThumbnailUrl: 'https://picsum.photos/seed/preview3/1280/720',
+        videoUrl: null,
+        videoPath: null,
+        thumbnailStatus: 'completed',
+        videoStatus: 'pending',
+        variantImageStatus: 'pending',
+        metadata: {
+          ...mockFrameBase.metadata,
+          sceneNumber: 3,
+          metadata: {
+            ...mockFrameBase.metadata.metadata,
+            title: 'Final Image Ready',
+          },
+        } as unknown as Frame['metadata'],
+      },
+    ],
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Shows preview mode where fast preview images are displayed while full-resolution thumbnails are still generating. Scenes 1-2 show the "Preview" badge, Scene 3 has its final image ready.',
       },
     },
   },

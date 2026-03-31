@@ -7,6 +7,9 @@ const meta: Meta<typeof SceneThumbnail> = {
   parameters: {
     layout: 'centered',
   },
+  args: {
+    aspectRatio: '16:9',
+  },
   decorators: [
     (Story) => (
       <div className="w-80">
@@ -30,6 +33,14 @@ export const Generating: Story = {
   args: {
     thumbnailStatus: 'generating',
     alt: 'Scene 1',
+  },
+};
+
+export const Preview: Story = {
+  args: {
+    previewThumbnailUrl: 'https://picsum.photos/seed/preview1/320/180',
+    thumbnailStatus: 'generating',
+    alt: 'Scene 1 - Preview while generating',
   },
 };
 

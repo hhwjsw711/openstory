@@ -36,17 +36,15 @@ export function buildMatchingPromptVariables(
 
   const numTalent = talentList.length;
   const numCharacters = characters.length;
-  const expectedMatches = Math.min(numTalent, numCharacters);
-
   return {
     charactersDescription,
     talentDescription,
     numTalent: `${numTalent}`,
     numCharacters: `${numCharacters}`,
-    expectedMatches: `${expectedMatches}`,
+    expectedMatches: `${numTalent}`,
     additionalRequirements:
       numTalent > numCharacters
-        ? `- Note: More talent than characters. Match the ${numCharacters} best fits.`
+        ? `- There are more talent (${numTalent}) than characters (${numCharacters}). You MUST still match every talent. Assign remaining talent to the best-fitting characters (multiple talent can share a character if needed).`
         : '',
   };
 }

@@ -60,8 +60,19 @@ function debouncedInvalidate(
 }
 
 /**
- * Validates if a status value is a valid Frame status.
+ * Validates if a status value is a valid music status.
  */
+function isValidMusicStatus(
+  status: unknown
+): status is Sequence['musicStatus'] {
+  return (
+    status === 'pending' ||
+    status === 'generating' ||
+    status === 'completed' ||
+    status === 'failed'
+  );
+}
+
 function isValidFrameStatus(
   status: unknown
 ): status is Frame['thumbnailStatus'] {
@@ -109,6 +120,10 @@ export function updateQueryCacheFromEvent(
 
     case 'generation.image:progress': {
       const thumbnailUrl = getOptionalString(data, 'thumbnailUrl');
+      const previewThumbnailUrl = getOptionalString(
+        data,
+        'previewThumbnailUrl'
+      );
       const status = data.status;
       queryClient.setQueryData<Frame[]>(frameKeys.list(sequenceId), (old) =>
         old?.map((f) =>
@@ -116,6 +131,8 @@ export function updateQueryCacheFromEvent(
             ? {
                 ...f,
                 thumbnailUrl: thumbnailUrl ?? f.thumbnailUrl,
+                previewThumbnailUrl:
+                  previewThumbnailUrl ?? f.previewThumbnailUrl,
                 thumbnailStatus: isValidFrameStatus(status)
                   ? status
                   : f.thumbnailStatus,
@@ -167,7 +184,7 @@ export function updateQueryCacheFromEvent(
     case 'generation.audio:progress': {
       const status = data.status;
       const audioUrl = getOptionalString(data, 'audioUrl');
-      if (isValidFrameStatus(status)) {
+      if (isValidMusicStatus(status)) {
         queryClient.setQueryData<Sequence>(
           sequenceKeys.detail(sequenceId),
           (old) =>
@@ -182,6 +199,24 @@ export function updateQueryCacheFromEvent(
       }
       break;
     }
+
+    case 'generation.poster:ready': {
+      const posterUrl = getOptionalString(data, 'posterUrl');
+      if (posterUrl) {
+        queryClient.setQueryData<Sequence>(
+          sequenceKeys.detail(sequenceId),
+          (old) => (old ? { ...old, posterUrl } : old)
+        );
+      }
+      break;
+    }
+
+    case 'generation.preview:replaced':
+      // Preview frames replaced by AI-analyzed frames — refetch frame list
+      void queryClient.invalidateQueries({
+        queryKey: frameKeys.list(sequenceId),
+      });
+      break;
 
     case 'generation.complete':
     case 'generation.failed':

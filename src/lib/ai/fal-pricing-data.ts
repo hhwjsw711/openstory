@@ -44,6 +44,12 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     pricingNotes:
       '- **Price**: $0.012 per megapixels\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
   },
+  'fal-ai/flux-2/turbo': {
+    basePrice: micros(8_000),
+    unit: 'per_megapixel',
+    pricingNotes:
+      '- **Price**: $0.008 per megapixels\n\nFor more details, see [fal.ai pricing](https://fal.ai/pricing).',
+  },
   'fal-ai/flux-2/klein/4b': {
     basePrice: micros(9_000),
     unit: 'per_megapixel',

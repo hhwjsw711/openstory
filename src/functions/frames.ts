@@ -1,16 +1,16 @@
-import { createServerFn } from '@tanstack/react-start';
-import { zodValidator } from '@tanstack/zod-adapter';
-import { z } from 'zod';
-import { sequenceAccessMiddleware, frameAccessMiddleware } from './middleware';
+import type { NewFrame } from '@/lib/db/schema';
+import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
 import {
-  singleFrameSchema,
   bulkFrameSchema,
+  singleFrameSchema,
   updateFrameSchema,
 } from '@/lib/schemas/frame.schemas';
 import { ulidSchema } from '@/lib/schemas/id.schemas';
-import { getVideoDownloadUrl } from '@/lib/motion/video-storage';
-import type { NewFrame } from '@/lib/db/schema';
 import { reconcileStaleFrameStatuses } from '@/lib/workflow/reconcile';
+import { createServerFn } from '@tanstack/react-start';
+import { zodValidator } from '@tanstack/zod-adapter';
+import { z } from 'zod';
+import { frameAccessMiddleware, sequenceAccessMiddleware } from './middleware';
 
 const frameIdInputSchema = z.object({
   sequenceId: ulidSchema,
@@ -62,7 +62,7 @@ export const createFramesBulkFn = createServerFn({ method: 'POST' })
       sequenceId: data.sequenceId,
       ...frame,
     }));
-    return context.scopedDb.frames.bulkInsert(frameInserts);
+    return context.scopedDb.frames.bulkUpsert(frameInserts);
   });
 
 export const updateFrameFn = createServerFn({ method: 'POST' })

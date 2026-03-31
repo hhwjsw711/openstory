@@ -4,7 +4,6 @@
  */
 
 import { sanitizeScriptContent } from '@/lib/ai/prompt-validation';
-import { sceneSplittingResultSchema } from '@/lib/ai/response-schemas';
 import type { Scene } from '@/lib/ai/scene-analysis.schema';
 import { recordWorkflowTrace } from '@/lib/observability/langfuse';
 import { getGenerationChannel } from '@/lib/realtime';
@@ -21,14 +20,14 @@ import type {
 import { assembleMotionPrompt } from '@/lib/motion/assemble-motion-prompt';
 import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import { getFalFlowControl } from './constants';
+import { getFalFlowControl, getLLMFlowControl } from './constants';
 import { frameImagesWorkflow } from './frame-images-workflow';
-import { durableStreamingSceneSplit } from './llm-call-helper';
 import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionMusicPromptsWorkflow } from './motion-music-prompts-workflow';
 
 import { createScopedWorkflow } from '../workflow/scoped-workflow';
 import { locationMatchingWorkflow } from './location-matching-workflow';
+import { sceneSplitWorkflow } from './scene-split-workflow';
 import { talentMatchingWorkflow } from './talent-matching-workflow';
 import { visualPromptWorkflow } from './visual-prompt-workflow';
 
@@ -62,12 +61,6 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
     // Record start time of analysis
     const startTime = await context.run('start-time', () => Date.now());
 
-    const llmCallContext = {
-      sequenceId,
-      userId: input.userId,
-      scopedDb,
-    };
-
     // Phase 1 START
     await context.run('phase-1-start', async () => {
       await getGenerationChannel(sequenceId).emit('generation.phase:start', {
@@ -76,22 +69,27 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       });
     });
 
-    // @TODO: TB Mar 26 2026: Look at making this into a separate workflow
-    const { scenes, frameMapping } = await durableStreamingSceneSplit(
-      context,
-      {
-        promptName: 'phase/scene-splitting-chat',
-        promptVariables: {
-          aspectRatio,
-          script: sanitizeScriptContent(script),
-        },
-        modelId: analysisModelId,
-        responseSchema: sceneSplittingResultSchema,
+    const sceneSplitResult = await context.invoke('scene-split', {
+      workflow: sceneSplitWorkflow,
+      label,
+      body: {
+        userId: input.userId,
+        teamId: input.teamId,
         sequenceId,
+        promptName: 'phase/scene-splitting-chat',
+        aspectRatio,
+        script: sanitizeScriptContent(script),
+        styleConfig,
+        modelId: analysisModelId,
         autoGenerateMotion,
       },
-      llmCallContext
-    );
+    });
+
+    if (sceneSplitResult.isFailed || sceneSplitResult.isCanceled) {
+      throw new Error('Scene split workflow failed');
+    }
+
+    const { scenes, frameMapping } = sceneSplitResult.body;
 
     // Phase 2 START
     await context.run('phase-2-start', async () => {
@@ -190,6 +188,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
           analysisModelId,
           frameMapping,
         },
+        flowControl: getLLMFlowControl(),
       }),
     ]);
 

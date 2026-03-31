@@ -20,7 +20,7 @@ interface UploadImageOptions {
 }
 
 interface UploadImageBufferOptions {
-  imageBuffer: Buffer;
+  imageBuffer: Uint8Array;
   teamId: string;
   sequenceId: string;
   frameId: string;
@@ -107,16 +107,10 @@ export async function uploadImageBufferToStorage(
   const ulid = generateId();
   const storagePath = `teams/${teamId}/sequences/${sequenceId}/frames/${frameId}/${ulid}.${extension}`;
 
-  // Create blob from buffer (convert to Uint8Array for compatibility)
-  const imageBlob = new Blob([new Uint8Array(imageBuffer)], {
-    type: contentType,
-  });
-
-  // Upload to R2 Storage
   const result = await uploadFile(
     STORAGE_BUCKETS.THUMBNAILS,
     storagePath,
-    imageBlob,
+    imageBuffer,
     {
       contentType,
       upsert: true,

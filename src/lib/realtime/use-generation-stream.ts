@@ -33,7 +33,7 @@ function asOptionalNumber(value: unknown): number | undefined {
 
 type FrameStatus = 'pending' | 'generating' | 'completed' | 'failed';
 
-function asFrameStatus(value: unknown): FrameStatus {
+function asFrameStatus(value: unknown): FrameStatus | undefined {
   if (
     value === 'pending' ||
     value === 'generating' ||
@@ -42,7 +42,7 @@ function asFrameStatus(value: unknown): FrameStatus {
   ) {
     return value;
   }
-  return 'pending';
+  return undefined;
 }
 
 /**
@@ -110,6 +110,7 @@ function mapEventToAction(
           frameId: asString(data.frameId),
           status: asFrameStatus(data.status),
           thumbnailUrl: asOptionalString(data.thumbnailUrl),
+          previewThumbnailUrl: asOptionalString(data.previewThumbnailUrl),
         },
       };
 
@@ -189,6 +190,12 @@ function mapEventToAction(
         },
       };
 
+    case 'generation.preview:replaced':
+      return {
+        type: 'PREVIEW_REPLACED',
+        payload: { newSceneCount: asNumber(data.newSceneCount) },
+      };
+
     default:
       return null;
   }
@@ -263,13 +270,13 @@ export function useGenerationStream(
       'generation.talent:matched',
       'generation.talent:unmatched',
       'generation.location:matched',
+      'generation.poster:ready',
+      'generation.preview:replaced',
       'generation.complete',
       'generation.failed',
       'generation.updated',
       'generation.error',
     ] as const,
-    // @ts-expect-error history supported at runtime, not yet in SDK types
-    history: true,
     onData: handleEvent,
     enabled: true,
   });

@@ -31,11 +31,13 @@ type ScenesViewProps = {
 };
 
 // Full class names required for Tailwind JIT to detect at build time
-const PLAYER_MAX_CLASS_BY_RATIO: Record<AspectRatio, string> = {
-  '16:9': 'max-h-[50vh] max-w-[calc(50vh*1.7777777777777777)]',
-  '9:16': 'max-h-[50vh] max-w-[calc(50vh*0.5625)]',
-  '1:1': 'max-h-[50vh] max-w-[50vh]',
+// Split into max-width (for the wrapper, enables centering) and max-height (for the player div)
+const PLAYER_MAX_W_BY_RATIO: Record<AspectRatio, string> = {
+  '16:9': 'max-w-[calc(50vh*1.7777777777777777)]',
+  '9:16': 'max-w-[calc(50vh*0.5625)]',
+  '1:1': 'max-w-[50vh]',
 };
+const PLAYER_MAX_H = 'max-h-[50vh]';
 
 type RegenerationType = 'image' | 'motion' | 'scene-variants';
 
@@ -92,7 +94,6 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
 
   const [motionStartedAt, setMotionStartedAt] = useState<number | null>(null);
   const [motionIncludesMusic, setMotionIncludesMusic] = useState(false);
-  const handleMotionComplete = useCallback(() => setMotionStartedAt(null), []);
 
   // Initial fetch to determine sequence status - poll during motion generation
   const { data: sequence } = useSequence(sequenceId, {
@@ -111,8 +112,15 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   );
 
   // Subscribe to real-time generation events when sequence is processing
-  const { state: generationState, status: realtimeStatus } =
-    useGenerationStream(sequenceId, phaseConfig);
+  const {
+    state: generationState,
+    status: realtimeStatus,
+    reset: resetGenerationStream,
+  } = useGenerationStream(sequenceId, phaseConfig);
+  const handleMotionComplete = useCallback(() => {
+    setMotionStartedAt(null);
+    resetGenerationStream();
+  }, [resetGenerationStream]);
 
   // Hybrid polling: only poll when processing AND realtime has failed
   // - 'connecting' → wait for connection, don't poll
@@ -285,16 +293,17 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
   return (
     <div className="flex h-full flex-col">
       {/* Generation progress banner */}
-      {(isProcessing || generationState.currentPhase > 0) && (
-        <div className="pl-4 pr-4 pt-4 md:pr-8">
-          <GenerationProgressBanner
-            generationState={generationState}
-            isProcessing={isProcessing}
-            startedAt={sequence?.updatedAt}
-            script={sequence?.script ?? undefined}
-          />
-        </div>
-      )}
+      {(isProcessing || generationState.currentPhase > 0) &&
+        motionStartedAt === null && (
+          <div className="pl-4 pr-4 pt-4 md:pr-8">
+            <GenerationProgressBanner
+              generationState={generationState}
+              isProcessing={isProcessing}
+              startedAt={sequence?.updatedAt}
+              script={sequence?.script ?? undefined}
+            />
+          </div>
+        )}
 
       {/* Motion generation progress banner */}
       {motionStartedAt !== null && sequence && frames && (
@@ -361,7 +370,9 @@ export const ScenesView: React.FC<ScenesViewProps> = ({ sequenceId }) => {
                 generationState.phases.find((p) => p.status === 'active')
                   ?.phaseName
               }
-              className={PLAYER_MAX_CLASS_BY_RATIO[aspectRatio]}
+              posterUrl={sequence?.posterUrl ?? undefined}
+              className={PLAYER_MAX_H}
+              wrapperClassName={PLAYER_MAX_W_BY_RATIO[aspectRatio]}
             />
           </div>
           <SceneScriptPrompts

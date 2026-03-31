@@ -26,7 +26,6 @@
     "typescript/no-unnecessary-condition": "warn",
     "unicorn/prefer-optional-catch-binding": "error",
     "react/rules-of-hooks": "error",
-    "react/no-unstable-nested-components": "error",
     "no-restricted-imports": [
       "error",
       {

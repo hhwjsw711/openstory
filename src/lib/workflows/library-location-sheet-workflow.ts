@@ -6,7 +6,7 @@
  * as the main reference for the location.
  */
 
-import { uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
@@ -101,21 +101,20 @@ export const libraryLocationSheetWorkflow = createScopedWorkflow<
         `Uploading sheet to storage for ${input.locationName}`
       );
 
-      // Fetch the image
+      // Fetch and stream directly to R2
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch generated image: ${response.status}`);
       }
-      const imageBlob = await response.blob();
 
       // Build storage path: locations/{teamId}/{sequenceId}/{locationDbId}/sheet_{uniqueId}.png
       const uniqueId = generateId();
       const storagePath = `${input.teamId}/${input.sequenceId}/${input.locationDbId}/sheet_${uniqueId}.png`;
 
-      const result = await uploadFile(
+      const result = await uploadResponse(
+        response,
         STORAGE_BUCKETS.LOCATIONS,
         storagePath,
-        imageBlob,
         {
           contentType: 'image/png',
         }
