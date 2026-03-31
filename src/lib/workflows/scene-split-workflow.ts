@@ -17,6 +17,7 @@ import {
   type SceneSplittingScene,
   stripCodeFences,
 } from '@/lib/ai/streaming-scene-parser';
+import { parse } from 'partial-json';
 import { ZERO_MICROS } from '@/lib/billing/money';
 import { deductWorkflowCredits } from '@/lib/billing/workflow-deduction';
 import type { NewFrame } from '@/lib/db/schema';
@@ -265,9 +266,10 @@ export const sceneSplitWorkflow = createScopedWorkflow<
           );
         }
 
-        // Parse final accumulated text with full schema
+        // Parse final accumulated text with full schema (use partial-json
+        // so a truncated stream doesn't crash — Zod still validates the shape)
         const parsed = sceneSplittingResultSchema.parse(
-          JSON.parse(stripCodeFences(finalText))
+          parse(stripCodeFences(finalText))
         );
         console.log(
           `[Stream:${logName}] Complete | ${chunkCount} chunks | ${parsed.scenes.length} scenes | ${finalText.length} chars`

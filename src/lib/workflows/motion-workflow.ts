@@ -10,7 +10,6 @@
 import { DEFAULT_VIDEO_MODEL, IMAGE_TO_VIDEO_MODELS } from '@/lib/ai/models';
 import { microsToUsd, type Microdollars } from '@/lib/billing/money';
 import { ensureImageUnderLimit } from '@/lib/image/image-compress';
-import { uploadImageBufferToStorage } from '@/lib/image/image-storage';
 import {
   calculateMotionMetadata,
   pollMotionJob,
@@ -146,7 +145,7 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
       return { videoUrl: '', duration: 0 };
     }
 
-    // Step 2: Prepare start image — compress if Kling model and image exceeds 10MB
+    // Step 2: Prepare start image — use Cloudflare Image Resizing if Kling model and image exceeds 10MB
     const startImageUrl = await context.run('prepare-start-image', async () => {
       const modelConfig = IMAGE_TO_VIDEO_MODELS[model];
       if (modelConfig.provider !== 'kling') {
@@ -161,26 +160,11 @@ export const generateMotionWorkflow = createScopedWorkflow<MotionWorkflowInput>(
         return input.imageUrl;
       }
 
-      if (!input.teamId || !input.sequenceId || !input.frameId) {
-        console.warn(
-          '[MotionWorkflow] Missing storage context, using original image URL'
-        );
-        return input.imageUrl;
-      }
-
-      const result = await uploadImageBufferToStorage({
-        imageBuffer: compressed.buffer,
-        teamId: input.teamId,
-        sequenceId: input.sequenceId,
-        frameId: input.frameId,
-        contentType: compressed.contentType,
-      });
-
       console.log(
-        `[MotionWorkflow] Compressed start image: ${(compressed.originalSizeBytes / 1024 / 1024).toFixed(1)}MB → ${(compressed.compressedSizeBytes / 1024 / 1024).toFixed(1)}MB`
+        `[MotionWorkflow] Image ${(compressed.originalSizeBytes / 1024 / 1024).toFixed(1)}MB exceeds limit, using Cloudflare Image Resizing`
       );
 
-      return result.url;
+      return compressed.url;
     });
 
     // Step 3a: Submit the motion generation job

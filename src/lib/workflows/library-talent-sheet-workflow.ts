@@ -5,7 +5,7 @@
  * Uses the reference images to create a consistent talent sheet.
  */
 
-import { uploadFile } from '#storage';
+import { uploadResponse } from '@/lib/storage/upload-response';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
@@ -119,21 +119,20 @@ export const libraryTalentSheetWorkflow = createScopedWorkflow<
     const storageResult = await context.run('upload-to-storage', async () => {
       console.log('[LibraryTalentSheetWorkflow]', `Uploading sheet to storage`);
 
-      // Fetch the generated image
+      // Fetch and stream directly to R2
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch generated image: ${response.status}`);
       }
-      const imageBlob = await response.blob();
 
       // Build storage path
       const sheetId = generateId();
       const storagePath = `${input.teamId}/${input.talentId}/${sheetId}.png`;
 
-      const result = await uploadFile(
+      const result = await uploadResponse(
+        response,
         STORAGE_BUCKETS.TALENT,
         storagePath,
-        imageBlob,
         { contentType: 'image/png' }
       );
 
@@ -223,22 +222,21 @@ export const libraryTalentSheetWorkflow = createScopedWorkflow<
           `Uploading headshot to storage`
         );
 
-        // Fetch the generated headshot
+        // Fetch and stream directly to R2
         const response = await fetch(headshotUrl);
         if (!response.ok) {
           throw new Error(
             `Failed to fetch generated headshot: ${response.status}`
           );
         }
-        const imageBlob = await response.blob();
 
         // Build storage path for headshot
         const headshotPath = `${input.teamId}/${input.talentId}/headshot.png`;
 
-        const result = await uploadFile(
+        const result = await uploadResponse(
+          response,
           STORAGE_BUCKETS.TALENT,
           headshotPath,
-          imageBlob,
           { contentType: 'image/png' }
         );
 

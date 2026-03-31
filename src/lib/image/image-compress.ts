@@ -1,29 +1,30 @@
 /**
- * Image Compression Utility
- * Uses @cf-wasm/photon (WASM-based) to compress images under a size limit.
- * Compatible with Cloudflare Workers (Sharp's native binaries don't work in workerd).
+ * Image Compression via Cloudflare Image Resizing
+ *
+ * Instead of downloading and re-encoding images in-process (which OOMs on
+ * Workers for 18-20MB images), returns a `/cdn-cgi/image/` transform URL.
+ * Cloudflare resizes at the edge when the downstream service (e.g. Kling)
+ * fetches the URL. Zero application memory used.
+ *
+ * Requires Image Resizing enabled on the Cloudflare zone serving the R2
+ * public domain (dashboard → Speed → Optimization → Image Resizing).
  */
 
-import { PhotonImage } from '@cf-wasm/photon';
-
-type CompressionResult = {
-  buffer: Buffer;
-  contentType: string;
+export type CompressionResult = {
+  url: string;
   originalSizeBytes: number;
-  compressedSizeBytes: number;
 };
 
-const JPEG_QUALITY = 85;
-
 /**
- * Ensure an image is under the given byte limit by converting to JPEG.
+ * Ensure an image is under the given byte limit using Cloudflare Image Resizing.
  * Returns null if the image is already under the limit.
+ * Returns a cdn-cgi/image/ transform URL if compression is needed.
  */
 export async function ensureImageUnderLimit(
   imageUrl: string,
   maxBytes: number
 ): Promise<CompressionResult | null> {
-  // Try HEAD first to check Content-Length without downloading
+  // HEAD check — skip transform if already under limit
   const headResponse = await fetch(imageUrl, { method: 'HEAD' });
   const contentLength = headResponse.headers.get('content-length');
 
@@ -31,48 +32,17 @@ export async function ensureImageUnderLimit(
     return null;
   }
 
-  // Download the image
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch image for compression: ${response.status}`
-    );
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const originalSizeBytes = arrayBuffer.byteLength;
-
-  if (originalSizeBytes <= maxBytes) {
-    return null;
-  }
+  const originalSizeBytes = contentLength ? Number(contentLength) : 0;
 
   console.log(
-    `[ImageCompress] Image is ${(originalSizeBytes / 1024 / 1024).toFixed(1)}MB, compressing under ${(maxBytes / 1024 / 1024).toFixed(1)}MB limit`
+    `[ImageCompress] Image is ${(originalSizeBytes / 1024 / 1024).toFixed(1)}MB, using Cloudflare Image Resizing to compress under ${(maxBytes / 1024 / 1024).toFixed(1)}MB limit`
   );
 
-  const inputBytes = new Uint8Array(arrayBuffer);
-  const inputImage = PhotonImage.new_from_byteslice(inputBytes);
+  // Construct a Cloudflare Image Resizing URL.
+  // When fetched, Cloudflare transforms the image at the edge — the application
+  // never downloads or buffers the original image.
+  const parsed = new URL(imageUrl);
+  const transformUrl = `${parsed.origin}/cdn-cgi/image/quality=85,format=jpeg${parsed.pathname}`;
 
-  try {
-    const outputBytes = inputImage.get_bytes_jpeg(JPEG_QUALITY);
-
-    if (outputBytes.byteLength > maxBytes) {
-      throw new Error(
-        `JPEG compression insufficient: ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)}MB still exceeds ${(maxBytes / 1024 / 1024).toFixed(1)}MB limit (original: ${(originalSizeBytes / 1024 / 1024).toFixed(1)}MB)`
-      );
-    }
-
-    console.log(
-      `[ImageCompress] Compressed to ${(outputBytes.byteLength / 1024 / 1024).toFixed(1)}MB (JPEG quality=${JPEG_QUALITY})`
-    );
-
-    return {
-      buffer: Buffer.from(outputBytes),
-      contentType: 'image/jpeg',
-      originalSizeBytes,
-      compressedSizeBytes: outputBytes.byteLength,
-    };
-  } finally {
-    inputImage.free();
-  }
+  return { url: transformUrl, originalSizeBytes };
 }

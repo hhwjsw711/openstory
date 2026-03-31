@@ -103,25 +103,34 @@ export async function durableLLMCall<TInput, TSchema extends z.ZodType>(
       }
     }
 
-    const result = await chat({
-      adapter,
-      messages: chatMessages,
-      systemPrompts,
-      stream: false,
-      maxTokens: Math.floor(getContextWindow(config.modelId) * 0.5),
-      metadata: {
-        observationName: logName,
-        prompt: promptReference,
-        tags: logTags,
-        metadata: logMetadata,
-        sessionId: callContext.sequenceId,
-        userId: callContext.userId,
-      },
-      outputSchema: config.responseSchema,
-    });
+    // Abort after 5 minutes to prevent indefinite hangs on unresponsive LLM providers
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => abortController.abort(), 300_000);
 
-    console.log(`[LLM:${logName}] Call succeeded`);
-    return result;
+    try {
+      const result = await chat({
+        adapter,
+        messages: chatMessages,
+        systemPrompts,
+        stream: false,
+        maxTokens: Math.floor(getContextWindow(config.modelId) * 0.5),
+        abortController,
+        metadata: {
+          observationName: logName,
+          prompt: promptReference,
+          tags: logTags,
+          metadata: logMetadata,
+          sessionId: callContext.sequenceId,
+          userId: callContext.userId,
+        },
+        outputSchema: config.responseSchema,
+      });
+
+      console.log(`[LLM:${logName}] Call succeeded`);
+      return result;
+    } finally {
+      clearTimeout(timeout);
+    }
   });
 
   // Deduct LLM credits (cost tracked via Langfuse; adapter doesn't expose per-call usage)

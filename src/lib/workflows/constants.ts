@@ -16,3 +16,19 @@ export const getFalFlowControl = (): FlowControl => {
     parallelism: concurrencyLimit,
   };
 };
+
+/**
+ * Shared flow control configuration for LLM requests (OpenRouter).
+ * Prevents thundering herd when dispatching many parallel scene workflows.
+ */
+export const getLLMFlowControl = (): FlowControl => {
+  const env = getEnv();
+  const concurrencyLimit = env.LLM_CONCURRENCY_LIMIT
+    ? parseInt(env.LLM_CONCURRENCY_LIMIT)
+    : 50;
+
+  return {
+    key: 'llm-requests',
+    parallelism: concurrencyLimit,
+  };
+};
