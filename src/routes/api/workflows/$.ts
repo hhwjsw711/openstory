@@ -99,6 +99,15 @@ export const Route = createFileRoute('/api/workflows/$')({
           new URL(request.url).pathname.split('/api/workflows/')[1] ??
           'unknown';
         recordMemorySample(workflowName, 'before');
+
+        const mem = process.memoryUsage();
+        console.log(`[Workflow:${workflowName}] memory`, {
+          rss: `${Math.round(mem.rss / 1024 / 1024)}MB`,
+          heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)}MB`,
+          heapTotal: `${Math.round(mem.heapTotal / 1024 / 1024)}MB`,
+          external: `${Math.round(mem.external / 1024 / 1024)}MB`,
+        });
+
         const response = await getHandler().POST({ request });
         recordMemorySample(workflowName, 'after');
 
