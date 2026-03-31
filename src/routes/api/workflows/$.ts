@@ -103,12 +103,19 @@ export const Route = createFileRoute('/api/workflows/$')({
         recordMemorySample(workflowName, 'after');
 
         if (response.status >= 400) {
-          const cloned = response.clone();
-          const body = await cloned.text();
-          console.error(
-            `[Workflow:${workflowName}] ${response.status} error:`,
-            body
-          );
+          try {
+            const cloned = response.clone();
+            const body = await cloned.text();
+            console.error(
+              `[Workflow:${workflowName}] ${response.status} error:`,
+              body
+            );
+          } catch (error) {
+            console.error(
+              `[Workflow:${workflowName}] ${response.status} error:`,
+              error
+            );
+          }
         }
 
         await flushTracing();
