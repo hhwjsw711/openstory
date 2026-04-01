@@ -8,20 +8,21 @@
  * to maintain consistency with the cast.
  */
 
-import { uploadResponse } from '@/lib/storage/upload-response';
 import { DEFAULT_IMAGE_MODEL } from '@/lib/ai/models';
 import {
   deductWorkflowCredits,
   extractImageCost,
 } from '@/lib/billing/workflow-deduction';
 import { generateId } from '@/lib/db/id';
-import type { CharacterMinimal } from '@/lib/db/schema';
+import type { CharacterMinimal, NewCharacter } from '@/lib/db/schema';
 import { generateImageWithProvider } from '@/lib/image/image-generation';
 import {
   buildCastingAttributes,
   buildCharacterSheetPrompt,
 } from '@/lib/prompts/character-prompt';
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets';
+import { uploadResponse } from '@/lib/storage/upload-response';
+import { sanitizeFailResponse } from '@/lib/workflow/sanitize-fail-response';
 import { createScopedWorkflow } from '@/lib/workflow/scoped-workflow';
 import type {
   CharacterBibleWorkflowInput,
@@ -41,13 +42,69 @@ export const characterBibleWorkflow = createScopedWorkflow<
       talentMatches.map((m) => [m.characterId, m])
     );
 
-    const seqCharacters: CharacterMinimal[] = await Promise.all(
-      input.characterBible.map(async (character) => {
-        return await context.run('character-sheet', async () => {
-          // Check if character has a talent match
-          const talentMatch = matchMap.get(character.characterId);
+    // Step 1: Insert character records into database (always runs - satisfies Upstash auth check)
+    const createdCharacters = await context.run(
+      'create-character-records',
+      async () => {
+        if (!input.sequenceId || !input.userId || !input.teamId) {
+          return [];
+        }
 
-          // When talent is matched, merge attributes: physical from talent, costume from role
+        const results: Array<{ id: string; characterId: string }> = [];
+        for (const character of input.characterBible) {
+          const talentMatch = matchMap.get(character.characterId);
+          const castingAttrs = talentMatch
+            ? buildCastingAttributes(character, {
+                sheetMetadata: talentMatch.sheetMetadata,
+                talentName: talentMatch.talentName,
+              })
+            : null;
+
+          const created = await scopedDb.characters.create({
+            id: generateId(),
+            sequenceId: input.sequenceId,
+            characterId: character.characterId,
+            name: character.name,
+            age: castingAttrs?.age ?? character.age ?? '',
+            gender: castingAttrs?.gender ?? character.gender ?? null,
+            ethnicity: castingAttrs?.ethnicity ?? character.ethnicity ?? null,
+            physicalDescription:
+              castingAttrs?.physicalDescription ??
+              character.physicalDescription,
+            standardClothing: character.standardClothing,
+            distinguishingFeatures: character.distinguishingFeatures ?? null,
+            consistencyTag:
+              castingAttrs?.consistencyTag ?? character.consistencyTag,
+            firstMentionSceneId: null,
+            firstMentionText: null,
+            firstMentionLine: null,
+            sheetImageUrl: null,
+            sheetImagePath: null,
+            sheetStatus: 'generating' as const,
+            talentId: talentMatch?.talentId ?? null,
+          } satisfies NewCharacter);
+          results.push({ id: created.id, characterId: created.characterId });
+        }
+        return results;
+      }
+    );
+
+    if (input.characterBible.length === 0) {
+      return [];
+    }
+
+    // Create mapping from characterId to database id
+    const characterIdToDbId = new Map<string, string>(
+      createdCharacters.map((c) => [c.characterId, c.id])
+    );
+
+    // Step 2: Generate character sheet images in parallel
+    const seqCharacters: CharacterMinimal[] = await Promise.all(
+      input.characterBible.map(async (character, index) => {
+        const dbId = characterIdToDbId.get(character.characterId);
+
+        return await context.run(`character-sheet-${index}`, async () => {
+          const talentMatch = matchMap.get(character.characterId);
           const castingAttrs = talentMatch
             ? buildCastingAttributes(character, {
                 sheetMetadata: talentMatch.sheetMetadata,
@@ -98,9 +155,8 @@ export const characterBibleWorkflow = createScopedWorkflow<
           let sheetImagePath: string | undefined;
 
           // Upload to R2 if we have storage context
-          if (input.sequenceId && input.userId && input.teamId) {
-            const id = generateId();
-            const storagePath = `${input.teamId}/${input.sequenceId}/${id}.png`;
+          if (input.sequenceId && input.teamId) {
+            const storagePath = `${input.teamId}/${input.sequenceId}/${dbId ?? generateId()}.png`;
             const response = await fetch(generatedUrl);
             if (!response.ok) {
               throw new Error(
@@ -120,47 +176,29 @@ export const characterBibleWorkflow = createScopedWorkflow<
             sheetImagePath = undefined;
           }
 
-          // Generate ULID-based filename
-          const id = generateId();
-
-          // Save to DB if sequenceId, userId, and teamId are provided
-          if (input.sequenceId && input.userId && input.teamId) {
-            const created = await scopedDb.characters.create({
-              id,
-              sequenceId: input.sequenceId,
+          // Update existing DB record with sheet image
+          if (dbId) {
+            await scopedDb.characters.updateSheet(
+              dbId,
+              sheetImageUrl,
+              sheetImagePath ?? ''
+            );
+            return {
+              id: dbId,
               characterId: character.characterId,
               name: character.name,
-              // Use talent's physical attributes when cast, otherwise script's
-              age: castingAttrs?.age ?? character.age ?? '',
-              gender: castingAttrs?.gender ?? character.gender ?? null,
-              ethnicity: castingAttrs?.ethnicity ?? character.ethnicity ?? null,
+              sheetImageUrl,
+              sheetStatus: 'completed' as const,
               physicalDescription:
                 castingAttrs?.physicalDescription ??
                 character.physicalDescription,
-              standardClothing: character.standardClothing,
-              distinguishingFeatures: character.distinguishingFeatures ?? null,
               consistencyTag:
                 castingAttrs?.consistencyTag ?? character.consistencyTag,
-              firstMentionSceneId: null,
-              firstMentionText: null,
-              firstMentionLine: null,
-              sheetImageUrl,
-              sheetImagePath: sheetImagePath ?? null,
-              sheetStatus: 'completed' as const,
-              talentId: talentMatch?.talentId || null,
-            });
-            return {
-              id: created.id,
-              characterId: created.characterId,
-              name: created.name,
-              sheetImageUrl: created.sheetImageUrl,
-              sheetStatus: created.sheetStatus,
-              physicalDescription: created.physicalDescription,
-              consistencyTag: created.consistencyTag,
             };
           }
+
           return {
-            id,
+            id: generateId(),
             characterId: character.characterId,
             name: character.name,
             sheetImageUrl,
@@ -178,7 +216,12 @@ export const characterBibleWorkflow = createScopedWorkflow<
     return seqCharacters;
   },
   {
-    failureFunction: async () => {
+    failureFunction: async ({ failResponse }) => {
+      const error = sanitizeFailResponse(failResponse);
+      console.error(
+        '[CharacterBibleWorkflow]',
+        `Character sheet generation failed: ${error}`
+      );
       return `Character sheet generation failed`;
     },
   }
