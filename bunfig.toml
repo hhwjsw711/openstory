@@ -3,14 +3,7 @@
 skip = ["msw"]
 
 # Equivalent to pnpm's onlyBuiltDependencies
-allowlist = [
-  "@tailwindcss/oxide",
-  "core-js-pure", 
-  "esbuild",
-  "lefthook",
-  "sharp",
-  "supabase"
-]
+allowlist = ["@tailwindcss/oxide", "esbuild", "lefthook", "sharp"]
 
 [test]
 # Test configuration for bun test

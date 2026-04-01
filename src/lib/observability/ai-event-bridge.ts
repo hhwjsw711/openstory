@@ -9,7 +9,7 @@
  */
 
 import { propagateAttributes, startObservation } from '@langfuse/tracing';
-import { aiEventClient } from '@tanstack/ai/event-client';
+import { aiEventClient } from '@tanstack/ai-event-client';
 import { z } from 'zod';
 
 const llmMetadataSchema = z.object({
