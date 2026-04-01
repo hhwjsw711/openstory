@@ -7,12 +7,8 @@ export default {
     'src/functions/**/*.ts',
     'scripts/**/*.ts',
     '.storybook/**/*.{ts,tsx}',
-    // Test setup
-    'src/test/setup.ts',
     // Conditional imports (package.json "imports" field)
-    'src/lib/db/client-local.ts',
     'src/lib/db/client-http.ts',
-    'src/lib/env/cloudflare.ts',
     // MSW mocks
     'src/lib/mocks/browser.ts',
     'src/lib/mocks/server.ts',
@@ -24,10 +20,7 @@ export default {
     'src/routeTree.gen.ts',
     '**/*.stories.tsx',
     '**/*.test.ts',
-    '**/*.spec.ts',
     '**/*.gen.ts',
-    'drizzle.config.ts',
-    'drizzle.config.*.ts',
   ],
   ignoreDependencies: [
     // Tailwind plugins
@@ -48,7 +41,8 @@ export default {
   ],
   ignoreBinaries: [
     // CLI tools used in package.json scripts
-    'mkcert',
-    'pbcopy',
+    'stripe',
+    'open',
+    'doppler',
   ],
 } satisfies KnipConfig;

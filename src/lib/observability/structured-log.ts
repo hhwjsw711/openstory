@@ -44,6 +44,38 @@ function redactSecrets(message: string): string {
   return result;
 }
 
+const LEVEL_STYLES: Record<
+  StructuredLog['level'],
+  { label: string; color: string }
+> = {
+  info: { label: 'INFO', color: '\x1b[36m' }, // cyan
+  warn: { label: 'WARN', color: '\x1b[33m' }, // yellow
+  error: { label: 'ERR!', color: '\x1b[31m' }, // red
+};
+const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
+
+function emitDevLog(log: StructuredLog): void {
+  const { label, color } = LEVEL_STYLES[log.level];
+  const method = log.method ?? '';
+  const path = log.path ?? log.name;
+  const ms = `${DIM}${log.durationMs}ms${RESET}`;
+
+  let line = `${color}${label}${RESET} ${method} ${path} ${ms}`;
+
+  if (log.error) {
+    line += ` ${color}${log.error.code}: ${log.error.message}${RESET}`;
+  }
+
+  const logFn =
+    log.level === 'error'
+      ? console.error
+      : log.level === 'warn'
+        ? console.warn
+        : console.log;
+  logFn(line);
+}
+
 export function emitLog(log: StructuredLog): void {
   if (log.error?.message) {
     log = {
@@ -54,5 +86,11 @@ export function emitLog(log: StructuredLog): void {
       },
     };
   }
+
+  if (process.env.NODE_ENV === 'development') {
+    emitDevLog(log);
+    return;
+  }
+
   console.log(JSON.stringify(log));
 }

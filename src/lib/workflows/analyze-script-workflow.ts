@@ -20,7 +20,7 @@ import type {
 import { assembleMotionPrompt } from '@/lib/motion/assemble-motion-prompt';
 import { motionBatchWorkflow } from '@/lib/workflows/motion-batch-workflow';
 import { characterBibleWorkflow } from './character-bible-workflow';
-import { getFalFlowControl } from './constants';
+import { getFalFlowControl, getLLMFlowControl } from './constants';
 import { frameImagesWorkflow } from './frame-images-workflow';
 import { locationBibleWorkflow } from './location-bible-workflow';
 import { motionMusicPromptsWorkflow } from './motion-music-prompts-workflow';
@@ -188,6 +188,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
           analysisModelId,
           frameMapping,
         },
+        flowControl: getLLMFlowControl(),
       }),
     ]);
 

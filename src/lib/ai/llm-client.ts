@@ -207,7 +207,7 @@ export async function* callLLMStream(
     metadata: buildChatMetadata(params),
     modelOptions: {
       ...buildModelOptions(params),
-      stream_options: { include_usage: true },
+      streamOptions: { include_usage: true },
     },
     stream: true,
   });
@@ -246,7 +246,7 @@ export type DurableLLMCallConfig<TSchema extends z.ZodType> = {
 export async function callChat<TSchema extends z.ZodType>(
   config: DurableLLMCallConfig<TSchema>,
   scopedDb: ScopedDb
-): Promise<z.infer<TSchema>> {
+) {
   const { name, modelId, promptName, promptVariables, responseSchema } = config;
   const logTags = [name, promptName, 'analysis'];
   const logMetadata = {
@@ -287,7 +287,7 @@ export async function callChat<TSchema extends z.ZodType>(
     }
   }
 
-  const jsonResponse: z.infer<TSchema> = await chat({
+  const jsonResponse = await chat({
     adapter,
     messages: chatMessages,
     systemPrompts,
@@ -317,5 +317,5 @@ export async function callChat<TSchema extends z.ZodType>(
     },
   });
 
-  return jsonResponse;
+  return responseSchema.parse(jsonResponse);
 }

@@ -8,17 +8,40 @@ import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import { devtools } from '@tanstack/devtools-vite';
 import viteReact from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 // Enable tree-shaking debugging: DEBUG_TREESHAKE=1 enables treeshake, DEBUG_VISUALIZER=1 adds visualizer
 const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
 const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
 const isDev = process.env.NODE_ENV !== 'production';
 
-export default defineConfig({
-  // Prevent Vite from replacing process.env at build time
-  // This allows workerd's nodejs_compat_populate_process_env to work
+/**
+ * Rolldown reorders CJS-to-ESM wrappers: tsyringe checks for
+ * Reflect.getMetadata before reflect-metadata's factory runs.
+ * This plugin moves the require_Reflect() call before the check.
+ */
+function reflectMetadataPolyfill(): import('vite').Plugin {
+  return {
+    name: 'reflect-metadata-polyfill',
+    apply: 'build',
+    renderChunk(code) {
+      if (!code.includes('tsyringe requires a reflect polyfill')) return null;
+      const checkPattern =
+        /if \(typeof Reflect === "undefined" \|\| !Reflect\.getMetadata\)/;
+      const match = checkPattern.exec(code);
+      if (!match) return null;
+      return (
+        code.slice(0, match.index) +
+        'require_Reflect();\n' +
+        code.slice(match.index)
+      );
+    },
+  };
+}
 
+export default defineConfig({
+  resolve: {
+    tsconfigPaths: true,
+  },
   server: {
     port: 3000,
     host: true, // Listen on all interfaces for QStash Docker to reach via host.docker.internal
@@ -40,7 +63,7 @@ export default defineConfig({
   },
   plugins: [
     isDev && devtools(),
-    tsconfigPaths(),
+    reflectMetadataPolyfill(),
     tailwindcss(),
     process.env.BUILD_CLOUDFLARE
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
