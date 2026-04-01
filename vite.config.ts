@@ -14,6 +14,30 @@ const debugTreeshake = process.env.DEBUG_TREESHAKE_OFF !== '1';
 const debugVisualizer = process.env.DEBUG_VISUALIZER === '1';
 const isDev = process.env.NODE_ENV !== 'production';
 
+/**
+ * Rolldown reorders CJS-to-ESM wrappers: tsyringe checks for
+ * Reflect.getMetadata before reflect-metadata's factory runs.
+ * This plugin moves the require_Reflect() call before the check.
+ */
+function reflectMetadataPolyfill(): import('vite').Plugin {
+  return {
+    name: 'reflect-metadata-polyfill',
+    apply: 'build',
+    renderChunk(code) {
+      if (!code.includes('tsyringe requires a reflect polyfill')) return null;
+      const checkPattern =
+        /if \(typeof Reflect === "undefined" \|\| !Reflect\.getMetadata\)/;
+      const match = checkPattern.exec(code);
+      if (!match) return null;
+      return (
+        code.slice(0, match.index) +
+        'require_Reflect();\n' +
+        code.slice(match.index)
+      );
+    },
+  };
+}
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
@@ -39,6 +63,7 @@ export default defineConfig({
   },
   plugins: [
     isDev && devtools(),
+    reflectMetadataPolyfill(),
     tailwindcss(),
     process.env.BUILD_CLOUDFLARE
       ? cloudflare({ viteEnvironment: { name: 'ssr' } })
