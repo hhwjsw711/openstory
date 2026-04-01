@@ -56,10 +56,6 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     basePrice: micros(12_000),
     unit: 'per_image',
   },
-  'fal-ai/hidream-e1-1': {
-    basePrice: micros(60_000),
-    unit: 'per_image',
-  },
   'fal-ai/hidream-i1-full': {
     basePrice: micros(50_000),
     unit: 'per_megapixel',

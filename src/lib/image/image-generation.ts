@@ -232,6 +232,9 @@ function buildFalModelOptions(
         ...(params.enablePromptExpansion !== undefined && {
           enable_prompt_expansion: params.enablePromptExpansion,
         }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 
@@ -257,6 +260,9 @@ function buildFalModelOptions(
         ...(params.seed !== undefined && { seed: params.seed }),
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 
@@ -295,9 +301,13 @@ function buildFalModelOptions(
         aspect_ratio: imageSizeToAspectRatio(
           params.imageSize ?? DEFAULT_IMAGE_SIZE
         ),
-        resolution: params.resolution ?? '1K',
+        // Phota only accepts '1K' or '4K' — map anything else to '1K'
+        resolution: params.resolution === '4K' ? '4K' : ('1K' as '1K' | '4K'),
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 
@@ -349,6 +359,9 @@ function buildFalModelOptions(
         enable_safety_checker: true,
         ...(params.seed !== undefined && { seed: params.seed }),
         ...(params.numImages !== undefined && { num_images: params.numImages }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 

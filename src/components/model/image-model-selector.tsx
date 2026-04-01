@@ -22,6 +22,7 @@ export const ImageModelSelector: React.FC<ImageModelSelectorProps> = ({
   const models = useMemo(
     () =>
       Object.entries(IMAGE_MODELS)
+        .filter(([, m]) => !('previewOnly' in m))
         .sort(([, a], [, b]) => a.qualityRank - b.qualityRank)
         .map(([key, m]) => ({
           id: key,
