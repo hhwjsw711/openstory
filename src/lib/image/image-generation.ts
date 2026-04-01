@@ -316,9 +316,14 @@ function buildFalModelOptions(
     case 'qwen_image':
       return {
         image_size: params.imageSize ?? DEFAULT_IMAGE_SIZE,
+        enable_safety_checker: true,
+        enable_prompt_expansion: true,
         ...(params.seed !== undefined && { seed: params.seed }),
         ...(params.numImages !== undefined && { num_images: params.numImages }),
         ...(params.outputFormat && { output_format: params.outputFormat }),
+        ...(params.referenceImageUrls?.length && {
+          image_urls: params.referenceImageUrls,
+        }),
         sync_mode: false,
       };
 

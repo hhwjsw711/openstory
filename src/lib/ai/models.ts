@@ -153,12 +153,12 @@ export const IMAGE_MODELS = {
     maxPromptLength: 2000,
   },
   qwen_image: {
-    id: 'fal-ai/qwen-image' as const,
-    name: 'Qwen Image',
+    id: 'fal-ai/qwen-image-2/pro/text-to-image' as const,
+    name: 'Qwen Image 2 Pro',
     provider: 'Alibaba',
     license: 'open-source' as const,
     qualityRank: 8,
-    description: 'Apache 2.0, native 2K, text rendering',
+    description: 'Apache 2.0, native 2K, text rendering, editing support',
     maxPromptLength: 2000,
   },
   hidream_i1: {
@@ -571,7 +571,7 @@ export const EDIT_ENDPOINTS: Partial<Record<TextToImageModel, string>> = {
   phota: 'fal-ai/phota/edit',
   hunyuan_image_v3: 'fal-ai/hunyuan-image/v3/instruct/edit',
   flux_2_dev: 'fal-ai/flux-2/edit',
-  qwen_image: 'fal-ai/qwen-image-edit-2511',
+  qwen_image: 'fal-ai/qwen-image-2/pro/edit',
   hidream_i1: 'fal-ai/hidream-e1-1',
   seedream_v5: 'fal-ai/bytedance/seedream/v5/lite/edit',
 };

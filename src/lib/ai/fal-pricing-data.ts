@@ -136,13 +136,13 @@ export const IMAGE_PRICING: Record<string, ImagePricing> = {
     basePrice: micros(90_000),
     unit: 'per_image',
   },
-  'fal-ai/qwen-image': {
-    basePrice: micros(20_000),
-    unit: 'per_megapixel',
+  'fal-ai/qwen-image-2/pro/text-to-image': {
+    basePrice: micros(75_000),
+    unit: 'per_image',
   },
-  'fal-ai/qwen-image-edit-2511': {
-    basePrice: micros(30_000),
-    unit: 'per_megapixel',
+  'fal-ai/qwen-image-2/pro/edit': {
+    basePrice: micros(75_000),
+    unit: 'per_image',
   },
   'xai/grok-imagine-image': {
     basePrice: micros(20_000),
