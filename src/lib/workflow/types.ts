@@ -137,6 +137,8 @@ export type SceneSplitWorkflowResult = {
   scenes: Scene[];
   title: string;
   frameMapping: Array<{ sceneId: string; frameId: string }>;
+  characterBible: CharacterBibleEntry[];
+  locationBible: LocationBibleEntry[];
 };
 
 /**
@@ -244,6 +246,8 @@ export interface TalentMatchingWorkflowInput extends SequenceWorkflowContext {
   scenes: Scene[];
   analysisModelId: AnalysisModelId;
   suggestedTalentIds?: string[];
+  /** Pre-extracted character bible from scene splitting. Skips extraction LLM call when provided. */
+  characterBible?: CharacterBibleEntry[];
 }
 
 export interface TalentMatchingWorkflowOutput {
@@ -488,6 +492,8 @@ export interface LocationMatchingWorkflowInput extends SequenceWorkflowContext {
   scenes: Scene[];
   analysisModelId: AnalysisModelId;
   suggestedLocationIds?: string[];
+  /** Pre-extracted location bible from scene splitting. Skips extraction LLM call when provided. */
+  locationBible?: LocationBibleEntry[];
 }
 
 export interface LocationMatchingWorkflowOutput {

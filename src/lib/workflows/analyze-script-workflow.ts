@@ -89,7 +89,12 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
       throw new Error('Scene split workflow failed');
     }
 
-    const { scenes, frameMapping } = sceneSplitResult.body;
+    const {
+      scenes,
+      frameMapping,
+      characterBible: extractedCharacterBible,
+      locationBible: extractedLocationBible,
+    } = sceneSplitResult.body;
 
     // Phase 2 START
     await context.run('phase-2-start', async () => {
@@ -100,6 +105,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
     });
 
     // Phase 2: Talent + location matching in parallel
+    // Pass pre-extracted bibles to skip redundant extraction LLM calls
     const [characterMatchingResult, locationMatchingResult] = await Promise.all(
       [
         context.invoke('talent-matching', {
@@ -112,6 +118,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
             scenes,
             analysisModelId,
             suggestedTalentIds,
+            characterBible: extractedCharacterBible,
           },
         }),
         context.invoke('location-matching', {
@@ -124,6 +131,7 @@ export const analyzeScriptWorkflow = createScopedWorkflow<
             scenes,
             analysisModelId,
             suggestedLocationIds,
+            locationBible: extractedLocationBible,
           },
         }),
       ]
