@@ -22,7 +22,7 @@ export const OgImage: React.FC = () => {
           className="size-full object-cover object-center"
         >
           <source
-            src="https://assets.openstory.so/videos/hero-loop.mp4"
+            src="https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/videos/hero-loop.mp4"
             type="video/mp4"
           />
         </video>

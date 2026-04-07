@@ -3,7 +3,9 @@
   "main": "@tanstack/react-start/server-entry",
   "name": "openstory",
   "compatibility_date": "2025-11-18",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -23,7 +25,7 @@
     {
       "binding": "DB",
       "database_name": "openstory-prd",
-      "database_id": "d6a35f64-abb0-4a34-a092-dc20b29f5812",
+      "database_id": "88bfc1a2-803d-4e99-9c2e-b1dc334c72b1",
       "migrations_dir": "drizzle/migrations",
     },
   ],

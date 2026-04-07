@@ -22,7 +22,7 @@ export function ProductShowcase() {
             </div>
 
             <img
-              src="https://assets.openstory.so/images/marketing/product-ui.webp"
+              src="https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/product-ui.webp"
               alt="OpenStory sequence editor showing scenes, frames, and AI-generated visuals"
               className="aspect-video w-full object-cover object-top"
             />
