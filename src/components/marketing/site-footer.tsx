@@ -58,7 +58,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl border-t border-background/[0.08] px-6">
         <div className="flex flex-col items-center justify-between gap-4 py-6 sm:flex-row">
           <p className="text-label text-background/25">
-            &copy; {new Date().getFullYear()} OpenStory. All rights reserved.
+            &copy; {new Date().getFullYear()} Wordream. All rights reserved.
           </p>
 
           <div className="flex items-center gap-4">
