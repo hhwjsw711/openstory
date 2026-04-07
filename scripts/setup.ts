@@ -59,11 +59,27 @@ function loadExistingEnv(): Map<string, string> {
   const env = parseEnvFile(ENV_FILE);
 
   // For prod, also read legacy .env.local so existing keys are migrated
+  // BUT exclude vars that differ between local and production:
+  // - VITE_* vars: different URLs/emails
+  // - QStash: local uses emulator, prod uses real Upstash
+  // - UPSTASH_WORKFLOW_URL: local docker vs prod
   if (isProd) {
     const legacyFile = resolve(process.cwd(), '.env.local');
     const legacy = parseEnvFile(legacyFile);
+    const excludeFromMigration = new Set([
+      'VITE_APP_URL',
+      'VITE_CONTACT_EMAIL',
+      'VITE_PRIVACY_EMAIL',
+      'QSTASH_URL',
+      'QSTASH_TOKEN',
+      'QSTASH_CURRENT_SIGNING_KEY',
+      'QSTASH_NEXT_SIGNING_KEY',
+      'UPSTASH_WORKFLOW_URL',
+    ]);
     legacy.forEach((value, key) => {
-      if (!env.has(key)) env.set(key, value);
+      if (!env.has(key) && !excludeFromMigration.has(key)) {
+        env.set(key, value);
+      }
     });
   }
 
@@ -81,12 +97,24 @@ function writeEnvFile(vars: Map<string, string>) {
     '',
   ];
 
+  // R2 bucket names are bindings in Cloudflare (configured in wrangler.jsonc), not secrets
+  // For non-Cloudflare platforms (Vercel/Railway), they're needed for S3-compatible access
+  const platform = vars.get('DEPLOY_PLATFORM');
+  const excludeKeys = new Set<string>();
+  if (platform === 'cloudflare') {
+    excludeKeys.add('R2_BUCKET_NAME');
+    excludeKeys.add('R2_PUBLIC_ASSETS_BUCKET');
+    excludeKeys.add('R2_STORAGE_BUCKET');
+  }
+
   const sections: Array<{ header: string; keys: string[] }> = [
     {
       header: 'Core',
       keys: [
         'VITE_APP_URL',
         'VITE_APP_NAME',
+        'VITE_CONTACT_EMAIL',
+        'VITE_PRIVACY_EMAIL',
         'DEPLOY_PLATFORM',
         'BETTER_AUTH_SECRET',
         'TURSO_DATABASE_URL',
@@ -161,7 +189,9 @@ function writeEnvFile(vars: Map<string, string>) {
   ];
 
   for (const section of sections) {
-    const sectionVars = section.keys.filter((k) => vars.has(k));
+    const sectionVars = section.keys.filter(
+      (k) => vars.has(k) && !excludeKeys.has(k)
+    );
     if (sectionVars.length === 0) continue;
 
     lines.push(`# ${section.header}`);
@@ -907,8 +937,26 @@ async function deploySetup(
     if (shouldPushSecrets) {
       const secretsSpinner = p.spinner();
       secretsSpinner.start('Pushing secrets to Cloudflare');
+
+      // R2 bucket names are bindings (configured in wrangler.jsonc), not secrets
+      const R2_BINDING_KEYS = [
+        'R2_PUBLIC_ASSETS_BUCKET',
+        'R2_BUCKET_NAME',
+        'R2_STORAGE_BUCKET',
+      ];
+
+      // Write secrets to temp file (exclude VITE_* and R2 bindings)
+      const tmpSecretsFile = resolve(process.cwd(), '.secrets-tmp.json');
       try {
-        execFileSync('wrangler', ['secret', 'bulk', ENV_FILE], {
+        const secretsJson: Record<string, string> = {};
+        for (const [key, value] of vars) {
+          if (key.startsWith('VITE_')) continue;
+          if (R2_BINDING_KEYS.includes(key)) continue;
+          secretsJson[key] = value;
+        }
+        writeFileSync(tmpSecretsFile, JSON.stringify(secretsJson, null, 2));
+
+        execFileSync('wrangler', ['secret', 'bulk', tmpSecretsFile], {
           stdio: 'pipe',
         });
         secretsSpinner.stop('Secrets pushed to Cloudflare');
@@ -920,6 +968,12 @@ async function deploySetup(
         p.log.info(
           `Run manually: ${chalk.bold(`wrangler secret bulk ${ENV_FILENAME}`)}`
         );
+      } finally {
+        try {
+          unlinkSync(tmpSecretsFile);
+        } catch {
+          // ignore
+        }
       }
     }
 
