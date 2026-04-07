@@ -641,7 +641,17 @@ async function prPreviewSetup() {
     try {
       execFileSync(
         'gh',
-        ['secret', 'set', key, '--env', 'staging', '--body', value],
+        [
+          'secret',
+          'set',
+          key,
+          '--env',
+          'staging',
+          '--body',
+          value,
+          '--repo',
+          repoName,
+        ],
         {
           stdio: ['pipe', 'pipe', 'pipe'],
         }
@@ -677,7 +687,17 @@ async function prPreviewSetup() {
       try {
         execFileSync(
           'gh',
-          ['variable', 'set', key, '--env', 'staging', '--body', value],
+          [
+            'variable',
+            'set',
+            key,
+            '--env',
+            'staging',
+            '--body',
+            value,
+            '--repo',
+            repoName,
+          ],
           {
             stdio: ['pipe', 'pipe', 'pipe'],
           }
@@ -954,6 +974,8 @@ async function deploySetup(
                 'production',
                 '--body',
                 value,
+                '--repo',
+                repoName,
               ]);
               varsPushed++;
             } catch {
@@ -1146,6 +1168,8 @@ async function deploySetup(
               'production',
               '--body',
               value,
+              '--repo',
+              repoName,
             ]);
             pushed++;
           } catch {
