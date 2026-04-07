@@ -98,11 +98,5 @@ export default defineConfig({
   ],
   ssr: {
     noExternal: ['@upstash/realtime', '@videojs/react'],
-    // Bun runtime module - not available in Vite's dependency pre-bundling
-    external: ['bun'],
-  },
-  optimizeDeps: {
-    // Exclude Bun runtime module from dependency optimization
-    exclude: ['bun'],
   },
 });
