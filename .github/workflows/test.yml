@@ -78,13 +78,12 @@ jobs:
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
           R2_PUBLIC_STORAGE_DOMAIN: ${{ vars.R2_PUBLIC_STORAGE_DOMAIN }}
           R2_PUBLIC_ASSETS_BUCKET: ${{ secrets.R2_PUBLIC_ASSETS_BUCKET }}
-          VITE_R2_PUBLIC_ASSETS_DOMAIN: ${{ secrets.VITE_R2_PUBLIC_ASSETS_DOMAIN }}
+          VITE_R2_PUBLIC_ASSETS_DOMAIN: ${{ vars.VITE_R2_PUBLIC_ASSETS_DOMAIN }}
           # Redis - preview environment
           UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
           UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
           # Auth - preview environment
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          # Note: GOOGLE_CLIENT_ID/SECRET intentionally not set for E2E (not needed)
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           # AI services (mocked via Playwright routes)
           FAL_KEY: ${{ secrets.FAL_KEY }}

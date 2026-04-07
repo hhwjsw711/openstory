@@ -58,9 +58,9 @@ function parseEnvFile(path: string): Map<string, string> {
 function loadExistingEnv(): Map<string, string> {
   const env = parseEnvFile(ENV_FILE);
 
-  // For prod, also read legacy .env so existing keys are migrated
+  // For prod, also read legacy .env.local so existing keys are migrated
   if (isProd) {
-    const legacyFile = resolve(process.cwd(), '.env');
+    const legacyFile = resolve(process.cwd(), '.env.local');
     const legacy = parseEnvFile(legacyFile);
     legacy.forEach((value, key) => {
       if (!env.has(key)) env.set(key, value);
