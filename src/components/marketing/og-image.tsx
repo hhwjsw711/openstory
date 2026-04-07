@@ -1,6 +1,8 @@
 import { OpenStoryLogo } from '@/components/icons/openstory-logo';
 import { Button } from '@/components/ui/button';
 import { SITE_CONFIG } from '@/lib/marketing/constants';
+const VITE_R2_PUBLIC_ASSETS_DOMAIN =
+  import.meta.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so';
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -22,7 +24,7 @@ export const OgImage: React.FC = () => {
           className="size-full object-cover object-center"
         >
           <source
-            src="https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/videos/hero-loop.mp4"
+            src={`https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/videos/hero-loop.mp4`}
             type="video/mp4"
           />
         </video>

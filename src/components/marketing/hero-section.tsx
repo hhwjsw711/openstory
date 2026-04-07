@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { HERO_FILMSTRIP, SITE_CONFIG } from '@/lib/marketing/constants';
 import { Link } from '@tanstack/react-router';
 import { Image } from '@unpic/react';
+const VITE_R2_PUBLIC_ASSETS_DOMAIN =
+  import.meta.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so';
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -29,7 +31,7 @@ export function HeroSection() {
           className="size-full object-cover object-center"
         >
           <source
-            src="https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/videos/hero-loop.mp4"
+            src={`https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/videos/hero-loop.mp4`}
             type="video/mp4"
           />
         </video>

@@ -1,3 +1,6 @@
+const VITE_R2_PUBLIC_ASSETS_DOMAIN =
+  import.meta.env.VITE_R2_PUBLIC_ASSETS_DOMAIN || 'assets.openstory.so';
+
 export function ProductShowcase() {
   return (
     <section className="bg-muted px-6 py-20 sm:py-28">
@@ -22,7 +25,7 @@ export function ProductShowcase() {
             </div>
 
             <img
-              src="https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/product-ui.webp"
+              src={`https://${VITE_R2_PUBLIC_ASSETS_DOMAIN}/images/marketing/product-ui.webp`}
               alt="OpenStory sequence editor showing scenes, frames, and AI-generated visuals"
               className="aspect-video w-full object-cover object-top"
             />
