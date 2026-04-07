@@ -17,6 +17,7 @@ concurrency:
 jobs:
   check-secrets:
     runs-on: ubuntu-latest
+    environment: production
     outputs:
       has-cf-token: ${{ steps.check.outputs.has-cf-token }}
     steps:
